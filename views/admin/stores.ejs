@@ -1,0 +1,67 @@
+<% var active = 'stores'; var pageTitle = 'Stores'; %>
+<% var scripts = '<script>$(document).ready(function(){ if($("#storesTable tbody tr").length > 1) { $("#storesTable").DataTable(); } });</script>'; %>
+<%
+var body = `
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>All Stores (${typeof count !== 'undefined' ? count : 0})</span>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newStoreModal"><i class="fas fa-plus"></i> Add Store</button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+        <table class="table table-hover" id="storesTable">
+            <thead><tr><th>Image</th><th>Name</th><th>Status</th><th>Ganancias</th><th>Actions</th></tr></thead>
+            <tbody>`;
+
+if (typeof stores !== 'undefined' && stores.length) {
+  stores.forEach(function(s) {
+    var img = s.image ? `<img src="${s.image}" width="50" height="37" style="object-fit:cover;border-radius:4px">` : '<span class="text-muted">-</span>';
+    var earnings = parseFloat(s.total_earnings || 0).toFixed(2);
+    body += `<tr>
+      <td>${img}</td>
+      <td><strong>${s.name}</strong><br><small class="text-muted">${s.address || ''}</small></td>
+      <td><span class="badge badge-${s.is_active ? 'success' : 'danger'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td><strong style="color:#28a745">$${earnings}</strong></td>
+      <td>
+        <a href="/admin/store/edit/${s.id}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>
+        <a href="/admin/store/earnings/${s.id}" class="btn btn-sm btn-outline-success" title="Ganancias"><i class="fas fa-chart-line"></i></a>
+        <a href="/admin/store/disable/${s.id}" class="btn btn-sm btn-outline-warning" title="Toggle"><i class="fas fa-ban"></i></a>
+      </td>
+    </tr>`;
+  });
+} else {
+  body += '<tr><td colspan="5" class="text-center text-muted py-4">No stores found</td></tr>';
+}
+
+body += `</tbody></table></div></div></div>
+
+<!-- New Store Modal -->
+<div class="modal fade" id="newStoreModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="/admin/store/new/save" enctype="multipart/form-data">
+                <div class="modal-header"><h5 class="modal-title">Add New Store</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" required></div>
+                            <div class="form-group"><label>Description</label><textarea name="description" class="form-control" rows="3"></textarea></div>
+                            <div class="form-group"><label>Image</label><input type="file" name="image" class="form-control-file" accept="image/*"></div>
+                            <div class="form-group"><label>Address</label><input type="text" name="address" class="form-control"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Latitude</label><input type="text" name="latitude" class="form-control"></div>
+                            <div class="form-group"><label>Longitude</label><input type="text" name="longitude" class="form-control"></div>
+                            <div class="form-group"><label>Delivery Charges</label><input type="number" step="0.01" name="delivery_charges" class="form-control" value="0"></div>
+                            <div class="form-group"><label>Commission Rate (%)</label><input type="number" step="0.01" name="commission_rate" class="form-control" value="0"></div>
+                            <div class="form-group"><label>Delivery Type</label><select name="delivery_type" class="form-control"><option value="1">Delivery</option><option value="2">Self Pickup</option><option value="3">Both</option></select></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Save Store</button></div>
+            </form>
+        </div>
+    </div>
+</div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

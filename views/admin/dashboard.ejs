@@ -1,0 +1,125 @@
+<% var active = 'dashboard'; var pageTitle = 'Dashboard'; %>
+<%
+var scripts = `
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+let earningsChart = null;
+
+function loadChart(filter) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (filter !== 'custom') {
+    document.querySelector('[data-filter="'+filter+'"]').classList.add('active');
+    document.getElementById('customRange').style.display = 'none';
+  } else {
+    document.querySelector('[data-filter="custom"]').classList.add('active');
+    document.getElementById('customRange').style.display = 'flex';
+    if (!document.getElementById('dateFrom').value) document.getElementById('dateFrom').value = new Date().toISOString().split('T')[0];
+    if (!document.getElementById('dateTo').value) document.getElementById('dateTo').value = new Date().toISOString().split('T')[0];
+  }
+
+  let url = '/admin/api/earnings-chart?filter=' + filter;
+  if (filter === 'custom') {
+    const from = document.getElementById('dateFrom').value;
+    const to = document.getElementById('dateTo').value;
+    if (!from || !to) return;
+    url += '&from=' + from + '&to=' + to;
+  }
+
+  fetch(url).then(r => r.json()).then(data => {
+    const ctx = document.getElementById('earningsChart').getContext('2d');
+    if (earningsChart) earningsChart.destroy();
+    earningsChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: 'Ganancias',
+          data: data.values,
+          borderColor: '#007bff',
+          backgroundColor: 'rgba(0,123,255,.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4,
+          pointBackgroundColor: '#007bff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: v => '$' + v } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+    document.getElementById('totalEarnings').textContent = '$' + data.total.toFixed(2);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() { loadChart('week'); });
+</script>`;
+
+var body = `
+<div class="row">
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body text-center py-3">
+                <h3 class="text-primary mb-1" style="font-size:22px">${typeof stats !== 'undefined' ? stats.totalOrders : 0}</h3>
+                <p class="text-muted mb-0" style="font-size:12px">Pedidos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body text-center py-3">
+                <h3 class="text-success mb-1" style="font-size:22px">${typeof stats !== 'undefined' ? stats.completedOrders : 0}</h3>
+                <p class="text-muted mb-0" style="font-size:12px">Completados</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body text-center py-3">
+                <h3 class="text-info mb-1" style="font-size:22px">${typeof stats !== 'undefined' ? stats.totalUsers : 0}</h3>
+                <p class="text-muted mb-0" style="font-size:12px">Usuarios</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body text-center py-3">
+                <h3 class="text-warning mb-1" style="font-size:22px">${typeof stats !== 'undefined' ? stats.totalStores : 0}</h3>
+                <p class="text-muted mb-0" style="font-size:12px">Tiendas</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px">
+        <div>
+            <span style="font-size:15px;font-weight:600">Ganancias</span>
+            <span id="totalEarnings" class="ml-2 badge badge-primary" style="font-size:13px">$0.00</span>
+        </div>
+        <div class="d-flex flex-wrap" style="gap:6px">
+            <button class="btn btn-sm btn-outline-primary filter-btn active" data-filter="week" onclick="loadChart('week')">7 d&iacute;as</button>
+            <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="month" onclick="loadChart('month')">30 d&iacute;as</button>
+            <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="custom" onclick="loadChart('custom')">Rango</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="customRange" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+            <input type="date" id="dateFrom" class="form-control form-control-sm" style="width:auto">
+            <span style="color:#888">a</span>
+            <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto">
+            <button class="btn btn-sm btn-primary" onclick="loadChart('custom')"><i class="fas fa-search"></i> Buscar</button>
+        </div>
+        <div style="position:relative;height:280px">
+            <canvas id="earningsChart"></canvas>
+        </div>
+    </div>
+</div>
+`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

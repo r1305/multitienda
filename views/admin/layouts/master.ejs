@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Admin - Multitienda</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap4.min.css">
+    <style>
+        :root { --sidebar-width: 260px; --primary: #007bff; --dark: #1e2a38; --dark-hover: #2c3e50; --topbar-height: 56px; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; margin: 0; font-size: 14px; }
+
+        /* Sidebar */
+        .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background: var(--dark); overflow-y: auto; z-index: 1000; transition: transform .3s ease; padding-bottom: 20px; }
+        .sidebar-brand { padding: 18px 20px 24px; color: #fff; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: 8px; }
+        .sidebar-brand i { font-size: 20px; color: var(--primary); }
+        .sidebar a { color: #8a9bb5; padding: 11px 20px; display: flex; align-items: center; gap: 12px; text-decoration: none; font-size: 13px; font-weight: 500; border-left: 3px solid transparent; transition: all .15s; }
+        .sidebar a:hover { color: #fff; background: var(--dark-hover); }
+        .sidebar a.active { color: #fff; background: var(--dark-hover); border-left-color: var(--primary); }
+        .sidebar a i { width: 20px; text-align: center; font-size: 14px; }
+        .sidebar-section { padding: 12px 20px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #5a6b7f; font-weight: 600; }
+        .sidebar hr { border-color: rgba(255,255,255,.06); margin: 8px 20px; }
+
+        /* Main content */
+        .main-content { margin-left: var(--sidebar-width); min-height: 100vh; transition: margin .3s ease; }
+
+        /* Top bar */
+        .top-bar { position: sticky; top: 0; z-index: 900; background: #fff; padding: 0 20px; height: var(--topbar-height); display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .top-bar h5 { font-size: 16px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .top-bar-user { font-size: 13px; color: #6c757d; display: flex; align-items: center; gap: 8px; }
+        .top-bar-user .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; }
+        .hamburger { display: none; background: none; border: none; font-size: 20px; color: var(--dark); padding: 8px; cursor: pointer; }
+
+        /* Cards & Tables */
+        .card { border: none; border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,.04); margin-bottom: 16px; overflow: hidden; }
+        .card-header { background: #fff; border-bottom: 1px solid #f0f0f0; font-weight: 600; font-size: 14px; padding: 14px 16px; }
+        .card-body { padding: 16px; }
+        .table { font-size: 13px; }
+        .table th { border-top: none; font-size: 11px; text-transform: uppercase; color: #8a9bb5; font-weight: 600; letter-spacing: .5px; white-space: nowrap; }
+        .table td { vertical-align: middle; }
+        .btn { font-size: 13px; border-radius: 6px; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .btn-primary { background: var(--primary); border: none; }
+        .badge { font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: 500; }
+        .alert { border: none; border-radius: 8px; font-size: 13px; }
+        .form-control { font-size: 14px; border-radius: 6px; }
+        .modal-content { border-radius: 12px; }
+
+        /* Overlay for mobile */
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; }
+
+        /* Responsive */
+        @media (max-width: 991px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .main-content { margin-left: 0; }
+            .hamburger { display: block; }
+            .top-bar { padding: 0 12px; }
+            .top-bar h5 { font-size: 15px; }
+            .card-body { padding: 12px; }
+        }
+        @media (max-width: 576px) {
+            .top-bar-user span { display: none; }
+            .table-responsive { font-size: 12px; }
+            .btn-sm { padding: 4px 8px; }
+        }
+        @media (min-width: 992px) {
+            .sidebar { transform: translateX(0) !important; }
+        }
+
+        /* DataTables responsive */
+        .dataTables_wrapper { font-size: 13px; }
+        .dataTables_filter input { border-radius: 6px; font-size: 13px; }
+        .dataTables_length select { border-radius: 6px; }
+        div.dataTables_wrapper div.dataTables_info { font-size: 12px; }
+    </style>
+</head>
+<body>
+    <!-- Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-store"></i> Multitienda</div>
+        <div class="sidebar-section">Principal</div>
+        <a href="/admin/dashboard" class="<%= typeof active !== 'undefined' && active === 'dashboard' ? 'active' : '' %>"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="/admin/orders" class="<%= typeof active !== 'undefined' && active === 'orders' ? 'active' : '' %>"><i class="fas fa-shopping-cart"></i> Pedidos</a>
+        <a href="/admin/stores" class="<%= typeof active !== 'undefined' && active === 'stores' ? 'active' : '' %>"><i class="fas fa-store"></i> Tiendas</a>
+
+        <div class="sidebar-section">Catálogo</div>
+        <a href="/admin/items" class="<%= typeof active !== 'undefined' && active === 'items' ? 'active' : '' %>"><i class="fas fa-utensils"></i> Items</a>
+        <a href="/admin/item-categories" class="<%= typeof active !== 'undefined' && active === 'itemcategories' ? 'active' : '' %>"><i class="fas fa-list"></i> Categorías</a>
+        <a href="/admin/addon-categories" class="<%= typeof active !== 'undefined' && active === 'addoncategories' ? 'active' : '' %>"><i class="fas fa-puzzle-piece"></i> Addons</a>
+
+        <div class="sidebar-section">Usuarios</div>
+        <a href="/admin/users" class="<%= typeof active !== 'undefined' && active === 'users' ? 'active' : '' %>"><i class="fas fa-users"></i> Usuarios</a>
+        <a href="/admin/delivery-guys" class="<%= typeof active !== 'undefined' && active === 'delivery' ? 'active' : '' %>"><i class="fas fa-motorcycle"></i> Repartidores</a>
+        <a href="/admin/store-owners" class="<%= typeof active !== 'undefined' && active === 'storeowners' ? 'active' : '' %>"><i class="fas fa-user-tie"></i> Dueños</a>
+
+        <div class="sidebar-section">Marketing</div>
+        <a href="/admin/promo-sliders" class="<%= typeof active !== 'undefined' && active === 'sliders' ? 'active' : '' %>"><i class="fas fa-images"></i> Sliders</a>
+        <a href="/admin/coupons" class="<%= typeof active !== 'undefined' && active === 'coupons' ? 'active' : '' %>"><i class="fas fa-ticket-alt"></i> Cupones</a>
+        <a href="/admin/store-category-slider" class="<%= typeof active !== 'undefined' && active === 'categoryslider' ? 'active' : '' %>"><i class="fas fa-th-large"></i> Cat. Slider</a>
+
+        <div class="sidebar-section">Configuración</div>
+        <a href="/admin/popular-geo-locations" class="<%= typeof active !== 'undefined' && active === 'locations' ? 'active' : '' %>"><i class="fas fa-map-marker-alt"></i> Ubicaciones</a>
+        <a href="/admin/pages" class="<%= typeof active !== 'undefined' && active === 'pages' ? 'active' : '' %>"><i class="fas fa-file-alt"></i> Páginas</a>
+        <a href="/admin/translations" class="<%= typeof active !== 'undefined' && active === 'translations' ? 'active' : '' %>"><i class="fas fa-language"></i> Idiomas</a>
+        <a href="/admin/notifications" class="<%= typeof active !== 'undefined' && active === 'notifications' ? 'active' : '' %>"><i class="fas fa-bell"></i> Notificaciones</a>
+        <a href="/admin/store-payouts" class="<%= typeof active !== 'undefined' && active === 'payouts' ? 'active' : '' %>"><i class="fas fa-money-bill"></i> Pagos</a>
+        <a href="/admin/settings" class="<%= typeof active !== 'undefined' && active === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> Settings</a>
+        <hr>
+        <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+    </nav>
+
+    <!-- Main -->
+    <div class="main-content">
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:12px;min-width:0">
+                <button class="hamburger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <h5><%= typeof pageTitle !== 'undefined' ? pageTitle : 'Admin' %></h5>
+            </div>
+            <div class="top-bar-user">
+                <span><%= typeof user !== 'undefined' && user ? user.name : 'Admin' %></span>
+                <div class="avatar"><%= typeof user !== 'undefined' && user ? user.name[0].toUpperCase() : 'A' %></div>
+            </div>
+        </div>
+
+        <div style="padding:16px">
+            <% if (typeof success !== 'undefined' && success) { %>
+                <div class="alert alert-success alert-dismissible fade show"><%= success %><button type="button" class="close" data-dismiss="alert">&times;</button></div>
+            <% } %>
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert alert-danger alert-dismissible fade show"><%= error %><button type="button" class="close" data-dismiss="alert">&times;</button></div>
+            <% } %>
+            <% if (typeof message !== 'undefined' && message) { %>
+                <div class="alert alert-warning alert-dismissible fade show"><%= message %><button type="button" class="close" data-dismiss="alert">&times;</button></div>
+            <% } %>
+
+            <%- body %>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('sidebarOverlay').classList.toggle('open');
+      }
+      // Close sidebar on link click (mobile)
+      document.querySelectorAll('.sidebar a').forEach(function(link) {
+        link.addEventListener('click', function() {
+          if (window.innerWidth < 992) toggleSidebar();
+        });
+      });
+      // DataTables responsive defaults
+      $.extend($.fn.dataTable.defaults, { responsive: true, language: { search: '', searchPlaceholder: 'Buscar...', lengthMenu: '_MENU_ por página', info: '_START_-_END_ de _TOTAL_', paginate: { previous: '‹', next: '›' } } });
+
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        const appId = '<%= typeof settings !== "undefined" && settings.onesignalAppId ? settings.onesignalAppId : "" %>';
+        if (appId) {
+          await OneSignal.init({ appId: appId, serviceWorkerPath: '/OneSignalSDKWorker.js' });
+          OneSignal.User.addTags({ user_id: '<%= typeof user !== "undefined" && user ? user.id : "1" %>', role: 'admin' });
+        }
+      });
+    </script>
+    <% if (typeof scripts !== 'undefined') { %><%- scripts %><% } %>
+</body>
+</html>

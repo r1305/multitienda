@@ -1,0 +1,30 @@
+<% var active = 'coupons'; var pageTitle = 'Edit Coupon'; %>
+<% var scripts = ''; %>
+<%
+var body = '';
+if (typeof coupon !== 'undefined' && coupon) {
+  var c = coupon;
+  body = `
+  <div class="card"><div class="card-body">
+    <form method="POST" action="/admin/coupon/edit/save">
+      <input type="hidden" name="id" value="${c.id}">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group"><label>Name</label><input type="text" name="name" class="form-control" value="${c.name || ''}"></div>
+          <div class="form-group"><label>Code *</label><input type="text" name="code" class="form-control" value="${c.code}" required style="text-transform:uppercase"></div>
+          <div class="form-group"><label>Discount Type</label><select name="discount_type" class="form-control"><option value="PERCENTAGE" ${c.discount_type=='PERCENTAGE'?'selected':''}>Percentage</option><option value="FIXED" ${c.discount_type=='FIXED'?'selected':''}>Fixed</option></select></div>
+          <div class="form-group"><label>Discount *</label><input type="number" step="0.01" name="discount" class="form-control" value="${c.discount}" required></div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group"><label>Max Uses (0=unlimited)</label><input type="number" name="count" class="form-control" value="${c.count || 0}"></div>
+          <div class="form-group"><label>Max Per User</label><input type="number" name="max_count_per_user" class="form-control" value="${c.max_count_per_user || 0}"></div>
+          <div class="form-group"><label>Min Subtotal</label><input type="number" step="0.01" name="min_subtotal" class="form-control" value="${c.min_subtotal || 0}"></div>
+          <div class="form-group"><label>Max Discount</label><input type="number" step="0.01" name="max_discount" class="form-control" value="${c.max_discount || 0}"></div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Coupon</button>
+    </form>
+  </div></div>`;
+}
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

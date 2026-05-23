@@ -1,0 +1,100 @@
+<% var active = 'stores'; var pageTitle = 'Ganancias - ' + (typeof store !== 'undefined' ? store.name : ''); %>
+<%
+var today = new Date().toISOString().split('T')[0];
+var scripts = `
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+let earningsChart = null;
+const storeId = ${typeof store !== 'undefined' ? store.id : 0};
+const today = '${today}';
+
+function loadChart(filter) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-filter="'+filter+'"]').classList.add('active');
+
+  if (filter === 'custom') {
+    document.getElementById('customRange').style.display = 'flex';
+  } else {
+    document.getElementById('customRange').style.display = 'none';
+  }
+
+  let url = '/admin/api/store-earnings-chart?store_id=' + storeId + '&filter=' + filter;
+  if (filter === 'custom') {
+    const from = document.getElementById('dateFrom').value;
+    const to = document.getElementById('dateTo').value;
+    if (!from || !to) return;
+    url += '&from=' + from + '&to=' + to;
+  }
+
+  fetch(url).then(r => r.json()).then(data => {
+    const ctx = document.getElementById('earningsChart').getContext('2d');
+    if (earningsChart) earningsChart.destroy();
+    earningsChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: 'Ganancias',
+          data: data.values,
+          backgroundColor: 'rgba(40,167,69,.7)',
+          borderColor: '#28a745',
+          borderWidth: 1,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: v => '$' + v } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+    document.getElementById('totalEarnings').textContent = '$' + data.total.toFixed(2);
+    document.getElementById('orderCount').textContent = data.orderCount + ' pedidos';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('dateFrom').value = today;
+  document.getElementById('dateTo').value = today;
+  loadChart('week');
+});
+</script>`;
+
+var body = '';
+if (typeof store !== 'undefined' && store) {
+  body = `
+  <div class="mb-3">
+    <a href="/admin/stores" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver a tiendas</a>
+  </div>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px">
+      <div>
+        <span style="font-size:15px;font-weight:600"><i class="fas fa-store mr-1"></i> ${store.name}</span>
+        <span id="totalEarnings" class="ml-2 badge badge-success" style="font-size:13px">$0.00</span>
+        <span id="orderCount" class="ml-1 badge badge-secondary" style="font-size:11px">0 pedidos</span>
+      </div>
+      <div class="d-flex flex-wrap" style="gap:6px">
+        <button class="btn btn-sm btn-outline-success filter-btn active" data-filter="week" onclick="loadChart('week')">7 dias</button>
+        <button class="btn btn-sm btn-outline-success filter-btn" data-filter="month" onclick="loadChart('month')">30 dias</button>
+        <button class="btn btn-sm btn-outline-success filter-btn" data-filter="custom" onclick="loadChart('custom')">Rango</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="customRange" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <input type="date" id="dateFrom" class="form-control form-control-sm" style="width:auto" value="${today}">
+        <span style="color:#888">a</span>
+        <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto" value="${today}">
+        <button class="btn btn-sm btn-success" onclick="loadChart('custom')"><i class="fas fa-search"></i> Buscar</button>
+      </div>
+      <div style="position:relative;height:300px">
+        <canvas id="earningsChart"></canvas>
+      </div>
+    </div>
+  </div>`;
+}
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

@@ -1,0 +1,44 @@
+<% var active = 'items'; var pageTitle = 'Edit Item - ' + (typeof item !== 'undefined' && item ? item.name : ''); %>
+<% var scripts = ''; %>
+<%
+var body = '';
+if (typeof item !== 'undefined' && item) {
+  var restaurantOptions = '';
+  if (typeof restaurants !== 'undefined') { restaurants.forEach(function(r) { restaurantOptions += `<option value="${r.id}" ${r.id == item.restaurant_id ? 'selected' : ''}>${r.name}</option>`; }); }
+  var categoryOptions = '';
+  if (typeof itemCategories !== 'undefined') { itemCategories.forEach(function(c) { categoryOptions += `<option value="${c.id}" ${c.id == item.item_category_id ? 'selected' : ''}>${c.name}</option>`; }); }
+  var addonChecks = '';
+  if (typeof addonCategories !== 'undefined') { addonCategories.forEach(function(ac) { var checked = (typeof itemAddonIds !== 'undefined' && itemAddonIds.includes(ac.id)) ? 'checked' : ''; addonChecks += `<div class="form-check mb-1"><input type="checkbox" class="form-check-input" name="addon_category_item[]" value="${ac.id}" ${checked}><label class="form-check-label">${ac.name}</label></div>`; }); }
+
+  body = `
+  <form method="POST" action="/admin/item/edit/save" enctype="multipart/form-data">
+    <input type="hidden" name="id" value="${item.id}">
+    <input type="hidden" name="old_image" value="${item.image || ''}">
+    <div class="row">
+      <div class="col-md-8">
+        <div class="card"><div class="card-header">Item Information</div><div class="card-body"><div class="row">
+          <div class="col-md-6">
+            <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" value="${item.name}" required></div>
+            <div class="form-group"><label>Store *</label><select name="restaurant_id" class="form-control" required>${restaurantOptions}</select></div>
+            <div class="form-group"><label>Category *</label><select name="item_category_id" class="form-control" required>${categoryOptions}</select></div>
+            <div class="form-group"><label>Description</label><textarea name="desc" class="form-control" rows="4">${item.desc || ''}</textarea></div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group"><label>Price *</label><input type="number" step="0.01" name="price" class="form-control" value="${item.price}" required></div>
+            <div class="form-group"><label>Old Price</label><input type="number" step="0.01" name="old_price" class="form-control" value="${item.old_price || 0}"></div>
+            <div class="form-group"><label>Image</label><input type="file" name="image" class="form-control-file" accept="image/*">${item.image ? `<img src="${item.image}" width="100" class="mt-2">` : ''}</div>
+            <div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="is_recommended" value="true" ${item.is_recommended ? 'checked' : ''}><label class="form-check-label">Recommended</label></div>
+            <div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="is_popular" value="true" ${item.is_popular ? 'checked' : ''}><label class="form-check-label">Popular</label></div>
+            <div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="is_new" value="true" ${item.is_new ? 'checked' : ''}><label class="form-check-label">New</label></div>
+          </div>
+        </div></div></div>
+      </div>
+      <div class="col-md-4">
+        <div class="card"><div class="card-header">Addon Categories</div><div class="card-body">${addonChecks || '<p class="text-muted">No addon categories</p>'}</div></div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg"><i class="fas fa-save"></i> Update Item</button>
+      </div>
+    </div>
+  </form>`;
+}
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

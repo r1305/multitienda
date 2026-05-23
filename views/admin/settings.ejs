@@ -1,0 +1,119 @@
+<% var active = 'settings'; var pageTitle = 'Settings'; %>
+<% var scripts = ''; %>
+<%
+var s = typeof settings !== 'undefined' ? settings : {};
+var body = `
+<form method="POST" action="/admin/settings">
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#general">General</a></li>
+                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#store">Store</a></li>
+                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#delivery">Delivery</a></li>
+                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#payments">Payments</a></li>
+                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#notifications">Notifications</a></li>
+                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#seo">SEO & Others</a></li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="general">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Store Name</label><input type="text" name="storeName" class="form-control" value="${s.storeName || ''}"></div>
+                            <div class="form-group"><label>Store URL</label><input type="text" name="storeUrl" class="form-control" value="${s.storeUrl || ''}"></div>
+                            <div class="form-group"><label>Store Currency</label><input type="text" name="currencySymbol" class="form-control" value="${s.currencySymbol || '$'}"></div>
+                            <div class="form-group"><label>Currency ID</label><input type="text" name="currencyId" class="form-control" value="${s.currencyId || 'USD'}"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Map API Key</label><input type="text" name="googleApiKey" class="form-control" value="${s.googleApiKey || ''}"></div>
+                            <div class="form-group"><label>Tax Percentage (%)</label><input type="number" step="0.01" name="taxPercentage" class="form-control" value="${s.taxPercentage || '0'}"></div>
+                            <div class="form-group"><label>Wallet Name</label><input type="text" name="walletName" class="form-control" value="${s.walletName || 'Wallet'}"></div>
+                            <div class="form-group"><label>Show Veg/Non-Veg</label><select name="showVegNonVeg" class="form-control"><option value="true" ${s.showVegNonVeg == 'true' ? 'selected' : ''}>Show</option><option value="false" ${s.showVegNonVeg != 'true' ? 'selected' : ''}>Hide</option></select></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="store">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Min Order Amount</label><input type="number" step="0.01" name="minOrderPrice" class="form-control" value="${s.minOrderPrice || '0'}"></div>
+                            <div class="form-group"><label>Delivery Charge</label><input type="number" step="0.01" name="deliveryCharge" class="form-control" value="${s.deliveryCharge || '0'}"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Store Search Radius (km)</label><input type="number" name="storeSearchRadius" class="form-control" value="${s.storeSearchRadius || '10'}"></div>
+                            <div class="form-group"><label>Upload Image Quality (1-100)</label><input type="number" name="uploadImageQuality" class="form-control" value="${s.uploadImageQuality || '75'}"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="delivery">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Enable Delivery Pin</label><select name="enableDeliveryPin" class="form-control"><option value="true" ${s.enableDeliveryPin == 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enableDeliveryPin != 'true' ? 'selected' : ''}>No</option></select></div>
+                            <div class="form-group"><label>Delivery Charge Type</label><select name="deliveryChargeType" class="form-control"><option value="FIXED" ${s.deliveryChargeType == 'FIXED' ? 'selected' : ''}>Fixed</option><option value="DYNAMIC" ${s.deliveryChargeType == 'DYNAMIC' ? 'selected' : ''}>Dynamic</option></select></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Base Delivery Charge</label><input type="number" step="0.01" name="baseDeliveryCharge" class="form-control" value="${s.baseDeliveryCharge || '0'}"></div>
+                            <div class="form-group"><label>Extra Delivery Charge (per km)</label><input type="number" step="0.01" name="extraDeliveryCharge" class="form-control" value="${s.extraDeliveryCharge || '0'}"></div>
+                            <div class="form-group"><label>Radio de asignación de repartidores (km)</label><input type="number" step="0.1" name="deliveryRadius" class="form-control" value="${s.deliveryRadius || '10'}"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="payments">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group"><label>COD (Cash on Delivery)</label><select name="enableCod" class="form-control"><option value="true" ${s.enableCod == 'true' ? 'selected' : ''}>Enabled</option><option value="false" ${s.enableCod != 'true' ? 'selected' : ''}>Disabled</option></select></div>
+                            <div class="form-group"><label>Stripe Key</label><input type="text" name="stripePublicKey" class="form-control" value="${s.stripePublicKey || ''}"></div>
+                            <div class="form-group"><label>Stripe Secret</label><input type="text" name="stripeSecretKey" class="form-control" value="${s.stripeSecretKey || ''}"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Razorpay Key</label><input type="text" name="razorpayKeyId" class="form-control" value="${s.razorpayKeyId || ''}"></div>
+                            <div class="form-group"><label>Razorpay Secret</label><input type="text" name="razorpayKeySecret" class="form-control" value="${s.razorpayKeySecret || ''}"></div>
+                            <div class="form-group"><label>PayStack Key</label><input type="text" name="paystackPublicKey" class="form-control" value="${s.paystackPublicKey || ''}"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="notifications">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group"><label>OneSignal App ID</label><input type="text" name="onesignalAppId" class="form-control" value="${s.onesignalAppId || ''}"></div>
+                            <div class="form-group"><label>OneSignal REST API Key</label><input type="text" name="onesignalRestApiKey" class="form-control" value="${s.onesignalRestApiKey || ''}"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Enable Push Notifications</label><select name="enablePushNotificationOrders" class="form-control"><option value="true" ${s.enablePushNotificationOrders == 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enablePushNotificationOrders != 'true' ? 'selected' : ''}>No</option></select></div>
+                            <div class="form-group"><label>Firebase Server Key</label><input type="text" name="firebaseSecret" class="form-control" value="${s.firebaseSecret || ''}"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="seo">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group"><label>SEO Meta Title</label><input type="text" name="seoMetaTitle" class="form-control" value="${s.seoMetaTitle || ''}"></div>
+                            <div class="form-group"><label>SEO Meta Description</label><textarea name="seoMetaDescription" class="form-control" rows="3">${s.seoMetaDescription || ''}</textarea></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group"><label>Google Analytics Code</label><textarea name="googleAnalyticsCode" class="form-control" rows="3">${s.googleAnalyticsCode || ''}</textarea></div>
+                            <div class="form-group"><label>Footer Text</label><input type="text" name="footerText" class="form-control" value="${s.footerText || ''}"></div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Favicon / App Icon</label>
+                                <p class="text-muted" style="font-size:12px">Se muestra como icono en la pesta\u00f1a del navegador y al agregar a inicio</p>
+                                ${s.faviconUrl ? '<div class="mb-2"><img src="'+s.faviconUrl+'" width="48" height="48" style="border-radius:8px;border:1px solid #eee"></div>' : ''}
+                            </div>
+                            <form method="POST" action="/admin/settings/upload-favicon" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+                                <input type="file" name="favicon" class="form-control-file" accept="image/*" required style="max-width:250px">
+                                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer"><button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Save Settings</button></div>
+    </div>
+</form>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

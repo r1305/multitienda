@@ -1,0 +1,18 @@
+<% var active = 'pages'; var pageTitle = 'Edit Page'; %>
+<% var scripts = ''; %>
+<%
+var body = '';
+if (typeof page !== 'undefined' && page) {
+  body = `
+  <div class="card"><div class="card-body">
+    <form method="POST" action="/admin/page/edit/save">
+      <input type="hidden" name="id" value="${page.id}">
+      <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" value="${page.name}" required></div>
+      <div class="form-group"><label>Slug *</label><input type="text" name="slug" class="form-control" value="${page.slug}" required></div>
+      <div class="form-group"><label>Body</label><textarea name="body" class="form-control" rows="12">${page.body || ''}</textarea></div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Page</button>
+    </form>
+  </div></div>`;
+}
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

@@ -1,0 +1,84 @@
+<% var active = 'sliders'; var pageTitle = 'Promo Sliders'; %>
+<% var scripts = ''; %>
+<%
+var slidersHtml = '';
+
+// Edit form if editing
+if (typeof editSlider !== 'undefined' && editSlider) {
+  slidersHtml += `
+  <div class="card mb-3" style="border:2px solid var(--primary)">
+    <div class="card-header">Editar Slider: <strong>${editSlider.name}</strong></div>
+    <div class="card-body">
+      <form method="POST" action="/admin/slider/edit/save" enctype="multipart/form-data">
+        <input type="hidden" name="id" value="${editSlider.id}">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" value="${editSlider.name}" required></div>
+            <div class="form-group"><label>Image</label><input type="file" name="image" class="form-control-file" accept="image/*">${editSlider.image ? `<img src="${editSlider.image}" width="120" class="mt-2" style="border-radius:6px">` : ''}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group"><label>Position</label><select name="position_id" class="form-control"><option value="0" ${editSlider.position_id==0?'selected':''}>Main</option><option value="1" ${editSlider.position_id==1?'selected':''}>Top</option><option value="2" ${editSlider.position_id==2?'selected':''}>Bottom</option></select></div>
+            <div class="form-group"><label>Size</label><select name="size" class="form-control"><option value="0" ${editSlider.size==0?'selected':''}>Default</option><option value="1" ${editSlider.size==1?'selected':''}>Small</option><option value="2" ${editSlider.size==2?'selected':''}>Large</option></select></div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+        <a href="/admin/promo-sliders" class="btn btn-secondary ml-2">Cancelar</a>
+      </form>
+    </div>
+  </div>`;
+}
+
+if (typeof sliders !== 'undefined' && sliders.length) {
+  sliders.forEach(function(s) {
+    var slidesHtml = '';
+    if (s.slides && s.slides.length) {
+      s.slides.forEach(function(slide) {
+        var imgTag = slide.image ? `<img src="${slide.image}" class="img-fluid rounded" style="max-height:100px">` : '';
+        slidesHtml += `<div class="col-md-3 mb-2">${imgTag}<small class="d-block mt-1">${slide.name || 'Slide'}</small></div>`;
+      });
+    } else {
+      slidesHtml = '<div class="col-12"><p class="text-muted">No slides yet</p></div>';
+    }
+    slidersHtml += `
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><strong>${s.name}</strong></span>
+        <div>
+          <a href="/admin/slider/edit/${s.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+          <a href="/admin/slider/delete/${s.id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar slider?')"><i class="fas fa-trash"></i></a>
+        </div>
+      </div>
+      <div class="card-body"><div class="row">${slidesHtml}</div></div>
+    </div>`;
+  });
+} else {
+  slidersHtml = '<p class="text-muted text-center py-4">No sliders found</p>';
+}
+
+var body = `
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Promo Sliders (${typeof count !== 'undefined' ? count : 0})</span>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newSliderModal"><i class="fas fa-plus"></i> New Slider</button>
+    </div>
+    <div class="card-body">${slidersHtml}</div>
+</div>
+
+<div class="modal fade" id="newSliderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/admin/slider/create" enctype="multipart/form-data">
+                <div class="modal-header"><h5>New Slider</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
+                <div class="modal-body">
+                    <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" required></div>
+                    <div class="form-group"><label>Image *</label><input type="file" name="image" class="form-control-file" accept="image/*" required></div>
+                    <div class="form-group"><label>Position</label><select name="position_id" class="form-control"><option value="0">Main</option><option value="1">Top</option><option value="2">Bottom</option></select></div>
+                    <div class="form-group"><label>Size</label><select name="size" class="form-control"><option value="0">Default</option><option value="1">Small</option><option value="2">Large</option></select></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Create Slider</button></div>
+            </form>
+        </div>
+    </div>
+</div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

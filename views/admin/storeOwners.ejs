@@ -1,0 +1,30 @@
+<% var active = 'storeowners'; var pageTitle = 'Store Owners'; %>
+<% var scripts = '<script>$(document).ready(function(){ if($("#storeOwnersTable tbody tr").length > 1) { $("#storeOwnersTable").DataTable(); } });</script>'; %>
+<%
+var body = `
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover" id="storeOwnersTable">
+            <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Actions</th></tr></thead>
+            <tbody>`;
+
+if (typeof storeOwners !== 'undefined' && storeOwners.length) {
+  storeOwners.forEach(function(so) {
+    body += `<tr>
+      <td>${so.id}</td>
+      <td><strong>${so.name}</strong></td>
+      <td>${so.email || '-'}</td>
+      <td>${so.phone || '-'}</td>
+      <td>
+        <a href="/admin/user/edit/${so.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+        <a href="/admin/store-owner/${so.id}/stores" class="btn btn-sm btn-outline-info"><i class="fas fa-store"></i> Stores</a>
+      </td>
+    </tr>`;
+  });
+} else {
+  body += '<tr><td colspan="5" class="text-center text-muted py-4">No store owners found</td></tr>';
+}
+
+body += `</tbody></table></div></div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

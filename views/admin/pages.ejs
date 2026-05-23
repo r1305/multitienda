@@ -1,0 +1,44 @@
+<% var active = 'pages'; var pageTitle = 'Pages'; %>
+<% var scripts = ''; %>
+<%
+var body = `
+<div class="row">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">Create New Page</div>
+            <div class="card-body">
+                <form method="POST" action="/admin/page/new/save">
+                    <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" required></div>
+                    <div class="form-group"><label>Slug *</label><input type="text" name="slug" class="form-control" required></div>
+                    <div class="form-group"><label>Body</label><textarea name="body" class="form-control" rows="6"></textarea></div>
+                    <button type="submit" class="btn btn-primary btn-block">Create Page</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">All Pages</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Name</th><th>Slug</th><th>Actions</th></tr></thead>
+                    <tbody>`;
+
+if (typeof pages !== 'undefined' && pages.length) {
+  pages.forEach(function(p) {
+    body += `<tr>
+      <td><strong>${p.name}</strong></td>
+      <td><code>${p.slug}</code></td>
+      <td>
+        <a href="/admin/page/edit/${p.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+        <a href="/admin/page/delete/${p.id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete?')"><i class="fas fa-trash"></i></a>
+      </td>
+    </tr>`;
+  });
+} else {
+  body += '<tr><td colspan="3" class="text-center text-muted py-4">No pages found</td></tr>';
+}
+
+body += `</tbody></table></div></div></div></div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

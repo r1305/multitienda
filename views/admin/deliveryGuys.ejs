@@ -1,0 +1,53 @@
+<% var active = 'delivery'; var pageTitle = 'Delivery Guys'; %>
+<% var scripts = '<script>$(document).ready(function(){ if($("#deliveryTable tbody tr").length > 1) { $("#deliveryTable").DataTable(); } });</script>'; %>
+<%
+var body = `
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover" id="deliveryTable">
+            <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Vehicle</th><th>Commission</th><th>Ganancias</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>`;
+
+if (typeof deliveryGuys !== 'undefined' && deliveryGuys.length) {
+  deliveryGuys.forEach(function(dg) {
+    var statusBadge = dg.is_active !== 0 ? '<span class="badge badge-success">Activo</span>' : '<span class="badge badge-warning">Pendiente</span>';
+    var approveBtn = dg.is_active === 0 ? `<a href="/admin/user/approve/${dg.id}" class="btn btn-sm btn-outline-success" title="Aprobar"><i class="fas fa-check"></i></a>` : '';
+    var commType = dg.commission_type === 'percentage' ? dg.commission_rate + '%' : '$' + (dg.fixed_commission || '0.00');
+    var commLabel = dg.commission_type === 'percentage' ? 'Porcentual' : 'Fijo';
+    var dgEarnings = parseFloat(dg.total_earnings || 0).toFixed(2);
+    body += `<tr>
+      <td>${dg.id}</td>
+      <td><strong>${dg.name}</strong></td>
+      <td>${dg.phone || '-'}</td>
+      <td>${dg.vehicle_number || '-'}</td>
+      <td><span class="badge badge-info">${commLabel}</span> ${commType}</td>
+      <td><strong style="color:#28a745">$${dgEarnings}</strong></td>
+      <td>${statusBadge}</td>
+      <td>
+        ${approveBtn}
+        <a href="/admin/delivery-guy/earnings/${dg.id}" class="btn btn-sm btn-outline-success" title="Ganancias"><i class="fas fa-chart-line"></i></a>
+        <button class="btn btn-sm btn-outline-info" data-toggle="modal" data-target="#commModal${dg.id}" title="Comisi\u00f3n"><i class="fas fa-percentage"></i></button>
+        <a href="/admin/user/edit/${dg.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+        <a href="/admin/user/ban/${dg.id}" class="btn btn-sm btn-outline-${dg.is_active !== 0 ? 'danger' : 'success'}"><i class="fas fa-${dg.is_active !== 0 ? 'ban' : 'check'}"></i></a>
+      </td>
+    </tr>
+    <div class="modal fade" id="commModal${dg.id}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+      <form method="POST" action="/admin/delivery-guy/commission/save">
+        <input type="hidden" name="user_id" value="${dg.id}">
+        <div class="modal-header"><h5>Comisi\u00f3n - ${dg.name}</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
+        <div class="modal-body">
+          <div class="form-group"><label>Tipo de comisi\u00f3n</label><select name="commission_type" class="form-control" id="commType${dg.id}" onchange="document.getElementById('fixedBlock${dg.id}').style.display=this.value==='fixed'?'block':'none';document.getElementById('pctBlock${dg.id}').style.display=this.value==='percentage'?'block':'none'"><option value="fixed" ${dg.commission_type !== 'percentage' ? 'selected' : ''}>Fijo (monto por pedido)</option><option value="percentage" ${dg.commission_type === 'percentage' ? 'selected' : ''}>Porcentual (% del total)</option></select></div>
+          <div class="form-group" id="fixedBlock${dg.id}" style="display:${dg.commission_type !== 'percentage' ? 'block' : 'none'}"><label>Monto fijo por pedido</label><input type="number" step="0.01" name="fixed_commission" class="form-control" value="${dg.fixed_commission || 0}"></div>
+          <div class="form-group" id="pctBlock${dg.id}" style="display:${dg.commission_type === 'percentage' ? 'block' : 'none'}"><label>Porcentaje (%)</label><input type="number" step="0.01" name="commission_rate" class="form-control" value="${dg.commission_rate || 0}"></div>
+        </div>
+        <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar</button></div>
+      </form>
+    </div></div></div>`;  
+  });
+} else {
+  body += '<tr><td colspan="8" class="text-center text-muted py-4">No delivery guys found</td></tr>';
+}
+
+body += `</tbody></table></div></div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

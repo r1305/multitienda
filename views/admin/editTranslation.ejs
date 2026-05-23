@@ -1,0 +1,27 @@
+<% var active = 'translations'; var pageTitle = (typeof language_name !== 'undefined' ? 'Edit: ' + language_name : 'New Translation'); %>
+<% var scripts = ''; %>
+<%
+var actionUrl = typeof translation_id !== 'undefined' ? '/admin/translation/edit/save' : '/admin/translation/new/save';
+var hiddenField = typeof translation_id !== 'undefined' ? `<input type="hidden" name="translation_id" value="${translation_id}">` : '';
+
+var keysHtml = '';
+if (typeof data !== 'undefined' && data) {
+  Object.keys(data).forEach(function(key) {
+    keysHtml += `<div class="col-md-6"><div class="form-group"><label class="small text-muted">${key}</label><input type="text" name="${key}" class="form-control form-control-sm" value="${data[key] || ''}"></div></div>`;
+  });
+} else {
+  keysHtml = '<div class="col-12"><p class="text-muted">No translation keys loaded.</p></div>';
+}
+
+var body = `
+<div class="card"><div class="card-body">
+  <form method="POST" action="${actionUrl}">
+    ${hiddenField}
+    <div class="form-group"><label>Language Name *</label><input type="text" name="language_name" class="form-control" value="${typeof language_name !== 'undefined' ? language_name : ''}" required></div>
+    <hr><h6>Translation Keys</h6>
+    <div class="row">${keysHtml}</div>
+    <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Save Translation</button>
+  </form>
+</div></div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

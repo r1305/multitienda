@@ -1,0 +1,53 @@
+<% var active = 'locations'; var pageTitle = 'Popular Geo Locations'; %>
+<% var scripts = ''; %>
+<%
+var editLoc = typeof editLocation !== 'undefined' && editLocation ? editLocation : null;
+var formAction = editLoc ? '/admin/popular-geo-location/edit/save' : '/admin/popular-geo-location/new/save';
+var formTitle = editLoc ? 'Edit Location' : 'Add New Location';
+
+var body = `
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">${formTitle}</div>
+            <div class="card-body">
+                <form method="POST" action="${formAction}">
+                    ${editLoc ? `<input type="hidden" name="id" value="${editLoc.id}">` : ''}
+                    <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" value="${editLoc ? editLoc.name : ''}" required></div>
+                    <div class="form-group"><label>Latitude *</label><input type="text" name="latitude" class="form-control" value="${editLoc ? editLoc.latitude : ''}" required></div>
+                    <div class="form-group"><label>Longitude *</label><input type="text" name="longitude" class="form-control" value="${editLoc ? editLoc.longitude : ''}" required></div>
+                    <button type="submit" class="btn btn-primary btn-block">${editLoc ? 'Update' : 'Save'} Location</button>
+                    ${editLoc ? '<a href="/admin/popular-geo-locations" class="btn btn-secondary btn-block mt-2">Cancel</a>' : ''}
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">All Locations (${typeof count !== 'undefined' ? count : 0})</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Name</th><th>Lat</th><th>Lng</th><th>Primary</th><th>Actions</th></tr></thead>
+                    <tbody>`;
+
+if (typeof locations !== 'undefined' && locations.length) {
+  locations.forEach(function(l) {
+    body += `<tr>
+      <td><strong>${l.name}</strong></td>
+      <td>${l.latitude}</td>
+      <td>${l.longitude}</td>
+      <td>${l.is_default ? '<span class="badge badge-success">Primary</span>' : '-'}</td>
+      <td>
+        <a href="/admin/popular-geo-location/edit/${l.id}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fas fa-edit"></i></a>
+        <a href="/admin/popular-geo-location/make-default/${l.id}" class="btn btn-sm btn-outline-success" title="Make Primary"><i class="fas fa-check"></i></a>
+        <a href="/admin/popular-geo-location/delete/${l.id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')" title="Delete"><i class="fas fa-trash"></i></a>
+      </td>
+    </tr>`;
+  });
+} else {
+  body += '<tr><td colspan="5" class="text-center text-muted py-4">No locations found</td></tr>';
+}
+
+body += `</tbody></table></div></div></div></div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

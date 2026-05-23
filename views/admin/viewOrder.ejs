@@ -1,0 +1,79 @@
+<% var active = 'orders'; var pageTitle = 'Order #' + (typeof order !== 'undefined' && order ? order.unique_order_id : ''); %>
+<% var scripts = ''; %>
+<%
+var body = '';
+if (typeof order !== 'undefined' && order) {
+  var statusNames = {1:'Order Placed',2:'Preparing',3:'Delivery Assigned',4:'Picked Up',5:'Delivered',6:'Canceled',7:'Ready Pickup',8:'Awaiting Payment',9:'Payment Failed',10:'Scheduled',11:'Confirmed'};
+  var statusBadge = order.orderstatus_id == 5 ? 'success' : order.orderstatus_id == 6 ? 'danger' : 'warning';
+
+  var itemsHtml = '';
+  if (typeof orderitems !== 'undefined' && orderitems.length) {
+    orderitems.forEach(function(item) {
+      itemsHtml += `<tr><td>${item.name}</td><td>${item.quantity}</td><td>$${parseFloat(item.price||0).toFixed(2)}</td><td>$${(parseFloat(item.price||0)*parseInt(item.quantity||1)).toFixed(2)}</td></tr>`;
+    });
+  }
+
+  var actionsHtml = '';
+  if (order.orderstatus_id != 5 && order.orderstatus_id != 6) {
+    var acceptBtn = '';
+    if (order.orderstatus_id == 1 || order.orderstatus_id == 11) {
+      acceptBtn = `<div class="col-md-6"><form method="POST" action="/admin/order/accept"><input type="hidden" name="id" value="${order.id}"><button class="btn btn-success btn-block"><i class="fas fa-check"></i> Accept Order</button></form></div>`;
+    }
+    var deliveryForm = '';
+    if (order.orderstatus_id == 2 && order.delivery_type == 1) {
+      var dgOptions = '';
+      if (typeof deliveryGuys !== 'undefined') { deliveryGuys.forEach(function(dg) { dgOptions += `<option value="${dg.id}">${dg.name} (${dg.phone})</option>`; }); }
+      deliveryForm = `<hr><form method="POST" action="/admin/order/assign-delivery"><input type="hidden" name="order_id" value="${order.id}"><input type="hidden" name="customer_id" value="${order.user_id}"><div class="form-group"><label>Assign Delivery Guy</label><select name="user_id" class="form-control">${dgOptions}</select></div><button class="btn btn-warning"><i class="fas fa-motorcycle"></i> Assign</button></form>`;
+    }
+    actionsHtml = `
+    <div class="card"><div class="card-header">Actions</div><div class="card-body">
+      <div class="row">${acceptBtn}
+        <div class="col-md-6"><form method="POST" action="/admin/order/cancel"><input type="hidden" name="order_id" value="${order.id}"><select name="refund_type" class="form-control mb-2"><option value="NOREFUND">No Refund</option><option value="FULL">Full Refund</option><option value="HALF">Half Refund</option></select><button class="btn btn-danger btn-block"><i class="fas fa-times"></i> Cancel Order</button></form></div>
+      </div>${deliveryForm}
+    </div></div>`;
+  }
+
+  body = `
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Order Details</span>
+          <span class="badge badge-${statusBadge} p-2">${statusNames[order.orderstatus_id] || 'Unknown'}</span>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm">
+            <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+            <tbody>${itemsHtml}</tbody>
+            <tfoot>
+              <tr><th colspan="3" class="text-right">Subtotal:</th><td>$${parseFloat(order.sub_total || order.total || 0).toFixed(2)}</td></tr>
+              ${order.coupon_amount ? `<tr><td colspan="3" class="text-right">Coupon:</td><td>-$${parseFloat(order.coupon_amount).toFixed(2)}</td></tr>` : ''}
+              ${order.tax_amount ? `<tr><td colspan="3" class="text-right">Tax:</td><td>$${parseFloat(order.tax_amount).toFixed(2)}</td></tr>` : ''}
+              ${order.delivery_charge ? `<tr><td colspan="3" class="text-right">Delivery:</td><td>$${parseFloat(order.delivery_charge).toFixed(2)}</td></tr>` : ''}
+              <tr><th colspan="3" class="text-right">Total:</th><th>$${parseFloat(order.total || 0).toFixed(2)}</th></tr>
+            </tfoot>
+          </table>
+          ${order.order_comment ? `<p><strong>Comment:</strong> ${order.order_comment}</p>` : ''}
+        </div>
+      </div>
+      ${actionsHtml}
+    </div>
+    <div class="col-md-4">
+      <div class="card"><div class="card-header">Customer Info</div><div class="card-body">
+        <p><strong>Name:</strong> ${order.user_name || '-'}</p>
+        <p><strong>Phone:</strong> ${order.user_phone || '-'}</p>
+        <p><strong>Address:</strong> ${order.address || '-'}</p>
+      </div></div>
+      <div class="card"><div class="card-header">Store Info</div><div class="card-body">
+        <p><strong>Store:</strong> ${order.restaurant_name || '-'}</p>
+        <p><strong>Payment:</strong> ${order.payment_mode || 'COD'}</p>
+        <p><strong>Delivery Type:</strong> ${order.delivery_type == 1 ? 'Delivery' : 'Self Pickup'}</p>
+        <p><strong>Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString() : '-'}</p>
+      </div></div>
+    </div>
+  </div>`;
+} else {
+  body = '<div class="alert alert-warning">Order not found</div>';
+}
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

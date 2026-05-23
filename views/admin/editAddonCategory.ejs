@@ -1,0 +1,50 @@
+<% var active = 'addoncategories'; var pageTitle = (typeof addonCategory !== 'undefined' ? 'Edit: ' + addonCategory.name : 'New Addon Category'); %>
+<%- include('./layouts/master', { body: bodyContent(), active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts: scriptsContent() }) %>
+<%
+function bodyContent() { %>
+<form method="POST" action="<%= typeof addonCategory !== 'undefined' ? '/admin/addon-category/edit/save' : '/admin/addon-category/new/save' %>">
+    <% if (typeof addonCategory !== 'undefined') { %><input type="hidden" name="id" value="<%= addonCategory.id %>"><% } %>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Category Info</div>
+                <div class="card-body">
+                    <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" value="<%= typeof addonCategory !== 'undefined' ? addonCategory.name : '' %>" required></div>
+                    <div class="form-group"><label>Type</label><select name="type" class="form-control">
+                        <option value="SINGLE" <%= typeof addonCategory !== 'undefined' && addonCategory.type == 'SINGLE' ? 'selected' : '' %>>Single</option>
+                        <option value="MULTIPLE" <%= typeof addonCategory !== 'undefined' && addonCategory.type == 'MULTIPLE' ? 'selected' : '' %>>Multiple</option>
+                    </select></div>
+                    <div class="form-group"><label>Description</label><textarea name="description" class="form-control" rows="2"><%= typeof addonCategory !== 'undefined' ? (addonCategory.description || '') : '' %></textarea></div>
+                    <div class="form-group"><label>Addon Limit (0 = unlimited)</label><input type="number" name="addon_limit" class="form-control" value="<%= typeof addonCategory !== 'undefined' ? (addonCategory.addon_limit || 0) : 0 %>"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Addons</div>
+                <div class="card-body">
+                    <% if (typeof addons !== 'undefined' && addons.length) { addons.forEach(function(a, i) { %>
+                        <div class="row mb-2">
+                            <input type="hidden" name="addon_old[<%= i %>][id]" value="<%= a.id %>">
+                            <div class="col-7"><input type="text" name="addon_old[<%= i %>][name]" class="form-control form-control-sm" value="<%= a.name %>"></div>
+                            <div class="col-3"><input type="number" step="0.01" name="addon_old[<%= i %>][price]" class="form-control form-control-sm" value="<%= a.price %>"></div>
+                            <div class="col-2"><a href="/admin/addon/delete/<%= a.id %>" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></a></div>
+                        </div>
+                    <% }); } %>
+                    <hr>
+                    <p class="text-muted small">Add new addons:</p>
+                    <div id="newAddons"></div>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="addAddonRow()"><i class="fas fa-plus"></i> Add Addon</button>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Save</button>
+        </div>
+    </div>
+</form>
+<% return ''; } %>
+<% function scriptsContent() { return `<script>
+function addAddonRow(){
+    var html='<div class="row mb-2"><div class="col-7"><input type="text" name="addon_names[]" class="form-control form-control-sm" placeholder="Name"></div><div class="col-5"><input type="number" step="0.01" name="addon_prices[]" class="form-control form-control-sm" placeholder="Price"></div></div>';
+    document.getElementById('newAddons').insertAdjacentHTML('beforeend',html);
+}
+</script>`; } %>

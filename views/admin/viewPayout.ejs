@@ -1,0 +1,34 @@
+<% var active = 'payouts'; var pageTitle = 'View Payout #' + (typeof payout !== 'undefined' && payout ? payout.id : ''); %>
+<% var scripts = ''; %>
+<%
+var body = '';
+if (typeof payout !== 'undefined' && payout) {
+  body = `
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card"><div class="card-header">Payout Details</div><div class="card-body">
+        <p><strong>Store:</strong> ${payout.restaurant_name || '-'}</p>
+        <p><strong>Amount:</strong> $${parseFloat(payout.amount || 0).toFixed(2)}</p>
+        <p><strong>Status:</strong> <span class="badge badge-${payout.status == 'completed' ? 'success' : 'warning'}">${payout.status || 'pending'}</span></p>
+        <p><strong>Transaction Mode:</strong> ${payout.transaction_mode || '-'}</p>
+        <p><strong>Transaction ID:</strong> ${payout.transaction_id || '-'}</p>
+        <p><strong>Message:</strong> ${payout.message || '-'}</p>
+        <p><strong>Date:</strong> ${payout.created_at ? new Date(payout.created_at).toLocaleString() : '-'}</p>
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card"><div class="card-header">Update Payout</div><div class="card-body">
+        <form method="POST" action="/admin/store-payout/save">
+          <input type="hidden" name="id" value="${payout.id}">
+          <div class="form-group"><label>Status</label><select name="status" class="form-control"><option value="pending" ${payout.status=='pending'?'selected':''}>Pending</option><option value="completed" ${payout.status=='completed'?'selected':''}>Completed</option><option value="rejected" ${payout.status=='rejected'?'selected':''}>Rejected</option></select></div>
+          <div class="form-group"><label>Transaction Mode</label><input type="text" name="transaction_mode" class="form-control" value="${payout.transaction_mode || ''}"></div>
+          <div class="form-group"><label>Transaction ID</label><input type="text" name="transaction_id" class="form-control" value="${payout.transaction_id || ''}"></div>
+          <div class="form-group"><label>Message</label><textarea name="message" class="form-control" rows="3">${payout.message || ''}</textarea></div>
+          <button type="submit" class="btn btn-primary btn-block">Update Payout</button>
+        </form>
+      </div></div>
+    </div>
+  </div>`;
+}
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

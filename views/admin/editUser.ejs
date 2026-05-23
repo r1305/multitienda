@@ -1,0 +1,56 @@
+<% var active = 'users'; var pageTitle = 'Edit User - ' + (typeof editUser !== 'undefined' && editUser ? editUser.name : ''); %>
+<% var scripts = ''; %>
+<%
+var body = '';
+if (typeof editUser !== 'undefined' && editUser) {
+  var u = editUser;
+  var roleOptions = '';
+  if (typeof roles !== 'undefined') { roles.forEach(function(r) { roleOptions += `<option value="${r.name}" ${u.role_name == r.name ? 'selected' : ''}>${r.name}</option>`; }); }
+
+  var ordersHtml = '';
+  if (typeof userOrders !== 'undefined' && userOrders.length) {
+    userOrders.slice(0,10).forEach(function(o) { ordersHtml += `<tr><td><a href="/admin/order/${o.unique_order_id}">#${o.unique_order_id}</a></td><td>$${parseFloat(o.total||0).toFixed(2)}</td></tr>`; });
+  } else {
+    ordersHtml = '<tr><td class="text-muted text-center py-2">No orders</td></tr>';
+  }
+
+  var addressesHtml = '';
+  if (typeof addresses !== 'undefined' && addresses.length) {
+    addresses.forEach(function(a) { addressesHtml += `<tr><td>${a.address}</td><td><form method="POST" action="/admin/user/delete-address" style="display:inline"><input type="hidden" name="address_id" value="${a.id}"><input type="hidden" name="user_id" value="${u.id}"><button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form></td></tr>`; });
+  } else {
+    addressesHtml = '<tr><td class="text-muted text-center py-2">No addresses</td></tr>';
+  }
+
+  body = `
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card"><div class="card-header">User Information</div><div class="card-body">
+        <form method="POST" action="/admin/user/edit/save">
+          <input type="hidden" name="id" value="${u.id}">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group"><label>Name</label><input type="text" name="name" class="form-control" value="${u.name}"></div>
+              <div class="form-group"><label>Email</label><input type="email" name="email" class="form-control" value="${u.email || ''}"></div>
+              <div class="form-group"><label>Phone</label><input type="text" name="phone" class="form-control" value="${u.phone || ''}"></div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group"><label>Password (leave blank to keep)</label><input type="password" name="password" class="form-control"></div>
+              <div class="form-group"><label>Role</label><select name="roles" class="form-control">${roleOptions}</select></div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update User</button>
+        </form>
+      </div></div>
+      <div class="card"><div class="card-header">Wallet (Balance: $${typeof walletBalance !== 'undefined' ? parseFloat(walletBalance || 0).toFixed(2) : '0.00'})</div><div class="card-body"><div class="row">
+        <div class="col-md-6"><form method="POST" action="/admin/user/add-money-to-wallet"><input type="hidden" name="user_id" value="${u.id}"><div class="form-group"><label>Add Amount</label><input type="number" step="0.01" name="add_amount" class="form-control" required></div><div class="form-group"><label>Description</label><input type="text" name="add_amount_description" class="form-control"></div><button class="btn btn-success btn-sm">Add Money</button></form></div>
+        <div class="col-md-6"><form method="POST" action="/admin/user/substract-money-from-wallet"><input type="hidden" name="user_id" value="${u.id}"><div class="form-group"><label>Subtract Amount</label><input type="number" step="0.01" name="substract_amount" class="form-control" required></div><div class="form-group"><label>Description</label><input type="text" name="substract_amount_description" class="form-control"></div><button class="btn btn-danger btn-sm">Subtract Money</button></form></div>
+      </div></div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card"><div class="card-header">Orders (${typeof userOrders !== 'undefined' ? userOrders.length : 0})</div><div class="card-body p-0"><table class="table table-sm mb-0"><tbody>${ordersHtml}</tbody></table></div></div>
+      <div class="card"><div class="card-header">Addresses</div><div class="card-body p-0"><table class="table table-sm mb-0"><tbody>${addressesHtml}</tbody></table></div></div>
+    </div>
+  </div>`;
+}
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

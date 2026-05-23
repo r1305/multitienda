@@ -1,0 +1,46 @@
+<% var active = 'addoncategories'; var pageTitle = 'Addon Categories'; %>
+<% var scripts = '<script>$(document).ready(function(){ if($("#addonCatTable tbody tr").length > 1) { $("#addonCatTable").DataTable(); } });</script>'; %>
+<%
+var body = `
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Addon Categories (${typeof count !== 'undefined' ? count : 0})</span>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newAddonCatModal"><i class="fas fa-plus"></i> New Addon Category</button>
+    </div>
+    <div class="card-body">
+        <table class="table table-hover" id="addonCatTable">
+            <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Addons</th><th>Actions</th></tr></thead>
+            <tbody>`;
+
+if (typeof addonCategories !== 'undefined' && addonCategories.length) {
+  addonCategories.forEach(function(ac) {
+    body += `<tr>
+      <td>${ac.id}</td>
+      <td><strong>${ac.name}</strong></td>
+      <td>${ac.type == 'SINGLE' ? 'Single' : 'Multiple'}</td>
+      <td>${ac.addons_count || 0}</td>
+      <td><a href="/admin/addon-category/edit/${ac.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a></td>
+    </tr>`;
+  });
+} else {
+  body += '<tr><td colspan="5" class="text-center text-muted py-4">No addon categories found</td></tr>';
+}
+
+body += `</tbody></table></div></div>
+
+<div class="modal fade" id="newAddonCatModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/admin/addon-category/new/save">
+                <div class="modal-header"><h5>New Addon Category</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
+                <div class="modal-body">
+                    <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" required></div>
+                    <div class="form-group"><label>Type</label><select name="type" class="form-control"><option value="SINGLE">Single</option><option value="MULTIPLE">Multiple</option></select></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Create</button></div>
+            </form>
+        </div>
+    </div>
+</div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

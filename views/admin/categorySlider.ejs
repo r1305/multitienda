@@ -1,0 +1,45 @@
+<% var active = 'categoryslider'; var pageTitle = 'Store Category Slider'; %>
+<% var scripts = ''; %>
+<%
+var body = `
+<div class="row">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">Add Category Slide</div>
+            <div class="card-body">
+                <form method="POST" action="/admin/store-category-slider/new" enctype="multipart/form-data">
+                    <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" required></div>
+                    <div class="form-group"><label>Image</label><input type="file" name="image" class="form-control-file" accept="image/*"></div>
+                    <button type="submit" class="btn btn-primary btn-block">Create</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">Category Slides</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Image</th><th>Name</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>`;
+
+if (typeof categories !== 'undefined' && categories.length) {
+  categories.forEach(function(c) {
+    var img = c.image ? `<img src="${c.image}" width="50" height="50" style="object-fit:cover;border-radius:4px">` : '-';
+    body += `<tr>
+      <td>${img}</td>
+      <td><strong>${c.name}</strong></td>
+      <td><span class="badge badge-${c.is_active ? 'success' : 'danger'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td>
+        <a href="/admin/store-category-slider/disable/${c.id}" class="btn btn-sm btn-outline-warning"><i class="fas fa-ban"></i></a>
+        <a href="/admin/store-category-slider/delete/${c.id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete?')"><i class="fas fa-trash"></i></a>
+      </td>
+    </tr>`;
+  });
+} else {
+  body += '<tr><td colspan="4" class="text-center text-muted py-4">No category slides found</td></tr>';
+}
+
+body += `</tbody></table></div></div></div></div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>
