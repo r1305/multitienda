@@ -70,7 +70,8 @@ app.use(router);
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {
         await OneSignal.init({
-          appId: Store.settings.onesignalAppId
+          appId: Store.settings.onesignalAppId,
+          allowLocalhostAsSecureOrigin: true
         });
         // Request permission explicitly
         const permission = await OneSignal.Notifications.permission;
