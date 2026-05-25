@@ -660,6 +660,7 @@ const CheckoutPage = {
         <div class="bill">
           <div class="bill-row"><span>Subtotal</span><span>{{Store.formatPrice(Store.cartTotal)}}</span></div>
           <div class="bill-row"><span>Envío</span><span>{{Store.formatPrice(deliveryCharge)}}</span></div>
+          <div v-if="restaurantCharge > 0" class="bill-row"><span>Cargo servicio</span><span>{{Store.formatPrice(restaurantCharge)}}</span></div>
           <div class="bill-row total"><span>Total</span><span>{{Store.formatPrice(total)}}</span></div>
         </div>
         <div v-if="storeIsSchedulable" style="padding:12px 16px;border-bottom:1px solid var(--border)">
@@ -688,9 +689,9 @@ const CheckoutPage = {
     </div>`,
   components: { AppHeader },
   setup() { return { Store }; },
-  data() { return { gateways: [], processing: false, error: '', deliveryCharge: 0, addresses: [], selectedAddress: null, isScheduled: false, scheduleDate: '', scheduleTime: '', storeIsSchedulable: false }; },
+  data() { return { gateways: [], processing: false, error: '', deliveryCharge: 0, restaurantCharge: 0, addresses: [], selectedAddress: null, isScheduled: false, scheduleDate: '', scheduleTime: '', storeIsSchedulable: false }; },
   computed: {
-    total() { return Store.cartTotal + this.deliveryCharge; },
+    total() { return Store.cartTotal + this.deliveryCharge + this.restaurantCharge; },
     todayDate() { return new Date().toISOString().split('T')[0]; }
   },
   async mounted() {
@@ -702,6 +703,7 @@ const CheckoutPage = {
       try {
         const info = await API.post('/get-restaurant-info-by-id/' + Store.cart[0].restaurant_id, {});
         if (info && info.is_schedulable) this.storeIsSchedulable = true;
+        if (info && info.restaurant_charges) this.restaurantCharge = parseFloat(info.restaurant_charges);
       } catch(e) {}
     }
   },
@@ -791,6 +793,8 @@ const OrderDetailPage = {
           </div>
           <div class="bill-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><span>Subtotal</span><span>{{Store.formatPrice(order.sub_total || order.total)}}</span></div>
           <div class="bill-row"><span>Envio</span><span>{{Store.formatPrice(order.delivery_charge || 0)}}</span></div>
+          <div v-if="order.restaurant_charge > 0" class="bill-row"><span>Cargo servicio</span><span>{{Store.formatPrice(order.restaurant_charge)}}</span></div>
+          <div v-if="order.tax_amount > 0" class="bill-row"><span>Impuesto</span><span>{{Store.formatPrice(order.tax_amount)}}</span></div>
           <div v-if="order.coupon_amount > 0" class="bill-row"><span>Cupon</span><span style="color:green">-{{Store.formatPrice(order.coupon_amount)}}</span></div>
           <div class="bill-row total"><span>Total</span><span>{{Store.formatPrice(order.total)}}</span></div>
         </div>
