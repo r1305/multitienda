@@ -174,7 +174,14 @@ const DeliveryOrderDetailPage = {
             </div>
           </div>
           <div class="bill">
-            <div v-if="order.orderitems" v-for="item in order.orderitems" :key="item.id" class="bill-row"><span>{{item.quantity}}x {{item.name}}</span><span>{{Store.formatPrice(item.price * item.quantity)}}</span></div>
+            <div v-if="order.orderitems" v-for="item in order.orderitems" :key="item.id">
+              <div class="bill-row"><span>{{item.quantity}}x {{item.name}}</span><span>{{Store.formatPrice(item.price * item.quantity)}}</span></div>
+              <div v-if="item.order_item_addons && item.order_item_addons.length" style="padding-left:24px;margin-bottom:4px"><div v-for="a in item.order_item_addons" :key="a.id" style="font-size:11px;color:var(--muted)">+ {{a.addon_name}} ({{Store.formatPrice(a.addon_price)}})</div></div>
+            </div>
+            <div class="bill-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><span>Subtotal</span><span>{{Store.formatPrice(order.sub_total || order.total)}}</span></div>
+            <div class="bill-row"><span>Envio</span><span>{{Store.formatPrice(order.delivery_charge || 0)}}</span></div>
+            <div v-if="order.restaurant_charge > 0" class="bill-row"><span>Cargo servicio</span><span>{{Store.formatPrice(order.restaurant_charge)}}</span></div>
+            <div v-if="order.coupon_amount > 0" class="bill-row"><span>Cupon</span><span style="color:green">-{{Store.formatPrice(order.coupon_amount)}}</span></div>
             <div class="bill-row total"><span>Total</span><span>{{Store.formatPrice(order.total)}}</span></div>
             <div class="bill-row"><span>Pago</span><span>{{order.payment_mode || 'COD'}}</span></div>
           </div>
