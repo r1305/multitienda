@@ -63,14 +63,13 @@ app.use(router);
       if (Store.settings.currencySymbolAlign) Store.currencyAlign = Store.settings.currencySymbolAlign;
     }
     // Initialize OneSignal
-    if (Store.settings.onesignalAppId) {
+    if (Store.settings.onesignalAppId && window.location.hostname !== 'localhost') {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {
         await OneSignal.init({
           appId: Store.settings.onesignalAppId,
           serviceWorkerParam: { scope: '/' },
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-          allowLocalhostAsSecureOrigin: true
+          serviceWorkerPath: '/OneSignalSDKWorker.js'
         });
         // Request permission explicitly
         const permission = await OneSignal.Notifications.permission;
