@@ -12,7 +12,8 @@ if (typeof deliveryGuys !== 'undefined' && deliveryGuys.length) {
   deliveryGuys.forEach(function(dg) {
     var statusBadge = dg.is_active !== 0 ? '<span class="badge badge-success">Activo</span>' : '<span class="badge badge-warning">Pendiente</span>';
     var approveBtn = dg.is_active === 0 ? `<a href="/admin/user/approve/${dg.id}" class="btn btn-sm btn-outline-success" title="Aprobar"><i class="fas fa-check"></i></a>` : '';
-    var commType = dg.commission_type === 'percentage' ? dg.commission_rate + '%' : '${typeof currency !== "undefined" ? currency : "$"}' + (dg.fixed_commission || '0.00');
+    var currSymbol = typeof currency !== 'undefined' ? currency : '$';
+    var commType = dg.commission_type === 'percentage' ? dg.commission_rate + '%' : currSymbol + (dg.fixed_commission || '0.00');
     var commLabel = dg.commission_type === 'percentage' ? 'Porcentual' : 'Fijo';
     var dgEarnings = parseFloat(dg.total_earnings || 0).toFixed(2);
     body += `<tr>
