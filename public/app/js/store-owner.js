@@ -166,81 +166,12 @@ const StoreOwnerOrdersPage = {
 
 const StoreOwnerOrderDetailPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
-      <app-header :title="'Pedido #'+(order?order.unique_order_id:'')" :back="true"></app-header>
-      <div v-if="loading" class="loading"><div class="spinner"></div></div>
-      <template v-else-if="order">
-        <div style="padding:16px;text-align:center">
-          <div :style="{display:'inline-block',padding:'6px 16px',borderRadius:'20px',fontSize:'13px',fontWeight:600,color:'#fff',background:statusColor(order.orderstatus_id)}">{{statusText(order.orderstatus_id)}}</div>
-        </div>
-        <div class="bill">
-          <div v-for="item in order.orderitems" :key="item.id" class="bill-row"><span>{{item.quantity}}x {{item.name}}</span><span>{{Store.formatPrice(item.price * item.quantity)}}</span></div>
-          <div class="bill-row total"><span>Total</span><span>{{Store.formatPrice(order.total)}}</span></div>
-        </div>
-        <div style="padding:0 16px">
-          <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px">
-            <div style="font-size:12px;color:var(--muted)">Cliente</div>
-            <div style="font-size:14px;font-weight:500">{{order.address || 'Sin dirección'}}</div>
-          </div>
-          <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px">
-            <div style="font-size:12px;color:var(--muted)">Pago</div>
-            <div style="font-size:14px">{{order.payment_mode || 'COD'}}</div>
-          </div>
-          <div v-if="order.order_comment" style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px">
-            <div style="font-size:12px;color:var(--muted)">Comentario</div>
-            <div style="font-size:14px">{{order.order_comment}}</div>
-          </div>
-        </div>
-        <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
-          <button v-if="order.orderstatus_id === 1 || order.orderstatus_id === 11" class="btn-primary" @click="acceptOrder" :disabled="actionLoading"><i class="fas fa-check"></i> Aceptar Pedido</button>
-          <button v-if="order.orderstatus_id === 2 && order.delivery_type === 2" style="width:100%;padding:12px;border-radius:8px;background:#4caf50;color:#fff;font-weight:600;font-size:14px" @click="markReady" :disabled="actionLoading"><i class="fas fa-box"></i> Listo para Recoger</button>
-          <button v-if="order.orderstatus_id === 1 || order.orderstatus_id === 11" style="width:100%;padding:12px;border-radius:8px;background:#ffebee;color:#c62828;font-weight:600;font-size:14px" @click="cancelOrder" :disabled="actionLoading">Rechazar Pedido</button>
-        </div>
-        <div v-if="successMsg" style="padding:0 16px"><div style="background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:8px;font-size:13px;text-align:center">{{successMsg}}</div></div>
-      </template>
-    </div>`,
-  components: { AppHeader },
-  setup() { return { Store }; },
-  data() { return { order: null, loading: true, actionLoading: false, successMsg: '' }; },
-  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadOrder(); },
-  methods: {
-    async loadOrder() {
-      try {
-        const token = localStorage.getItem('storeOwnerToken');
-        const res = await API.post('/store-owner/get-single-order', { token, order_id: this.$route.params.id });
-        this.order = res;
-      } catch(e) {}
-      this.loading = false;
-    },
-    async acceptOrder() {
-      this.actionLoading = true;
-      try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/accept-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 2; this.successMsg = 'Pedido aceptado!'; } catch(e) {}
-      this.actionLoading = false;
-    },
-    async markReady() {
-      this.actionLoading = true;
-      try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/mark-selfpickup-order-ready', { token, order_id: this.order.id }); this.order.orderstatus_id = 7; this.successMsg = 'Marcado como listo!'; } catch(e) {}
-      this.actionLoading = false;
-    },
-    async cancelOrder() {
-      if (!confirm('¿Rechazar este pedido?')) return;
-      this.actionLoading = true;
-      try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/cancel-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 6; this.successMsg = 'Pedido rechazado'; } catch(e) {}
-      this.actionLoading = false;
-    },
-    statusText(id) { return {1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado'}[id] || ''; },
-    statusColor(id) { return {1:'#2196f3',2:'#ff9800',3:'#ff9800',4:'#ff9800',5:'#4caf50',6:'#f44336',7:'#4caf50',8:'#9e9e9e',10:'#9c27b0',11:'#2196f3'}[id] || '#9e9e9e'; }
-  }
-};
-
-const StoreOwnerMenuPage = {
-  template: `
     <div class="so-layout">
       <nav class="so-sidebar">
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
-        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu" class="active"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/orders" class="active"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
@@ -248,200 +179,171 @@ const StoreOwnerMenuPage = {
       </nav>
       <div class="so-main">
         <div class="so-topbar">
-          <span class="so-topbar-title">Productos</span>
-          <button class="so-btn so-btn-primary so-btn-sm" @click="openNew"><i class="fas fa-plus"></i> Nuevo</button>
-        </div>
-        <div class="so-bottom-nav">
-          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
-          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu" class="active"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
-          <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
+          <button style="background:none;border:none;font-size:18px" @click="$router.back()"><i class="fas fa-arrow-left"></i></button>
+          <span class="so-topbar-title">Pedido #{{order ? order.unique_order_id : ''}}</span>
         </div>
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
-        <template v-else>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <h2 style="font-size:18px;font-weight:600;margin:0">Productos ({{items.length}})</h2>
-            <button class="so-btn so-btn-primary" @click="openNew" style="display:none" id="desktopNewBtn"><i class="fas fa-plus"></i> Nuevo Producto</button>
+        <template v-else-if="order">
+          <div style="text-align:center;margin-bottom:16px">
+            <span class="so-badge" :class="statusClass(order.orderstatus_id)" style="font-size:13px;padding:6px 14px">{{statusText(order.orderstatus_id)}}</span>
           </div>
-          <style>@media(min-width:992px){#desktopNewBtn{display:inline-flex!important}}</style>
-          <div class="so-products">
-            <div v-for="item in items" :key="item.id" class="so-product-card">
-              <img v-if="item.image" :src="item.image" class="so-product-img">
-              <div v-else class="so-product-img" style="display:flex;align-items:center;justify-content:center;color:#ccc"><i class="fas fa-image" style="font-size:30px"></i></div>
-              <div class="so-product-body">
-                <div class="so-product-name">{{item.name}}</div>
-                <div style="font-size:12px;color:var(--muted);margin-bottom:6px">{{item.description || ''}}</div>
-                <div class="so-product-meta">
-                  <span class="so-product-price">{{Store.formatPrice(item.price)}}</span>
-                  <span :class="item.is_active?'so-badge so-badge-success':'so-badge so-badge-danger'">{{item.is_active?'Activo':'Inactivo'}}</span>
-                </div>
-                <div style="display:flex;gap:6px;margin-top:10px">
-                  <button class="so-btn so-btn-outline so-btn-sm" style="flex:1" @click="startEdit(item)"><i class="fas fa-edit"></i> Editar</button>
-                  <button class="so-btn so-btn-sm" :style="{background:item.is_active?'#fff3e0':'#e8f5e9',color:item.is_active?'#e65100':'#2e7d32'}" @click="toggleItem(item)"><i :class="item.is_active?'fas fa-eye-slash':'fas fa-eye'"></i></button>
-                  <button class="so-btn so-btn-sm" style="background:#ffebee;color:#c62828" @click="deleteItem(item)"><i class="fas fa-trash"></i></button>
-                </div>
-              </div>
+          <div class="so-card">
+            <div class="so-card-header">Items del pedido</div>
+            <div class="so-card-body" style="padding:0">
+              <table class="so-table">
+                <thead><tr><th>Item</th><th>Cant</th><th>Precio</th></tr></thead>
+                <tbody>
+                  <tr v-for="item in order.orderitems" :key="item.id"><td>{{item.name}}</td><td>{{item.quantity}}</td><td>{{Store.formatPrice(item.price * item.quantity)}}</td></tr>
+                </tbody>
+                <tfoot><tr><td colspan="2" style="font-weight:600">Total</td><td style="font-weight:600">{{Store.formatPrice(order.total)}}</td></tr></tfoot>
+              </table>
             </div>
           </div>
-          <div v-if="!items.length" style="text-align:center;padding:60px 20px;color:var(--muted)"><i class="fas fa-utensils" style="font-size:40px;margin-bottom:12px;display:block"></i><p>Sin productos. Agrega tu primer producto.</p><button class="so-btn so-btn-primary" @click="openNew"><i class="fas fa-plus"></i> Agregar Producto</button></div>
+          <div class="so-card">
+            <div class="so-card-body">
+              <div class="so-form-row">
+                <div><strong style="font-size:12px;color:var(--muted)">Pago</strong><p style="margin:4px 0 0;font-size:14px">{{order.payment_mode || 'COD'}}</p></div>
+                <div><strong style="font-size:12px;color:var(--muted)">Direccion</strong><p style="margin:4px 0 0;font-size:14px">{{order.address || '-'}}</p></div>
+              </div>
+              <div v-if="order.order_comment" style="margin-top:12px;background:#fff3e0;padding:10px;border-radius:6px;font-size:13px"><i class="fas fa-comment" style="color:#ff9800;margin-right:6px"></i>{{order.order_comment}}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button v-if="order.orderstatus_id===1||order.orderstatus_id===11" class="so-btn so-btn-success" style="flex:1" @click="acceptOrder" :disabled="actionLoading"><i class="fas fa-check"></i> Aceptar</button>
+            <button v-if="order.orderstatus_id===2&&order.delivery_type===2" class="so-btn so-btn-primary" style="flex:1" @click="markReady" :disabled="actionLoading"><i class="fas fa-box"></i> Listo para Recoger</button>
+            <button v-if="order.orderstatus_id===1||order.orderstatus_id===11" class="so-btn so-btn-danger" style="flex:1" @click="cancelOrder" :disabled="actionLoading"><i class="fas fa-times"></i> Rechazar</button>
+          </div>
+          <div v-if="successMsg" style="margin-top:12px;background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:8px;font-size:13px;text-align:center">{{successMsg}}</div>
         </template>
-      </div>
-      <div v-if="showForm" class="so-modal" @click.self="showForm=false">
-        <div class="so-modal-content">
-          <div class="so-modal-title">{{editItem ? 'Editar Producto' : 'Nuevo Producto'}}</div>
-          <div class="so-form-row">
-            <div class="so-form-group"><label>Nombre *</label><input v-model="form.name" placeholder="Nombre del producto"></div>
-            <div class="so-form-group"><label>Categoria</label><select v-model="form.item_category_id"><option value="">-- Sin categoria --</option><option v-for="cat in categories" :key="cat.id" :value="cat.id">{{cat.name}}</option></select></div>
-          </div>
-          <div class="so-form-row">
-            <div class="so-form-group"><label>Precio *</label><input v-model="form.price" type="number" step="0.01" placeholder="0.00"></div>
-            <div class="so-form-group"><label>Precio anterior</label><input v-model="form.old_price" type="number" step="0.01" placeholder="0.00"></div>
-          </div>
-          <div class="so-form-group"><label>Descripcion</label><textarea v-model="form.description" rows="2" placeholder="Descripcion del producto"></textarea></div>
-          <div class="so-form-group"><label>Imagen</label><input type="file" accept="image/*" ref="imageInput" @change="onImageChange"><div v-if="form.imagePreview" style="margin-top:8px"><img :src="form.imagePreview" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div></div>
-          <div v-if="addonCats.length" class="so-form-group"><label>Addon Categories</label><div v-for="ac in addonCats" :key="ac.id" style="margin-bottom:4px"><label style="font-size:13px;display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" :value="ac.id" v-model="form.addon_category_ids"> {{ac.name}}</label></div></div>
-          <div class="so-form-group"><label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" v-model="form.is_recommended"> Recomendado</label></div>
-          <div style="display:flex;gap:10px;margin-top:16px">
-            <button class="so-btn so-btn-primary" style="flex:1" @click="saveItem" :disabled="saving">{{saving ? 'Guardando...' : 'Guardar'}}</button>
-            <button class="so-btn so-btn-outline" style="flex:1" @click="showForm=false">Cancelar</button>
-          </div>
-          <div v-if="formError" style="color:#c62828;font-size:12px;margin-top:8px;text-align:center">{{formError}}</div>
-        </div>
       </div>
     </div>`,
   setup() { return { Store }; },
-  data() { return { items: [], categories: [], addonCats: [], loading: true, showForm: false, editItem: null, saving: false, formError: '', form: { name: '', price: '', old_price: '', description: '', is_recommended: false, image: null, imagePreview: '', item_category_id: '', addon_category_ids: [] } }; },
-  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadMenu(); this.loadCategories(); this.loadAddonCats(); },
+  data() { return { order: null, loading: true, actionLoading: false, successMsg: '' }; },
+  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadOrder(); },
   methods: {
-    async loadMenu() { this.loading = true; try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-menu', { token }); this.items = Array.isArray(res) ? res : (res.data || []); } catch(e) {} this.loading = false; },
-    async loadCategories() { try { const token = localStorage.getItem('storeOwnerToken'); this.categories = await API.post('/store-owner/get-categories', { token }) || []; } catch(e) {} },
-    async loadAddonCats() { try { const token = localStorage.getItem('storeOwnerToken'); this.addonCats = await API.post('/store-owner/get-addons', { token }) || []; } catch(e) {} },
-    openNew() { this.editItem = null; this.form = { name: '', price: '', old_price: '', description: '', is_recommended: false, image: null, imagePreview: '', item_category_id: '', addon_category_ids: [] }; this.showForm = true; this.formError = ''; },
-    startEdit(item) { this.editItem = item; this.form = { name: item.name, price: item.price, old_price: item.old_price || '', description: item.description || '', is_recommended: !!item.is_recommended, image: null, imagePreview: item.image || '', item_category_id: item.item_category_id || '', addon_category_ids: item.addon_category_ids || [] }; this.showForm = true; this.formError = ''; },
-    onImageChange(e) { const file = e.target.files[0]; if (file) { this.form.image = file; this.form.imagePreview = URL.createObjectURL(file); } },
-    async saveItem() {
-      if (!this.form.name || !this.form.price) { this.formError = 'Nombre y precio son requeridos'; return; }
-      this.saving = true; this.formError = '';
-      try {
-        const token = localStorage.getItem('storeOwnerToken');
-        const fd = new FormData();
-        fd.append('token', token);
-        fd.append('name', this.form.name);
-        fd.append('price', this.form.price);
-        fd.append('old_price', this.form.old_price || 0);
-        fd.append('description', this.form.description || '');
-        fd.append('is_recommended', this.form.is_recommended ? 1 : 0);
-        fd.append('item_category_id', this.form.item_category_id || '');
-        if (this.form.addon_category_ids) fd.append('addon_category_ids', JSON.stringify(this.form.addon_category_ids));
-        if (this.form.image) fd.append('image', this.form.image);
-        if (this.editItem) fd.append('item_id', this.editItem.id);
-        const url = this.editItem ? '/public/api/store-owner/update-item' : '/public/api/store-owner/create-item';
-        await fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd });
-        this.showForm = false;
-        await this.loadMenu();
-      } catch(e) { this.formError = 'Error al guardar'; }
-      this.saving = false;
-    },
-    async toggleItem(item) { try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/toggle-item-status', { token, item_id: item.id }); item.is_active = !item.is_active; } catch(e) {} },
-    async deleteItem(item) { if (!confirm('Eliminar ' + item.name + '?')) return; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-item', { token, item_id: item.id }); this.items = this.items.filter(i => i.id !== item.id); } catch(e) {} }
+    async loadOrder() { try { const token = localStorage.getItem('storeOwnerToken'); this.order = await API.post('/store-owner/get-single-order', { token, order_id: this.$route.params.id }); } catch(e) {} this.loading = false; },
+    async acceptOrder() { this.actionLoading = true; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/accept-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 2; this.successMsg = 'Pedido aceptado!'; } catch(e) {} this.actionLoading = false; },
+    async markReady() { this.actionLoading = true; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/mark-selfpickup-order-ready', { token, order_id: this.order.id }); this.order.orderstatus_id = 7; this.successMsg = 'Marcado como listo!'; } catch(e) {} this.actionLoading = false; },
+    async cancelOrder() { if (!confirm('Rechazar pedido?')) return; this.actionLoading = true; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/cancel-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 6; this.successMsg = 'Pedido rechazado'; } catch(e) {} this.actionLoading = false; },
+    statusText(id) { return {1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado'}[id] || ''; },
+    statusClass(id) { return [5,7].includes(id)?'so-badge-success':[6].includes(id)?'so-badge-danger':'so-badge-info'; }
   }
 };
 
 const StoreOwnerHistoryPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
-      <app-header title="Historial" :back="true"></app-header>
-      <div v-if="loading" class="loading"><div class="spinner"></div></div>
-      <template v-else>
-        <div v-if="!orders.length" class="empty-state"><i class="fas fa-history"></i><p>Sin pedidos completados</p></div>
-        <div style="padding:0 16px">
-          <div v-for="o in orders" :key="o.id" class="card">
-            <div class="card-body">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="font-weight:600;font-size:14px">#{{o.unique_order_id}}</span>
-                <span :style="{fontSize:'11px',padding:'3px 8px',borderRadius:'4px',fontWeight:600,background:o.orderstatus_id===5?'#4caf50':'#f44336',color:'#fff'}">{{o.orderstatus_id === 5 ? 'Entregado' : 'Cancelado'}}</span>
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history" class="active"><i class="fas fa-history"></i> Historial</router-link>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar"><span class="so-topbar-title">Historial</span></div>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
+        </div>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div v-if="!orders.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-history" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin pedidos completados</p></div>
+          <div class="so-card" v-for="o in orders" :key="o.id">
+            <div class="so-card-body" style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <strong style="font-size:14px">#{{o.unique_order_id}}</strong>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">{{formatDate(o.created_at)}}</div>
               </div>
-              <div style="display:flex;justify-content:space-between;margin-top:6px">
-                <span style="font-size:12px;color:var(--muted)">{{formatDate(o.created_at)}}</span>
-                <span style="font-weight:600">{{Store.formatPrice(o.total)}}</span>
+              <div style="text-align:right">
+                <span class="so-badge" :class="o.orderstatus_id===5?'so-badge-success':'so-badge-danger'">{{o.orderstatus_id===5?'Entregado':'Cancelado'}}</span>
+                <div style="font-size:14px;font-weight:600;margin-top:4px">{{Store.formatPrice(o.total)}}</div>
               </div>
             </div>
           </div>
-        </div>
-      </template>
+        </template>
+      </div>
     </div>`,
-  components: { AppHeader },
   setup() { return { Store }; },
   data() { return { orders: [], loading: true }; },
-  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadHistory(); },
+  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.load(); },
   methods: {
-    async loadHistory() {
-      try {
-        const token = localStorage.getItem('storeOwnerToken');
-        const res = await API.post('/store-owner/get-past-orders', { token });
-        this.orders = Array.isArray(res) ? res : (res.data || []);
-      } catch(e) {}
-      this.loading = false;
-    },
-    formatDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+    async load() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-past-orders', { token }); this.orders = Array.isArray(res) ? res : (res.data || []); } catch(e) {} this.loading = false; },
+    formatDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('es', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }); }
   }
 };
 
-
 const StoreOwnerEarningsPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
-      <app-header title="Mis Ganancias" :back="true"></app-header>
-      <div v-if="loading" class="loading"><div class="spinner"></div></div>
-      <template v-else>
-        <div style="padding:16px;text-align:center;background:linear-gradient(135deg,#4caf50,#81c784);color:#fff;margin:16px;border-radius:var(--radius)">
-          <div style="font-size:13px;opacity:.8">Ganancias del periodo</div>
-          <div id="totalAmount" style="font-size:28px;font-weight:700;margin-top:4px">{{Store.formatPrice(total)}}</div>
-          <div style="font-size:12px;opacity:.7;margin-top:4px">{{orderCount}} pedidos completados</div>
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/earnings" class="active"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar"><span class="so-topbar-title">Ganancias</span></div>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/earnings" class="active"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
         </div>
-        <div style="padding:0 16px">
-          <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-            <button v-for="f in filters" :key="f.id" :style="{padding:'6px 12px',borderRadius:'16px',fontSize:'12px',fontWeight:500,border:'none',background:activeFilter===f.id?'#4caf50':'var(--bg)',color:activeFilter===f.id?'#fff':'var(--muted)'}" @click="setFilter(f.id)">{{f.label}}</button>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div class="so-stats">
+            <div class="so-stat"><div class="so-stat-value" style="color:#4caf50">{{Store.formatPrice(total)}}</div><div class="so-stat-label">Total del periodo</div></div>
+            <div class="so-stat"><div class="so-stat-value" style="color:var(--primary)">{{orderCount}}</div><div class="so-stat-label">Pedidos</div></div>
           </div>
-          <div v-if="activeFilter==='custom'" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-            <input type="date" v-model="dateFrom" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-            <span style="color:var(--muted)">a</span>
-            <input type="date" v-model="dateTo" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-            <button style="padding:6px 12px;border-radius:6px;background:#4caf50;color:#fff;font-size:12px;font-weight:600;border:none" @click="loadData"><i class="fas fa-search"></i> Buscar</button>
+          <div class="so-card">
+            <div class="so-card-header">
+              <span>Ganancias</span>
+              <div style="display:flex;gap:6px">
+                <button v-for="f in filters" :key="f.id" class="so-btn so-btn-sm" :class="activeFilter===f.id?'so-btn-primary':'so-btn-outline'" @click="setFilter(f.id)">{{f.label}}</button>
+              </div>
+            </div>
+            <div class="so-card-body">
+              <div v-if="activeFilter==='custom'" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+                <input type="date" v-model="dateFrom" class="so-btn so-btn-outline" style="padding:6px 10px">
+                <span style="color:var(--muted)">a</span>
+                <input type="date" v-model="dateTo" class="so-btn so-btn-outline" style="padding:6px 10px">
+                <button class="so-btn so-btn-primary so-btn-sm" @click="loadData"><i class="fas fa-search"></i></button>
+              </div>
+              <div style="position:relative;height:220px"><canvas id="earningsChart"></canvas></div>
+            </div>
           </div>
-          <div style="position:relative;height:220px;margin-bottom:16px"><canvas id="earningsChart"></canvas></div>
-        </div>
-        <div class="section-title" style="margin-top:16px">Detalle por dia</div>
-        <div style="padding:0 16px">
-          <div v-for="(val, i) in chartData.values" :key="i" v-if="val > 0" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-            <span style="font-size:13px;color:var(--muted)">{{chartData.labels[i]}}</span>
-            <span style="font-size:13px;font-weight:600;color:#4caf50">{{Store.formatPrice(val)}}</span>
-          </div>
-        </div>
-      </template>
+        </template>
+      </div>
     </div>`,
-  components: { AppHeader },
   setup() { return { Store }; },
   data() {
     const today = new Date().toISOString().split('T')[0];
-    return { loading: true, total: 0, orderCount: 0, chartData: { labels: [], values: [] }, activeFilter: 'week', dateFrom: today, dateTo: today, chart: null, filters: [{ id: 'week', label: '7 dias' }, { id: 'month', label: '30 dias' }, { id: 'custom', label: 'Rango' }] };
+    return { loading: true, total: 0, orderCount: 0, chartData: { labels: [], values: [] }, activeFilter: 'week', dateFrom: today, dateTo: today, chart: null, filters: [{ id: 'week', label: '7d' }, { id: 'month', label: '30d' }, { id: 'custom', label: 'Rango' }] };
   },
   async mounted() {
     if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; }
-    await this.loadData();
-    this.loadChart();
+    await this.loadData(); this.loadChart();
   },
   methods: {
     setFilter(f) { this.activeFilter = f; if (f !== 'custom') this.loadData(); },
     async loadData() {
-      this.loading = true;
+      this.loading = !this.chart;
       try {
         const token = localStorage.getItem('storeOwnerToken');
         let url = '/store-owner/get-earnings?filter=' + this.activeFilter;
         if (this.activeFilter === 'custom') url += '&from=' + this.dateFrom + '&to=' + this.dateTo;
         const res = await API.post(url, { token });
-        this.total = res.total || 0;
-        this.orderCount = res.orderCount || 0;
+        this.total = res.total || 0; this.orderCount = res.orderCount || 0;
         this.chartData = { labels: res.labels || [], values: res.values || [] };
         this.$nextTick(() => this.loadChart());
       } catch(e) {}
@@ -449,70 +351,81 @@ const StoreOwnerEarningsPage = {
     },
     loadChart() {
       const canvas = document.getElementById('earningsChart');
-      if (!canvas || !window.Chart) {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4';
-        s.onload = () => this.renderChart();
-        document.head.appendChild(s);
-        return;
-      }
+      if (!canvas || !window.Chart) { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4'; s.onload = () => this.renderChart(); document.head.appendChild(s); return; }
       this.renderChart();
     },
     renderChart() {
       const canvas = document.getElementById('earningsChart');
       if (!canvas || !window.Chart) return;
       if (this.chart) { this.chart.destroy(); this.chart = null; }
-      const ctx = canvas.getContext('2d');
-      this.chart = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: this.chartData.labels, datasets: [{ label: 'Ganancias', data: this.chartData.values, backgroundColor: 'rgba(76,175,80,.7)', borderColor: '#4caf50', borderWidth: 1, borderRadius: 4 }] },
+      this.chart = new Chart(canvas.getContext('2d'), {
+        type: 'bar', data: { labels: this.chartData.labels, datasets: [{ label: 'Ganancias', data: this.chartData.values, backgroundColor: 'rgba(76,175,80,.7)', borderColor: '#4caf50', borderWidth: 1, borderRadius: 4 }] },
         options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v } }, x: { grid: { display: false } } } }
       });
     }
   }
 };
 
-
 const StoreOwnerCategoriesPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
-      <app-header title="Categorias" :back="true"></app-header>
-      <div v-if="loading" class="loading"><div class="spinner"></div></div>
-      <template v-else>
-        <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:var(--muted)">{{categories.length}} categorias</span>
-          <button style="background:var(--primary);color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none" @click="showForm=true;editCat=null;form={name:''}"><i class="fas fa-plus"></i> Agregar</button>
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories" class="active"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar">
+          <span class="so-topbar-title">Categorias</span>
+          <button class="so-btn so-btn-primary so-btn-sm" @click="showForm=true;editCat=null;form={name:''}"><i class="fas fa-plus"></i> Nueva</button>
         </div>
-        <div style="padding:0 16px">
-          <div v-for="cat in categories" :key="cat.id" style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
-            <div><strong style="font-size:14px">{{cat.name}}</strong></div>
-            <div style="display:flex;gap:6px">
-              <button style="background:none;padding:4px;font-size:14px;color:var(--primary)" @click="startEdit(cat)"><i class="fas fa-edit"></i></button>
-              <button style="background:none;padding:4px;font-size:14px;color:#e53935" @click="deleteCat(cat)"><i class="fas fa-trash"></i></button>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
+        </div>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div v-if="!categories.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-list" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin categorias</p></div>
+          <div class="so-card">
+            <div class="so-card-body" style="padding:0">
+              <table class="so-table">
+                <thead><tr><th>Nombre</th><th>Acciones</th></tr></thead>
+                <tbody>
+                  <tr v-for="cat in categories" :key="cat.id">
+                    <td><strong>{{cat.name}}</strong></td>
+                    <td><button class="so-btn so-btn-outline so-btn-sm" @click="startEdit(cat)"><i class="fas fa-edit"></i></button> <button class="so-btn so-btn-sm" style="background:#ffebee;color:#c62828" @click="deleteCat(cat)"><i class="fas fa-trash"></i></button></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-          <div v-if="!categories.length" class="empty-state"><i class="fas fa-list"></i><p>Sin categorias</p></div>
-        </div>
-      </template>
-      <div v-if="showForm" class="modal-overlay" @click.self="showForm=false">
-        <div class="modal-content">
-          <div class="modal-title">{{editCat ? 'Editar Categoria' : 'Nueva Categoria'}}</div>
-          <div style="margin-bottom:12px"><input v-model="form.name" placeholder="Nombre *" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn-primary" style="flex:1" @click="saveCat" :disabled="saving">{{saving ? 'Guardando...' : 'Guardar'}}</button>
-            <button style="flex:1;padding:12px;border-radius:8px;background:var(--bg);border:none;font-size:14px" @click="showForm=false">Cancelar</button>
+        </template>
+      </div>
+      <div v-if="showForm" class="so-modal" @click.self="showForm=false">
+        <div class="so-modal-content">
+          <div class="so-modal-title">{{editCat ? 'Editar Categoria' : 'Nueva Categoria'}}</div>
+          <div class="so-form-group"><label>Nombre *</label><input v-model="form.name" placeholder="Nombre de la categoria"></div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="so-btn so-btn-primary" style="flex:1" @click="saveCat" :disabled="saving">{{saving?'Guardando...':'Guardar'}}</button>
+            <button class="so-btn so-btn-outline" style="flex:1" @click="showForm=false">Cancelar</button>
           </div>
         </div>
       </div>
     </div>`,
-  components: { AppHeader },
   data() { return { categories: [], loading: true, showForm: false, editCat: null, saving: false, form: { name: '' } }; },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.load(); },
   methods: {
     async load() { this.loading = true; try { const token = localStorage.getItem('storeOwnerToken'); this.categories = await API.post('/store-owner/get-categories', { token }) || []; } catch(e) {} this.loading = false; },
     startEdit(cat) { this.editCat = cat; this.form = { name: cat.name }; this.showForm = true; },
     async saveCat() { if (!this.form.name) return; this.saving = true; try { const token = localStorage.getItem('storeOwnerToken'); if (this.editCat) { await API.post('/store-owner/update-category', { token, category_id: this.editCat.id, name: this.form.name }); } else { await API.post('/store-owner/create-category', { token, name: this.form.name }); } this.showForm = false; await this.load(); } catch(e) {} this.saving = false; },
-    async deleteCat(cat) { if (!confirm('Eliminar ' + cat.name + '?')) return; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-category', { token, category_id: cat.id }); this.categories = this.categories.filter(c => c.id !== cat.id); } catch(e) {} }
+    async deleteCat(cat) { if (!confirm('Eliminar '+cat.name+'?')) return; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-category', { token, category_id: cat.id }); this.categories = this.categories.filter(c => c.id !== cat.id); } catch(e) {} }
   }
 };
 
