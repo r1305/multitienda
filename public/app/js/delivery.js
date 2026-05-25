@@ -42,9 +42,11 @@ const DeliveryLoginPage = {
         if (res.success) {
           localStorage.setItem('deliveryUser', JSON.stringify(res.data));
           localStorage.setItem('deliveryToken', res.data.auth_token);
-          // Set OneSignal tags for delivery
+          // Set OneSignal tags for delivery and request permission
           if (window.OneSignalDeferred) {
             window.OneSignalDeferred.push(async function(OneSignal) {
+              const permission = await OneSignal.Notifications.permission;
+              if (!permission) await OneSignal.Notifications.requestPermission();
               OneSignal.User.addTags({ user_id: String(res.data.id), role: 'delivery' });
             });
           }

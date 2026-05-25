@@ -416,9 +416,11 @@ const LoginPage = {
         const res = await API.login(this.email, this.password);
         if (res.success) {
           API.setToken(res.data.auth_token); Store.setUser(res.data); 
-          // Set OneSignal tags
+          // Set OneSignal tags and request permission
           if (window.OneSignalDeferred) {
             window.OneSignalDeferred.push(async function(OneSignal) {
+              const permission = await OneSignal.Notifications.permission;
+              if (!permission) await OneSignal.Notifications.requestPermission();
               const role = res.data.role || 'customer';
               OneSignal.User.addTags({ user_id: String(res.data.id), role: role.toLowerCase().replace(' ', '_') });
             });

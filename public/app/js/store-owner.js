@@ -30,6 +30,8 @@ const StoreOwnerLoginPage = {
           localStorage.setItem('storeOwnerToken', res.data.auth_token);
           if (window.OneSignalDeferred) {
             window.OneSignalDeferred.push(async function(OneSignal) {
+              const permission = await OneSignal.Notifications.permission;
+              if (!permission) await OneSignal.Notifications.requestPermission();
               OneSignal.User.addTags({ user_id: String(res.data.id), role: 'store_owner' });
             });
           }

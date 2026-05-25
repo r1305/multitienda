@@ -885,8 +885,25 @@ exports.notifications = (req, res) => {
   res.render('admin/notifications', { user: req.session.user, success: req.flash('success')[0], error: req.flash('error')[0] });
 };
 
-exports.sendNotification = (req, res) => {
-  req.flash('success', 'Notification sent (push service not configured)');
+exports.sendNotification = async (req, res) => {
+  try {
+    const { title, message, image, type, user_ids } = req.body;
+    const { sendPushNotification, saveNotification } = require('../../helpers/notifications');
+
+    if (type === 'specific' && user_ids) {
+      const ids = user_ids.split(',').map(id => id.trim()).filter(Boolean);
+      for (const uid of ids) {
+        await sendPushNotification(title, message, uid);
+        await saveNotification(uid, title, message);
+      }
+    } else {
+      await sendPushNotification(title, message, null, null, image ? { image } : {});
+    }
+    req.flash('success', 'Notificación enviada correctamente');
+  } catch (err) {
+    console.error('Send notification error:', err);
+    req.flash('error', 'Error al enviar la notificación: ' + err.message);
+  }
   res.redirect('/admin/notifications');
 };
 

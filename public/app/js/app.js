@@ -62,11 +62,22 @@ app.use(router);
       if (Store.settings.currencyFormat) Store.currency = Store.settings.currencyFormat;
       if (Store.settings.currencySymbolAlign) Store.currencyAlign = Store.settings.currencySymbolAlign;
     }
-    // Initialize OneSignal (only on matching domain)
-    if (Store.settings.onesignalAppId && window.location.hostname !== 'localhost') {
+    // Initialize OneSignal
+    if (Store.settings.onesignalAppId) {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({ appId: Store.settings.onesignalAppId, serviceWorkerPath: '/OneSignalSDKWorker.js' });
+        await OneSignal.init({
+          appId: Store.settings.onesignalAppId,
+          serviceWorkerPath: '/OneSignalSDKWorker.js',
+          notifyButton: { enable: true },
+          allowLocalhostAsSecureOrigin: true
+        });
+        // Request permission explicitly
+        const permission = await OneSignal.Notifications.permission;
+        if (!permission) {
+          await OneSignal.Notifications.requestPermission();
+        }
+        // Set user tags
         if (Store.isLoggedIn) {
           const role = Store.user.role || 'customer';
           OneSignal.User.addTags({ user_id: String(Store.user.id), role: role.toLowerCase().replace(' ', '_') });
