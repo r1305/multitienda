@@ -7,7 +7,8 @@
 .so-sidebar a:hover, .so-sidebar a.active { color: #fff; background: #2c3e50; border-left-color: var(--primary); }
 .so-sidebar a i { width: 18px; text-align: center; }
 .so-main { flex: 1; margin-left: 240px; padding: 20px; }
-.so-topbar { display: none; }
+.so-topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin: -16px -16px 16px; position: sticky; top: 0; z-index: 50; }
+.so-topbar-title { font-size: 16px; font-weight: 600; }
 .so-bottom-nav { display: none; }
 
 /* Cards */
@@ -68,8 +69,6 @@
 @media (max-width: 991px) {
   .so-sidebar { display: none; }
   .so-main { margin-left: 0; padding: 16px; padding-bottom: 80px; }
-  .so-topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin: -16px -16px 16px; position: sticky; top: 0; z-index: 50; }
-  .so-topbar-title { font-size: 16px; font-weight: 600; }
   .so-bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: #fff; box-shadow: 0 -2px 8px rgba(0,0,0,.06); z-index: 100; justify-content: space-around; padding: 8px 0 env(safe-area-inset-bottom, 8px); }
   .so-bottom-nav a { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: #888; text-decoration: none; padding: 4px 12px; gap: 2px; }
   .so-bottom-nav a i { font-size: 18px; }
