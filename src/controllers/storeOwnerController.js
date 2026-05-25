@@ -129,6 +129,11 @@ exports.getMenu = async (req, res) => {
     if (!restaurant) return res.status(403).json({ success: false });
 
     const [items] = await sequelize.query('SELECT * FROM items WHERE restaurant_id = ? ORDER BY name', { replacements: [restaurant.id] });
+    // Load addon category ids for each item
+    for (let item of items) {
+      const [links] = await sequelize.query('SELECT addon_category_id FROM addon_category_item WHERE item_id = ?', { replacements: [item.id] });
+      item.addon_category_ids = links.map(l => l.addon_category_id);
+    }
     res.json(items);
   } catch (err) {
     res.status(500).json([]);

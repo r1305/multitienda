@@ -258,7 +258,7 @@ const StoreOwnerMenuPage = {
       <template v-else>
         <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:13px;color:var(--muted)">{{items.length}} productos</span>
-          <button style="background:var(--primary);color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none" @click="showForm=true;editItem=null;form={name:'',price:'',old_price:'',description:'',is_recommended:false}"><i class="fas fa-plus"></i> Agregar</button>
+          <button style="background:var(--primary);color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none" @click="showForm=true;editItem=null;form={name:'',price:'',old_price:'',description:'',is_recommended:false,image:null,imagePreview:'',item_category_id:'',addon_category_ids:[]}"><i class="fas fa-plus"></i> Agregar</button>
         </div>
         <div style="padding:0 16px">
           <div v-for="item in items" :key="item.id" class="item-card">
