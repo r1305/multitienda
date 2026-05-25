@@ -42,21 +42,28 @@ router.use('/admin', auth, injectSettings);
 router.get('/admin/api/earnings-chart', auth, async (req, res) => {
   const { sequelize } = require('../../models');
   const { filter, from, to } = req.query;
-  let startDate, endDate = new Date();
+  let startDate, endDate;
+
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
 
   if (filter === 'month') {
     startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   } else if (filter === 'custom' && from && to) {
     startDate = new Date(from);
-    endDate = new Date(to + 'T23:59:59');
+    endDate = new Date(to);
   } else {
     startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   }
+  if (!endDate) endDate = today;
+
+  const startStr = startDate.getFullYear() + '-' + String(startDate.getMonth()+1).padStart(2,'0') + '-' + String(startDate.getDate()).padStart(2,'0');
+  const endStr = endDate.getFullYear() + '-' + String(endDate.getMonth()+1).padStart(2,'0') + '-' + String(endDate.getDate()).padStart(2,'0');
 
   try {
     const [rows] = await sequelize.query(
-      `SELECT DATE(created_at) as day, SUM(total) as earnings FROM orders WHERE orderstatus_id = 5 AND created_at >= ? AND created_at <= ? GROUP BY DATE(created_at) ORDER BY day ASC`,
-      { replacements: [startDate, endDate] }
+      `SELECT DATE(created_at) as day, SUM(total) as earnings FROM orders WHERE orderstatus_id = 5 AND DATE(created_at) >= ? AND DATE(created_at) <= ? GROUP BY DATE(created_at) ORDER BY day ASC`,
+      { replacements: [startStr, endStr] }
     );
 
     const labels = [];
@@ -65,7 +72,7 @@ router.get('/admin/api/earnings-chart', auth, async (req, res) => {
 
     const current = new Date(startDate);
     while (current <= endDate) {
-      const dayStr = current.toISOString().split('T')[0];
+      const dayStr = current.getFullYear() + '-' + String(current.getMonth()+1).padStart(2,'0') + '-' + String(current.getDate()).padStart(2,'0');
       labels.push(current.toLocaleDateString('es', { day: 'numeric', month: 'short' }));
       const found = rows.find(r => r.day === dayStr);
       const val = found ? parseFloat(found.earnings) : 0;
