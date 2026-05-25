@@ -62,14 +62,14 @@ app.use(router);
       if (Store.settings.currencyFormat) Store.currency = Store.settings.currencyFormat;
       if (Store.settings.currencySymbolAlign) Store.currencyAlign = Store.settings.currencySymbolAlign;
     }
-    // Initialize OneSignal
-    if (Store.settings.onesignalAppId) {
+    // Initialize OneSignal (only on matching domain)
+    if (Store.settings.onesignalAppId && window.location.hostname !== 'localhost') {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {
         await OneSignal.init({ appId: Store.settings.onesignalAppId, serviceWorkerPath: '/OneSignalSDKWorker.js' });
-        // Set user tags for targeted notifications
         if (Store.isLoggedIn) {
-          OneSignal.User.addTags({ user_id: String(Store.user.id), role: 'customer' });
+          const role = Store.user.role || 'customer';
+          OneSignal.User.addTags({ user_id: String(Store.user.id), role: role.toLowerCase().replace(' ', '_') });
         }
         const deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
         if (deliveryUser) {
