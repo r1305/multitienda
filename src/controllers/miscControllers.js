@@ -625,7 +625,22 @@ exports.deliveryCustomerChat = async (req, res) => {
 exports.sendChatMessage = async (req, res) => {
   try {
     const { order_id, message } = req.body;
-    await sequelize.query('INSERT INTO chats (order_id, sender_id, message) VALUES (?, ?, ?)', { replacements: [order_id, req.user.id, message] });
+    await sequelize.query('INSERT INTO chats (order_id, sender_id, message, created_at) VALUES (?, ?, ?, NOW())', { replacements: [order_id, req.user.id, message] });
+
+    // Send push notification to the other party
+    const order = await Order.findByPk(order_id);
+    if (order) {
+      const { sendPushNotification } = require('../helpers/notifications');
+      const accept = await AcceptDelivery.findOne({ where: { order_id } });
+      if (req.user.id === order.user_id && accept) {
+        // Customer sent message -> notify delivery guy
+        await sendPushNotification('Nuevo mensaje', message, accept.user_id, null, { order_id, unique_order_id: order.unique_order_id, type: 'chat' });
+      } else if (accept && req.user.id === accept.user_id) {
+        // Delivery sent message -> notify customer
+        await sendPushNotification('Mensaje del repartidor', message, order.user_id, null, { order_id, unique_order_id: order.unique_order_id, type: 'chat' });
+      }
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });

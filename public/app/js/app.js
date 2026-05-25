@@ -77,6 +77,13 @@ app.use(router);
         if (!permission) {
           await OneSignal.Notifications.requestPermission();
         }
+        // Handle notification click
+        OneSignal.Notifications.addEventListener('click', (e) => {
+          const data = e.notification.additionalData || {};
+          if (data.unique_order_id) {
+            window.location.href = '/order/' + data.unique_order_id;
+          }
+        });
         // Set user tags
         if (Store.isLoggedIn) {
           const role = Store.user.role || 'customer';
