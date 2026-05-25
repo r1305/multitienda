@@ -1,8 +1,12 @@
 // ==================== DELIVERY APP PAGES ====================
 
 const DeliveryLoginPage = {
+  setup() { return { Store }; },
   template: `
     <div class="page" style="background:var(--white);min-height:100vh">
+      <div style="position:absolute;top:16px;right:16px">
+        <button style="background:none;font-size:18px;color:var(--text);padding:8px" @click="Store.toggleTheme()"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i></button>
+      </div>
       <div style="padding:40px 16px;text-align:center">
         <i class="fas fa-motorcycle" style="font-size:50px;color:var(--primary);margin-bottom:16px"></i>
         <h2 style="font-size:20px;margin-bottom:4px">Delivery</h2>
