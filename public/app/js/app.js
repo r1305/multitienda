@@ -33,6 +33,7 @@ const routes = [
   { path: '/store-owner/addons', component: StoreOwnerAddonsPage },
   { path: '/store-owner/history', component: StoreOwnerHistoryPage },
   { path: '/store-owner/earnings', component: StoreOwnerEarningsPage },
+  { path: '/store-owner/settings', component: StoreOwnerSettingsPage },
 ];
 
 const router = createRouter({

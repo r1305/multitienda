@@ -143,6 +143,7 @@ router.post('/store-owner/get-earnings', storeOwner.getEarnings);
 router.post('/store-owner/send-payout-request', storeOwner.sendPayoutRequest);
 router.post('/store-owner/get-inactive-items', storeOwner.getInactiveItems);
 router.post('/store-owner/get-store-page', storeOwner.getStorePage);
+router.post('/store-owner/update-store', upload.single('image'), storeOwner.updateStore);
 router.post('/store-owner/toggle-category-status', storeOwner.toggleCategoryStatus);
 
 module.exports = router;

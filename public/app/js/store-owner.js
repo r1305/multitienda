@@ -55,6 +55,7 @@ const StoreOwnerDashboardPage = {
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
         <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
       </nav>
       <div class="so-main">
@@ -114,6 +115,7 @@ const StoreOwnerOrdersPage = {
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -176,6 +178,7 @@ const StoreOwnerOrderDetailPage = {
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -242,6 +245,7 @@ const StoreOwnerHistoryPage = {
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history" class="active"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
       </nav>
       <div class="so-main">
         <div class="so-topbar"><span class="so-topbar-title">Historial</span></div>
@@ -290,6 +294,7 @@ const StoreOwnerEarningsPage = {
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/earnings" class="active"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
       </nav>
       <div class="so-main">
         <div class="so-topbar"><span class="so-topbar-title">Ganancias</span></div>
@@ -378,6 +383,7 @@ const StoreOwnerMenuPage = {
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -498,6 +504,7 @@ const StoreOwnerCategoriesPage = {
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -575,6 +582,7 @@ const StoreOwnerAddonsPage = {
         <router-link to="/store-owner/addons" class="active"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -679,6 +687,130 @@ const StoreOwnerAddonsPage = {
     async deleteAddon(cat, addon) {
       if (!confirm('Eliminar ' + addon.name + '?')) return;
       try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-addon-item', { token, addon_id: addon.id }); cat.items = cat.items.filter(a => a.id !== addon.id); } catch(e) { console.error(e); }
+    }
+  }
+};
+
+const StoreOwnerSettingsPage = {
+  template: `
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings" class="active"><i class="fas fa-cog"></i> Settings</router-link>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar"><span class="so-topbar-title">Settings</span></div>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/settings" class="active"><i class="fas fa-cog"></i><span>Settings</span></router-link>
+        </div>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div class="so-card">
+            <div class="so-card-header">Informacion de la Tienda</div>
+            <div class="so-card-body">
+              <div class="so-form-group"><label>Nombre *</label><input v-model="form.name" placeholder="Nombre de la tienda"></div>
+              <div class="so-form-group"><label>Descripcion</label><textarea v-model="form.description" rows="2" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px;resize:vertical"></textarea></div>
+              <div class="so-form-group"><label>Direccion</label><input v-model="form.address" placeholder="Direccion completa"></div>
+              <div class="so-form-row">
+                <div class="so-form-group"><label>Latitud</label><input v-model="form.latitude" type="number" step="any"></div>
+                <div class="so-form-group"><label>Longitud</label><input v-model="form.longitude" type="number" step="any"></div>
+              </div>
+              <div class="so-form-row">
+                <div class="so-form-group"><label>Tiempo de entrega</label><input v-model="form.delivery_time" placeholder="Ej: 30-45 min"></div>
+                <div class="so-form-group"><label>Rango de precios</label><input v-model="form.price_range" placeholder="Ej: $$"></div>
+              </div>
+              <div class="so-form-group"><label>Imagen</label><input type="file" accept="image/*" @change="onFile" style="font-size:13px"></div>
+              <div v-if="store.image" style="margin-top:8px"><img :src="store.image" style="width:80px;height:80px;border-radius:8px;object-fit:cover"></div>
+            </div>
+          </div>
+          <div class="so-card">
+            <div class="so-card-header">Cargos y Delivery</div>
+            <div class="so-card-body">
+              <div class="so-form-row">
+                <div class="so-form-group"><label>Cargo del restaurante</label><input v-model="form.restaurant_charges" type="number" step="0.01"></div>
+                <div class="so-form-group"><label>Cargo de delivery</label><input v-model="form.delivery_charges" type="number" step="0.01"></div>
+              </div>
+              <div class="so-form-group"><label>Tipo de cargo delivery</label><select v-model="form.delivery_charge_type" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px"><option value="FIXED">Fijo</option><option value="DYNAMIC">Dinamico (por distancia)</option></select></div>
+              <div v-if="form.delivery_charge_type==='DYNAMIC'" style="margin-top:8px">
+                <div class="so-form-row">
+                  <div class="so-form-group"><label>Cargo base</label><input v-model="form.base_delivery_charge" type="number" step="0.01"></div>
+                  <div class="so-form-group"><label>Distancia base (km)</label><input v-model="form.base_delivery_distance" type="number" step="0.1"></div>
+                </div>
+                <div class="so-form-row">
+                  <div class="so-form-group"><label>Cargo extra</label><input v-model="form.extra_delivery_charge" type="number" step="0.01"></div>
+                  <div class="so-form-group"><label>Distancia extra (km)</label><input v-model="form.extra_delivery_distance" type="number" step="0.1"></div>
+                </div>
+              </div>
+              <div class="so-form-row">
+                <div class="so-form-group"><label>Radio de delivery (km)</label><input v-model="form.delivery_radius" type="number" step="0.1"></div>
+                <div class="so-form-group"><label>Pedido minimo</label><input v-model="form.min_order_price" type="number" step="0.01"></div>
+              </div>
+              <div class="so-form-group"><label>Subtotal para delivery gratis (0 = desactivado)</label><input v-model="form.free_delivery_subtotal" type="number" step="0.01"></div>
+              <div class="so-form-group"><label>Tipo de entrega</label><select v-model="form.delivery_type" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px"><option value="1">Delivery</option><option value="2">Self Pickup</option><option value="3">Ambos</option></select></div>
+            </div>
+          </div>
+          <div class="so-card">
+            <div class="so-card-header">Opciones</div>
+            <div class="so-card-body">
+              <div class="so-form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" v-model="form.auto_acceptable"> Aceptar pedidos automaticamente</label></div>
+              <div class="so-form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" v-model="form.is_schedulable"> Permitir pedidos programados</label></div>
+            </div>
+          </div>
+          <div style="padding:0 0 20px">
+            <button class="so-btn so-btn-primary" style="width:100%" @click="save" :disabled="saving"><i class="fas fa-save"></i> {{saving?'Guardando...':'Guardar Cambios'}}</button>
+          </div>
+          <div v-if="successMsg" style="background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:8px;font-size:13px;text-align:center;margin-bottom:16px">{{successMsg}}</div>
+        </template>
+      </div>
+    </div>`,
+  data() { return { store: {}, form: {}, loading: true, saving: false, imageFile: null, successMsg: '' }; },
+  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.load(); },
+  methods: {
+    async load() {
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        const res = await API.post('/store-owner/get-store-page', { token });
+        if (res.success && res.restaurant) {
+          this.store = res.restaurant;
+          this.form = {
+            name: res.restaurant.name || '', description: res.restaurant.description || '', address: res.restaurant.address || '',
+            latitude: res.restaurant.latitude || '', longitude: res.restaurant.longitude || '',
+            delivery_time: res.restaurant.delivery_time || '', price_range: res.restaurant.price_range || '',
+            restaurant_charges: res.restaurant.restaurant_charges || 0, delivery_charges: res.restaurant.delivery_charges || 0,
+            delivery_charge_type: res.restaurant.delivery_charge_type || 'FIXED',
+            base_delivery_charge: res.restaurant.base_delivery_charge || 0, base_delivery_distance: res.restaurant.base_delivery_distance || 0,
+            extra_delivery_charge: res.restaurant.extra_delivery_charge || 0, extra_delivery_distance: res.restaurant.extra_delivery_distance || 0,
+            delivery_radius: res.restaurant.delivery_radius || 0, min_order_price: res.restaurant.min_order_price || 0,
+            free_delivery_subtotal: res.restaurant.free_delivery_subtotal || 0, delivery_type: res.restaurant.delivery_type || 1,
+            auto_acceptable: !!res.restaurant.auto_acceptable, is_schedulable: !!res.restaurant.is_schedulable
+          };
+        }
+      } catch(e) { console.error(e); }
+      this.loading = false;
+    },
+    onFile(e) { this.imageFile = e.target.files[0] || null; },
+    async save() {
+      this.saving = true; this.successMsg = '';
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        const fd = new FormData();
+        fd.append('token', token);
+        Object.keys(this.form).forEach(k => { fd.append(k, this.form[k]); });
+        if (this.imageFile) fd.append('image', this.imageFile);
+        const res = await fetch('/public/api/store-owner/update-store', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
+        if (res.success) this.successMsg = 'Cambios guardados!';
+      } catch(e) { console.error(e); }
+      this.saving = false;
     }
   }
 };

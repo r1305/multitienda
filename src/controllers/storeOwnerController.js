@@ -273,6 +273,25 @@ exports.getStorePage = async (req, res) => {
   }
 };
 
+exports.updateStore = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const { name, description, address, latitude, longitude, delivery_time, price_range, restaurant_charges, delivery_charges, delivery_charge_type, base_delivery_charge, base_delivery_distance, extra_delivery_charge, extra_delivery_distance, delivery_radius, min_order_price, free_delivery_subtotal, delivery_type, auto_acceptable, is_schedulable } = req.body;
+    const image = req.file ? '/uploads/' + req.file.filename : null;
+    let sql = `UPDATE restaurants SET name=?, description=?, address=?, latitude=?, longitude=?, delivery_time=?, price_range=?, restaurant_charges=?, delivery_charges=?, delivery_charge_type=?, base_delivery_charge=?, base_delivery_distance=?, extra_delivery_charge=?, extra_delivery_distance=?, delivery_radius=?, min_order_price=?, free_delivery_subtotal=?, delivery_type=?, auto_acceptable=?, is_schedulable=?, updated_at=NOW()`;
+    const params = [name || restaurant.name, description || '', address || '', latitude || restaurant.latitude, longitude || restaurant.longitude, delivery_time || '', price_range || '', restaurant_charges || 0, delivery_charges || 0, delivery_charge_type || 'FIXED', base_delivery_charge || 0, base_delivery_distance || 0, extra_delivery_charge || 0, extra_delivery_distance || 0, delivery_radius || 0, min_order_price || 0, free_delivery_subtotal || 0, delivery_type || 1, auto_acceptable ? 1 : 0, is_schedulable ? 1 : 0];
+    if (image) { sql += ', image=?'; params.push(image); }
+    sql += ' WHERE id=?';
+    params.push(restaurant.id);
+    await sequelize.query(sql, { replacements: params });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('updateStore error:', err.message);
+    res.status(500).json({ success: false });
+  }
+};
+
 exports.toggleCategoryStatus = async (req, res) => {
   try {
     const cat = await ItemCategory.findByPk(req.body.category_id);
