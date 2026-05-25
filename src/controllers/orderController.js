@@ -159,11 +159,19 @@ exports.placeOrder = async (req, res) => {
     for (const oI of orderItems) {
       const originalItem = await Item.findByPk(oI.id);
       const itemName = oI.name || (originalItem ? originalItem.name : 'Item');
-      const itemPrice = oI.price || (originalItem ? originalItem.price : 0);
+      let itemPrice = parseFloat(oI.price) || 0;
+      // If has addons, price is sum of addons
+      if (oI.selectedaddons && oI.selectedaddons.length) {
+        const addonSum = oI.selectedaddons.reduce((s, a) => s + parseFloat(a.price || 0), 0);
+        if (addonSum > 0) itemPrice = addonSum;
+        else if (!itemPrice && originalItem) itemPrice = parseFloat(originalItem.price);
+      } else if (!itemPrice && originalItem) {
+        itemPrice = parseFloat(originalItem.price);
+      }
       const item = await Orderitem.create({ order_id: newOrder.id, item_id: oI.id, name: itemName, quantity: oI.quantity, price: itemPrice }, { transaction: t });
       if (oI.selectedaddons) {
         for (const sa of oI.selectedaddons) {
-          await OrderItemAddon.create({ orderitem_id: item.id, addon_category_name: sa.addon_category_name, addon_name: sa.addon_name, addon_price: sa.price }, { transaction: t });
+          await OrderItemAddon.create({ orderitem_id: item.id, addon_category_name: sa.addon_category_name || '', addon_name: sa.addon_name || sa.name || '', addon_price: sa.price || 0 }, { transaction: t });
         }
       }
     }
