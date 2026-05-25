@@ -21,7 +21,7 @@ if (typeof addonCategory !== 'undefined' && addonCategory) {
   '<p><strong>Tienda:</strong> '+(ac.restaurant_name || 'Global')+'</p>' +
   '</div></div></div>' +
   '<div class="col-md-8"><div class="card"><div class="card-header">Addons ('+((typeof addons !== 'undefined') ? addons.length : 0)+')</div><div class="card-body p-0">' +
-  '<table class="table table-hover mb-0"><thead><tr><th>Name</th><th>Price</th><th>Status</th></tr></thead><tbody>'+addonsHtml+'</tbody></table></div></div></div></div>';
+  '<table class="table table-hover mb-0"><thead><tr><th style="text-align:left">Name</th><th style="text-align:left">Price</th><th style="text-align:left">Status</th></tr></thead><tbody>'+addonsHtml+'</tbody></table></div></div></div></div>';
 }
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>
