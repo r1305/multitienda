@@ -53,7 +53,7 @@ async function sendPushNotification(title, message, userId = null, role = null, 
     if (result.errors) console.error('OneSignal error:', result.errors);
     return result;
   } catch (err) {
-    console.error('Push notification error:', err.message);
+    if (!process.env.NODE_ENV || process.env.NODE_ENV !== "production") console.error("Push notification error:", err.message);
   }
 }
 

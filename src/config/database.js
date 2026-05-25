@@ -10,13 +10,23 @@ const sequelize = new Sequelize(
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql',
     logging: false,
-    pool: { max: 10, min: 0, acquire: 30000, idle: 10000 },
+    pool: {
+      max: 5,        // Reduced for shared hosting
+      min: 0,
+      acquire: 30000,
+      idle: 5000,    // Release idle connections faster
+      evict: 10000   // Check for idle connections every 10s
+    },
     define: {
       timestamps: true,
       createdAt: 'created_at',
       updatedAt: 'updated_at',
       underscored: false,
     },
+    retry: { max: 3 },
+    dialectOptions: {
+      connectTimeout: 10000
+    }
   }
 );
 
