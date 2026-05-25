@@ -7,7 +7,7 @@ const Store = Vue.reactive({
   currencyAlign: 'left',
 
   get cartCount() { return this.cart.reduce((sum, i) => sum + i.quantity, 0); },
-  get cartTotal() { return this.cart.reduce((sum, i) => sum + (parseFloat(i.price) + (i.addonTotal || 0)) * i.quantity, 0); },
+  get cartTotal() { return this.cart.reduce((sum, i) => sum + (i.addonTotal || parseFloat(i.price)) * i.quantity, 0); },
   get isLoggedIn() { return !!this.user; },
 
   setLocation(loc) { this.location = loc; localStorage.setItem('appLocation', JSON.stringify(loc)); },

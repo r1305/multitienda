@@ -253,7 +253,7 @@ const StoreDetailPage = {
     },
     confirmAddons() {
       const addonTotal = this.selectedAddons.reduce((s, a) => s + parseFloat(a.price), 0);
-      Store.addItem({ id: this.selectedItem.id, name: this.selectedItem.name, price: parseFloat(this.selectedItem.price), image: this.selectedItem.image, restaurant_id: this.selectedItem.restaurant_id, selectedaddons: this.selectedAddons, addonTotal });
+      Store.addItem({ id: this.selectedItem.id, name: this.selectedItem.name, price: 0, image: this.selectedItem.image, restaurant_id: this.selectedItem.restaurant_id, selectedaddons: this.selectedAddons, addonTotal });
       this.showAddonModal = false;
     },
     toggleAddon(cat, addon) {
@@ -287,7 +287,7 @@ const CartPage = {
             <div class="cart-item-info">
               <div class="cart-item-name">{{item.name}}</div>
               <div v-if="item.selectedaddons && item.selectedaddons.length" style="font-size:11px;color:var(--muted);margin-top:2px">{{item.selectedaddons.map(a => a.name).join(', ')}}</div>
-              <div class="cart-item-price">{{Store.formatPrice(parseFloat(item.price) + (item.addonTotal || 0))}}</div>
+              <div class="cart-item-price">{{Store.formatPrice(item.addonTotal || item.price)}}</div>
             </div>
             <div class="qty-control">
               <button class="qty-btn" @click="remove(item, idx)">{{item.quantity === 1 ? '🗑' : '−'}}</button>
