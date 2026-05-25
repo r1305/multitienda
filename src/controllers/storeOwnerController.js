@@ -345,14 +345,20 @@ exports.createItem = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    const { name, price, old_price, description, is_recommended, item_category_id } = req.body;
+    const { name, price, old_price, description, is_recommended, item_category_id, addon_category_ids } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : null;
-    await sequelize.query(
+    const [result, meta] = await sequelize.query(
       'INSERT INTO items (name, price, old_price, description, is_recommended, image, item_category_id, restaurant_id, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,1,NOW(),NOW())',
       { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, image, item_category_id || null, restaurant.id] }
     );
+    const itemId = meta;
+    if (addon_category_ids) {
+      const ids = typeof addon_category_ids === 'string' ? JSON.parse(addon_category_ids) : addon_category_ids;
+      for (const acId of ids) { await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, itemId] }); }
+    }
     res.json({ success: true });
   } catch (err) {
+    console.error('createItem error:', err.message);
     res.status(500).json({ success: false });
   }
 };
@@ -361,7 +367,7 @@ exports.updateItem = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    const { item_id, name, price, old_price, description, is_recommended, item_category_id } = req.body;
+    const { item_id, name, price, old_price, description, is_recommended, item_category_id, addon_category_ids } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : null;
     if (image) {
       await sequelize.query(
@@ -374,8 +380,15 @@ exports.updateItem = async (req, res) => {
         { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, item_category_id || null, item_id, restaurant.id] }
       );
     }
+    // Update addon category links
+    await sequelize.query('DELETE FROM addon_category_item WHERE item_id = ?', { replacements: [item_id] });
+    if (addon_category_ids) {
+      const ids = typeof addon_category_ids === 'string' ? JSON.parse(addon_category_ids) : addon_category_ids;
+      for (const acId of ids) { await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, item_id] }); }
+    }
     res.json({ success: true });
   } catch (err) {
+    console.error('updateItem error:', err.message);
     res.status(500).json({ success: false });
   }
 };

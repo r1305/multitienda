@@ -288,6 +288,7 @@ const StoreOwnerMenuPage = {
             <input v-model="form.old_price" type="number" step="0.01" placeholder="Precio anterior" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
           </div>
           <div style="margin-bottom:12px"><select v-model="form.item_category_id" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"><option value="">-- Categoria --</option><option v-for="cat in categories" :key="cat.id" :value="cat.id">{{cat.name}}</option></select></div>
+          <div v-if="addonCats.length" style="margin-bottom:12px"><label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Addon Categories</label><div v-for="ac in addonCats" :key="ac.id" style="margin-bottom:4px"><label style="font-size:13px;display:flex;align-items:center;gap:8px"><input type="checkbox" :value="ac.id" v-model="form.addon_category_ids"> {{ac.name}}</label></div></div>
           <div style="margin-bottom:12px"><textarea v-model="form.description" placeholder="Descripcion" rows="2" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></textarea></div>
           <div style="margin-bottom:12px"><label style="font-size:13px;color:var(--muted);display:block;margin-bottom:4px">Imagen del producto</label><input type="file" accept="image/*" ref="imageInput" @change="onImageChange" style="font-size:13px"></div>
           <div v-if="form.imagePreview" style="margin-bottom:12px"><img :src="form.imagePreview" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
@@ -302,12 +303,13 @@ const StoreOwnerMenuPage = {
     </div>`,
   components: { AppHeader },
   setup() { return { Store }; },
-  data() { return { items: [], categories: [], loading: true, showForm: false, editItem: null, saving: false, formError: '', form: { name: '', price: '', old_price: '', description: '', is_recommended: false, image: null, imagePreview: '', item_category_id: '' } }; },
-  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadMenu(); this.loadCategories(); },
+  data() { return { items: [], categories: [], addonCats: [], loading: true, showForm: false, editItem: null, saving: false, formError: '', form: { name: '', price: '', old_price: '', description: '', is_recommended: false, image: null, imagePreview: '', item_category_id: '', addon_category_ids: [] } }; },
+  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadMenu(); this.loadCategories(); this.loadAddonCats(); },
   methods: {
     async loadMenu() { this.loading = true; try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-menu', { token }); this.items = Array.isArray(res) ? res : (res.data || []); } catch(e) {} this.loading = false; },
     async loadCategories() { try { const token = localStorage.getItem('storeOwnerToken'); this.categories = await API.post('/store-owner/get-categories', { token }) || []; } catch(e) {} },
-    startEdit(item) { this.editItem = item; this.form = { name: item.name, price: item.price, old_price: item.old_price || '', description: item.description || '', is_recommended: !!item.is_recommended, image: null, imagePreview: item.image || '', item_category_id: item.item_category_id || '' }; this.showForm = true; this.formError = ''; },
+    async loadAddonCats() { try { const token = localStorage.getItem('storeOwnerToken'); this.addonCats = await API.post('/store-owner/get-addons', { token }) || []; } catch(e) {} },
+    startEdit(item) { this.editItem = item; this.form = { name: item.name, price: item.price, old_price: item.old_price || '', description: item.description || '', is_recommended: !!item.is_recommended, image: null, imagePreview: item.image || '', item_category_id: item.item_category_id || '', addon_category_ids: item.addon_category_ids || [] }; this.showForm = true; this.formError = ''; },
     onImageChange(e) { const file = e.target.files[0]; if (file) { this.form.image = file; this.form.imagePreview = URL.createObjectURL(file); } },
     async saveItem() {
       if (!this.form.name || !this.form.price) { this.formError = 'Nombre y precio son requeridos'; return; }
@@ -322,6 +324,7 @@ const StoreOwnerMenuPage = {
         fd.append('description', this.form.description || '');
         fd.append('is_recommended', this.form.is_recommended ? 1 : 0);
         fd.append('item_category_id', this.form.item_category_id || '');
+        if (this.form.addon_category_ids) fd.append('addon_category_ids', JSON.stringify(this.form.addon_category_ids));
         if (this.form.image) fd.append('image', this.form.image);
         if (this.editItem) fd.append('item_id', this.editItem.id);
         const url = this.editItem ? '/public/api/store-owner/update-item' : '/public/api/store-owner/create-item';

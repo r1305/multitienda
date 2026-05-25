@@ -205,10 +205,25 @@ const StoreDetailPage = {
           </div>
         </div>
       </template>
+      
+      <div v-if="showAddonModal" class="modal-overlay" @click.self="showAddonModal=false">
+        <div class="modal-content">
+          <div class="modal-title">{{selectedItem ? selectedItem.name : ''}}</div>
+          <div v-if="selectedItem" v-for="cat in selectedItem.addon_categories" :key="cat.id" style="margin-bottom:14px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:6px">{{cat.name}} <small style="color:var(--muted)">({{cat.type==='SINGLE'?'elige 1':'elige varios'}})</small></div>
+            <div v-for="addon in cat.addons" :key="addon.id" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:6px;margin-bottom:4px;cursor:pointer" :style="{background:isAddonSelected(addon)?'#fff3e0':'var(--bg)'}" @click="toggleAddon(cat,addon)">
+              <i :class="isAddonSelected(addon)?'fas fa-check-circle':'far fa-circle'" :style="{color:isAddonSelected(addon)?'var(--primary)':'#ccc'}"></i>
+              <span style="flex:1;font-size:13px">{{addon.name}}</span>
+              <span style="font-size:13px;font-weight:600">+{{Store.formatPrice(addon.price)}}</span>
+            </div>
+          </div>
+          <button class="btn-primary" @click="confirmAddons">Agregar al carrito</button>
+        </div>
+      </div>
       <cart-float></cart-float>
     </div>`,
   components: { AppHeader, CartFloat },
-  data() { return { loading: true, restaurant: null, items: {}, recommended: [], activeCat: null }; },
+  data() { return { loading: true, restaurant: null, items: {}, recommended: [], activeCat: null, showAddonModal: false, selectedItem: null, selectedAddons: [] }; },
   setup() { return { Store }; },
   computed: {
     categories() { return Object.keys(this.items); },
@@ -228,8 +243,30 @@ const StoreDetailPage = {
   methods: {
     getQty(id) { return Store.getItemQty(id); },
     addToCart(item) {
-      Store.addItem({ id: item.id, name: item.name, price: parseFloat(item.price), image: item.image, restaurant_id: item.restaurant_id });
+      if (item.addon_categories && item.addon_categories.length) {
+        this.selectedItem = item;
+        this.selectedAddons = [];
+        this.showAddonModal = true;
+      } else {
+        Store.addItem({ id: item.id, name: item.name, price: parseFloat(item.price), image: item.image, restaurant_id: item.restaurant_id, selectedaddons: [] });
+      }
     },
+    confirmAddons() {
+      const addonTotal = this.selectedAddons.reduce((s, a) => s + parseFloat(a.price), 0);
+      Store.addItem({ id: this.selectedItem.id, name: this.selectedItem.name, price: parseFloat(this.selectedItem.price), image: this.selectedItem.image, restaurant_id: this.selectedItem.restaurant_id, selectedaddons: this.selectedAddons, addonTotal });
+      this.showAddonModal = false;
+    },
+    toggleAddon(cat, addon) {
+      if (cat.type === 'SINGLE' || (!cat.type && cat.addonlimit === 1)) {
+        this.selectedAddons = this.selectedAddons.filter(a => a.addon_category_id !== addon.addon_category_id);
+        this.selectedAddons.push(addon);
+      } else {
+        const idx = this.selectedAddons.findIndex(a => a.id === addon.id);
+        if (idx > -1) this.selectedAddons.splice(idx, 1);
+        else this.selectedAddons.push(addon);
+      }
+    },
+    isAddonSelected(addon) { return this.selectedAddons.some(a => a.id === addon.id); },
     removeFromCart(item) { Store.removeItem(item.id); }
   }
 };
