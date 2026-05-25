@@ -278,6 +278,8 @@ const StoreOwnerMenuPage = {
             <input v-model="form.old_price" type="number" step="0.01" placeholder="Precio anterior" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
           </div>
           <div style="margin-bottom:12px"><textarea v-model="form.description" placeholder="Descripcion" rows="2" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></textarea></div>
+          <div style="margin-bottom:12px"><label style="font-size:13px;color:var(--muted);display:block;margin-bottom:4px">Imagen del producto</label><input type="file" accept="image/*" ref="imageInput" @change="onImageChange" style="font-size:13px"></div>
+          <div v-if="form.imagePreview" style="margin-bottom:12px"><img :src="form.imagePreview" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
           <div style="margin-bottom:12px"><label style="font-size:13px;display:flex;align-items:center;gap:8px"><input type="checkbox" v-model="form.is_recommended"> Recomendado</label></div>
           <div style="display:flex;gap:8px">
             <button class="btn-primary" style="flex:1" @click="saveItem" :disabled="saving">{{saving ? 'Guardando...' : 'Guardar'}}</button>
@@ -289,21 +291,28 @@ const StoreOwnerMenuPage = {
     </div>`,
   components: { AppHeader },
   setup() { return { Store }; },
-  data() { return { items: [], loading: true, showForm: false, editItem: null, saving: false, formError: '', form: { name: '', price: '', old_price: '', description: '', is_recommended: false } }; },
+  data() { return { items: [], loading: true, showForm: false, editItem: null, saving: false, formError: '', form: { name: '', price: '', old_price: '', description: '', is_recommended: false, image: null, imagePreview: '' } }; },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadMenu(); },
   methods: {
     async loadMenu() { this.loading = true; try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-menu', { token }); this.items = Array.isArray(res) ? res : (res.data || []); } catch(e) {} this.loading = false; },
-    startEdit(item) { this.editItem = item; this.form = { name: item.name, price: item.price, old_price: item.old_price || '', description: item.description || '', is_recommended: !!item.is_recommended }; this.showForm = true; this.formError = ''; },
+    startEdit(item) { this.editItem = item; this.form = { name: item.name, price: item.price, old_price: item.old_price || '', description: item.description || '', is_recommended: !!item.is_recommended, image: null, imagePreview: item.image || '' }; this.showForm = true; this.formError = ''; },
+    onImageChange(e) { const file = e.target.files[0]; if (file) { this.form.image = file; this.form.imagePreview = URL.createObjectURL(file); } },
     async saveItem() {
       if (!this.form.name || !this.form.price) { this.formError = 'Nombre y precio son requeridos'; return; }
       this.saving = true; this.formError = '';
       try {
         const token = localStorage.getItem('storeOwnerToken');
-        if (this.editItem) {
-          await API.post('/store-owner/update-item', { token, item_id: this.editItem.id, name: this.form.name, price: this.form.price, old_price: this.form.old_price || 0, description: this.form.description, is_recommended: this.form.is_recommended ? 1 : 0 });
-        } else {
-          await API.post('/store-owner/create-item', { token, name: this.form.name, price: this.form.price, old_price: this.form.old_price || 0, description: this.form.description, is_recommended: this.form.is_recommended ? 1 : 0 });
-        }
+        const fd = new FormData();
+        fd.append('token', token);
+        fd.append('name', this.form.name);
+        fd.append('price', this.form.price);
+        fd.append('old_price', this.form.old_price || 0);
+        fd.append('description', this.form.description || '');
+        fd.append('is_recommended', this.form.is_recommended ? 1 : 0);
+        if (this.form.image) fd.append('image', this.form.image);
+        if (this.editItem) fd.append('item_id', this.editItem.id);
+        const url = this.editItem ? '/public/api/store-owner/update-item' : '/public/api/store-owner/create-item';
+        await fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd });
         this.showForm = false;
         await this.loadMenu();
       } catch(e) { this.formError = 'Error al guardar'; }

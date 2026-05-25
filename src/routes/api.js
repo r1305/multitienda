@@ -1,5 +1,13 @@
 const router = require('express').Router();
+const multer = require('multer');
+const path = require('path');
 const { jwtAuth } = require('../middleware/auth');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '../../public/uploads')),
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+const upload = multer({ storage });
 
 const user = require('../controllers/userController');
 const restaurant = require('../controllers/restaurantController');
@@ -109,8 +117,8 @@ router.post('/store-owner/mark-selfpickup-order-completed', storeOwner.markSelfp
 router.post('/store-owner/confirm-scheduled-order', storeOwner.confirmScheduledOrder);
 router.post('/store-owner/get-menu', storeOwner.getMenu);
 router.post('/store-owner/toggle-item-status', storeOwner.toggleItemStatus);
-router.post('/store-owner/create-item', storeOwner.createItem);
-router.post('/store-owner/update-item', storeOwner.updateItem);
+router.post('/store-owner/create-item', upload.single('image'), storeOwner.createItem);
+router.post('/store-owner/update-item', upload.single('image'), storeOwner.updateItem);
 router.post('/store-owner/delete-item', storeOwner.deleteItem);
 router.post('/store-owner/search-items', storeOwner.searchItems);
 router.post('/store-owner/edit-item', storeOwner.editItem);
