@@ -23,6 +23,9 @@ const AppHeader = {
         <i class="fas fa-map-marker-alt"></i>{{location.address.substring(0,30)}}...
       </div>
       <span v-else class="header-title">{{title}}</span>
+      <button style="background:none;padding:8px;font-size:18px;color:var(--text)" @click="Store.toggleTheme()">
+        <i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i>
+      </button>
       <button v-if="showLocation && Store.isLoggedIn" style="background:none;position:relative;padding:8px;font-size:18px;color:var(--text)" @click="$router.push('/notifications')">
         <i class="fas fa-bell"></i>
       </button>

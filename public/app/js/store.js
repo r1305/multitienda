@@ -6,6 +6,10 @@ const Store = Vue.reactive({
   user: JSON.parse(localStorage.getItem('appUser') || 'null'),
   currency: '$',
   currencyAlign: 'left',
+  theme: localStorage.getItem('appTheme') || 'light',
+
+  applyTheme() { document.documentElement.setAttribute('data-theme', this.theme); },
+  toggleTheme() { this.theme = this.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('appTheme', this.theme); this.applyTheme(); },
 
   get cartCount() { return this.cart.reduce((sum, i) => sum + i.quantity, 0); },
   get cartTotal() { return this.cart.reduce((sum, i) => sum + (i.addonTotal || parseFloat(i.price)) * i.quantity, 0); },

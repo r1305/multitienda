@@ -620,6 +620,7 @@ const AccountPage = {
           <div class="location-item" @click="$router.push('/wallet')"><i class="fas fa-wallet"></i><span class="location-item-text">Mi Billetera</span></div>
           <div class="location-item" @click="$router.push('/favorites')"><i class="fas fa-heart"></i><span class="location-item-text">Mis Favoritos</span></div>
           <div class="location-item" @click="$router.push('/notifications')"><i class="fas fa-bell"></i><span class="location-item-text">Notificaciones</span></div>
+          <div class="location-item" @click="Store.toggleTheme()"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i><span class="location-item-text">{{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</span></div>
           <div class="location-item" @click="doLogout" style="color:#e53935"><i class="fas fa-sign-out-alt" style="color:#e53935"></i><span class="location-item-text">Cerrar Sesión</span></div>
         </div>
       </template>

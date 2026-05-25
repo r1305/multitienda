@@ -54,6 +54,7 @@ const app = createApp({
 
 app.component('tab-bar', TabBar);
 app.use(router);
+Store.applyTheme();
 
 // Load settings on startup
 (async () => {
