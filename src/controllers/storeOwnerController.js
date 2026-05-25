@@ -340,3 +340,44 @@ exports.getEarnings = async (req, res) => {
     res.status(500).json({ labels: [], values: [], total: 0, orderCount: 0 });
   }
 };
+
+exports.createItem = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const { name, price, old_price, description, is_recommended } = req.body;
+    await sequelize.query(
+      'INSERT INTO items (name, price, old_price, description, is_recommended, restaurant_id, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,1,NOW(),NOW())',
+      { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, restaurant.id] }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+};
+
+exports.updateItem = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const { item_id, name, price, old_price, description, is_recommended } = req.body;
+    await sequelize.query(
+      'UPDATE items SET name=?, price=?, old_price=?, description=?, is_recommended=?, updated_at=NOW() WHERE id=? AND restaurant_id=?',
+      { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, item_id, restaurant.id] }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+};
+
+exports.deleteItem = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('DELETE FROM items WHERE id=? AND restaurant_id=?', { replacements: [req.body.item_id, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+};

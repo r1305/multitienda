@@ -109,6 +109,9 @@ router.post('/store-owner/mark-selfpickup-order-completed', storeOwner.markSelfp
 router.post('/store-owner/confirm-scheduled-order', storeOwner.confirmScheduledOrder);
 router.post('/store-owner/get-menu', storeOwner.getMenu);
 router.post('/store-owner/toggle-item-status', storeOwner.toggleItemStatus);
+router.post('/store-owner/create-item', storeOwner.createItem);
+router.post('/store-owner/update-item', storeOwner.updateItem);
+router.post('/store-owner/delete-item', storeOwner.deleteItem);
 router.post('/store-owner/search-items', storeOwner.searchItems);
 router.post('/store-owner/edit-item', storeOwner.editItem);
 router.post('/store-owner/update-item', storeOwner.updateItem);

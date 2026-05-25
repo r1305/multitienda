@@ -243,46 +243,74 @@ const StoreOwnerOrderDetailPage = {
 const StoreOwnerMenuPage = {
   template: `
     <div class="page" style="background:#fff;min-height:100vh">
-      <app-header title="Mi Menú" :back="true"></app-header>
+      <app-header title="Mi Menu" :back="true"></app-header>
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else>
-        <div v-if="!items.length" class="empty-state"><i class="fas fa-utensils"></i><p>Sin items en el menú</p></div>
+        <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;color:var(--muted)">{{items.length}} productos</span>
+          <button style="background:var(--primary);color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none" @click="showForm=true;editItem=null;form={name:'',price:'',old_price:'',description:'',is_recommended:false}"><i class="fas fa-plus"></i> Agregar</button>
+        </div>
         <div style="padding:0 16px">
           <div v-for="item in items" :key="item.id" class="item-card">
             <div class="item-card-info" style="flex:1">
               <div class="item-card-name">{{item.name}}</div>
-              <div class="item-card-price">{{Store.formatPrice(item.price)}}</div>
+              <div style="font-size:12px;color:var(--muted)">{{item.description || ''}}</div>
+              <div class="item-card-price">{{Store.formatPrice(item.price)}}<span v-if="item.old_price > 0" class="item-card-old-price">{{Store.formatPrice(item.old_price)}}</span></div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span :style="{fontSize:'11px',padding:'3px 8px',borderRadius:'4px',fontWeight:600,background:item.is_active?'#e8f5e9':'#ffebee',color:item.is_active?'#2e7d32':'#c62828'}">{{item.is_active ? 'Activo' : 'Inactivo'}}</span>
-              <button style="background:none;padding:6px" @click="toggleItem(item)">
-                <i :class="item.is_active ? 'fas fa-toggle-on' : 'fas fa-toggle-off'" :style="{fontSize:'22px',color:item.is_active?'var(--primary)':'#ccc'}"></i>
-              </button>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <span :style="{fontSize:'10px',padding:'2px 6px',borderRadius:'4px',fontWeight:600,background:item.is_active?'#e8f5e9':'#ffebee',color:item.is_active?'#2e7d32':'#c62828'}">{{item.is_active ? 'Activo' : 'Inactivo'}}</span>
+              <div style="display:flex;gap:4px">
+                <button style="background:none;padding:4px;font-size:14px;color:var(--primary)" @click="startEdit(item)"><i class="fas fa-edit"></i></button>
+                <button style="background:none;padding:4px;font-size:14px" @click="toggleItem(item)"><i :class="item.is_active?'fas fa-toggle-on':'fas fa-toggle-off'" :style="{color:item.is_active?'var(--primary)':'#ccc'}"></i></button>
+                <button style="background:none;padding:4px;font-size:14px;color:#e53935" @click="deleteItem(item)"><i class="fas fa-trash"></i></button>
+              </div>
             </div>
           </div>
+          <div v-if="!items.length" class="empty-state"><i class="fas fa-utensils"></i><p>Sin productos. Agrega tu primer producto.</p></div>
         </div>
       </template>
+      <div v-if="showForm" class="modal-overlay" @click.self="showForm=false">
+        <div class="modal-content">
+          <div class="modal-title">{{editItem ? 'Editar Producto' : 'Nuevo Producto'}}</div>
+          <div style="margin-bottom:12px"><input v-model="form.name" placeholder="Nombre *" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input v-model="form.price" type="number" step="0.01" placeholder="Precio *" required style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+            <input v-model="form.old_price" type="number" step="0.01" placeholder="Precio anterior" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+          </div>
+          <div style="margin-bottom:12px"><textarea v-model="form.description" placeholder="Descripcion" rows="2" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></textarea></div>
+          <div style="margin-bottom:12px"><label style="font-size:13px;display:flex;align-items:center;gap:8px"><input type="checkbox" v-model="form.is_recommended"> Recomendado</label></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-primary" style="flex:1" @click="saveItem" :disabled="saving">{{saving ? 'Guardando...' : 'Guardar'}}</button>
+            <button style="flex:1;padding:12px;border-radius:8px;background:var(--bg);border:none;font-size:14px;font-weight:500" @click="showForm=false">Cancelar</button>
+          </div>
+          <div v-if="formError" style="color:#c62828;font-size:12px;margin-top:8px;text-align:center">{{formError}}</div>
+        </div>
+      </div>
     </div>`,
   components: { AppHeader },
   setup() { return { Store }; },
-  data() { return { items: [], loading: true }; },
+  data() { return { items: [], loading: true, showForm: false, editItem: null, saving: false, formError: '', form: { name: '', price: '', old_price: '', description: '', is_recommended: false } }; },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadMenu(); },
   methods: {
-    async loadMenu() {
+    async loadMenu() { this.loading = true; try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-menu', { token }); this.items = Array.isArray(res) ? res : (res.data || []); } catch(e) {} this.loading = false; },
+    startEdit(item) { this.editItem = item; this.form = { name: item.name, price: item.price, old_price: item.old_price || '', description: item.description || '', is_recommended: !!item.is_recommended }; this.showForm = true; this.formError = ''; },
+    async saveItem() {
+      if (!this.form.name || !this.form.price) { this.formError = 'Nombre y precio son requeridos'; return; }
+      this.saving = true; this.formError = '';
       try {
         const token = localStorage.getItem('storeOwnerToken');
-        const res = await API.post('/store-owner/get-menu', { token });
-        this.items = Array.isArray(res) ? res : (res.data || []);
-      } catch(e) {}
-      this.loading = false;
+        if (this.editItem) {
+          await API.post('/store-owner/update-item', { token, item_id: this.editItem.id, name: this.form.name, price: this.form.price, old_price: this.form.old_price || 0, description: this.form.description, is_recommended: this.form.is_recommended ? 1 : 0 });
+        } else {
+          await API.post('/store-owner/create-item', { token, name: this.form.name, price: this.form.price, old_price: this.form.old_price || 0, description: this.form.description, is_recommended: this.form.is_recommended ? 1 : 0 });
+        }
+        this.showForm = false;
+        await this.loadMenu();
+      } catch(e) { this.formError = 'Error al guardar'; }
+      this.saving = false;
     },
-    async toggleItem(item) {
-      try {
-        const token = localStorage.getItem('storeOwnerToken');
-        await API.post('/store-owner/toggle-item-status', { token, item_id: item.id });
-        item.is_active = !item.is_active;
-      } catch(e) {}
-    }
+    async toggleItem(item) { try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/toggle-item-status', { token, item_id: item.id }); item.is_active = !item.is_active; } catch(e) {} },
+    async deleteItem(item) { if (!confirm('Eliminar ' + item.name + '?')) return; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-item', { token, item_id: item.id }); this.items = this.items.filter(i => i.id !== item.id); } catch(e) {} }
   }
 };
 
