@@ -116,6 +116,7 @@ const StoreOwnerOrdersPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -179,6 +180,7 @@ const StoreOwnerOrderDetailPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -246,6 +248,7 @@ const StoreOwnerHistoryPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history" class="active"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
       </nav>
       <div class="so-main">
         <div class="so-topbar"><span class="so-topbar-title">Historial</span></div>
@@ -295,6 +298,7 @@ const StoreOwnerEarningsPage = {
         <router-link to="/store-owner/earnings" class="active"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
       </nav>
       <div class="so-main">
         <div class="so-topbar"><span class="so-topbar-title">Ganancias</span></div>
@@ -384,6 +388,7 @@ const StoreOwnerMenuPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -505,6 +510,7 @@ const StoreOwnerCategoriesPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -583,6 +589,7 @@ const StoreOwnerAddonsPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -704,6 +711,7 @@ const StoreOwnerSettingsPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings" class="active"><i class="fas fa-cog"></i> Settings</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
       </nav>
       <div class="so-main">
         <div class="so-topbar"><span class="so-topbar-title">Settings</span></div>
@@ -761,13 +769,13 @@ const StoreOwnerSettingsPage = {
           </div>
           <div class="so-card">
             <div class="so-card-header">Opciones</div>
-            <div class="so-card-body">
-              <div class="so-form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" v-model="form.auto_acceptable"> Aceptar pedidos automaticamente</label></div>
-              <div class="so-form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" v-model="form.is_schedulable"> Permitir pedidos programados</label></div>
+            <div class="so-card-body" style="display:flex;flex-direction:column;gap:12px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px"><input type="checkbox" v-model="form.auto_acceptable"> Aceptar pedidos automaticamente</label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px"><input type="checkbox" v-model="form.is_schedulable"> Permitir pedidos programados</label>
             </div>
           </div>
-          <div style="padding:0 0 20px">
-            <button class="so-btn so-btn-primary" style="width:100%" @click="save" :disabled="saving"><i class="fas fa-save"></i> {{saving?'Guardando...':'Guardar Cambios'}}</button>
+          <div style="padding:16px 0 20px">
+            <button class="so-btn so-btn-primary" style="width:100%;justify-content:center;padding:14px" @click="save" :disabled="saving"><i class="fas fa-save"></i> {{saving?'Guardando...':'Guardar Cambios'}}</button>
           </div>
           <div v-if="successMsg" style="background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:8px;font-size:13px;text-align:center;margin-bottom:16px">{{successMsg}}</div>
         </template>
