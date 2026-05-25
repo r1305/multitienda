@@ -18,7 +18,7 @@ const AppHeader = {
   props: ['title', 'back', 'showLocation'],
   template: `
     <div class="header">
-      <button v-if="back" class="header-back" @click="$router.back()"><i class="fas fa-arrow-left"></i></button>
+      <button v-if="back" class="header-back" @click="goBack"><i class="fas fa-arrow-left"></i></button>
       <div v-if="showLocation && location" class="header-location" @click="$router.push('/location')">
         <i class="fas fa-map-marker-alt"></i>{{location.address.substring(0,30)}}...
       </div>
@@ -28,7 +28,8 @@ const AppHeader = {
       </button>
     </div>`,
   computed: { location() { return Store.location; } },
-  setup() { return { Store }; }
+  setup() { return { Store }; },
+  methods: { goBack() { if (typeof this.back === 'string') this.$router.push(this.back); else this.$router.back(); } }
 };
 
 // Cart Float Button

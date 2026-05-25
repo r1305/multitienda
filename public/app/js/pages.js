@@ -781,7 +781,7 @@ const OrdersPage = {
 const OrderDetailPage = {
   template: `
     <div class="page" style="background:#fff;min-height:100vh">
-      <app-header :title="'Orden #'+(order?order.unique_order_id:'')" :back="true"></app-header>
+      <app-header :title="'Orden #'+(order?order.unique_order_id:'')" :back="'/orders'"></app-header>
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else-if="order">
         <div style="padding:16px;text-align:center">
