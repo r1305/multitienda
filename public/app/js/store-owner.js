@@ -147,18 +147,18 @@ const StoreOwnerOrdersPage = {
       </div>
     </div>`,
   setup() { return { Store }; },
-  data() { return { orders: [], loading: true, activeTab: 'new', tabs: [{ id: 'new', label: 'Nuevos' }, { id: 'preparing', label: 'Preparando' }, { id: 'all', label: 'Todos' }] }; },
+  data() { return { orders: [], pastOrders: [], loading: true, activeTab: 'new', tabs: [{ id: 'new', label: 'Nuevos' }, { id: 'preparing', label: 'Preparando' }, { id: 'all', label: 'Todos' }] }; },
   computed: {
     filteredOrders() {
       if (this.activeTab === 'new') return this.orders.filter(o => [1, 11].includes(o.orderstatus_id));
       if (this.activeTab === 'preparing') return this.orders.filter(o => [2, 3, 4, 7].includes(o.orderstatus_id));
-      return this.orders;
+      return [...this.orders, ...this.pastOrders];
     }
   },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadOrders(); this.interval = setInterval(() => this.loadOrders(), 20000); },
   beforeUnmount() { if (this.interval) clearInterval(this.interval); },
   methods: {
-    async loadOrders() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-orders', { token }); this.orders = Array.isArray(res) ? res : (res.data || []); } catch(e) {} this.loading = false; },
+    async loadOrders() { try { const token = localStorage.getItem('storeOwnerToken'); const [res, past] = await Promise.all([API.post('/store-owner/get-orders', { token }), API.post('/store-owner/get-past-orders', { token })]); this.orders = Array.isArray(res) ? res : (res.data || []); this.pastOrders = Array.isArray(past) ? past : (past.data || []); } catch(e) {} this.loading = false; },
     statusText(id) { return {1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado'}[id] || ''; },
     statusClass(id) { return [5].includes(id)?'so-badge-success':[6].includes(id)?'so-badge-danger':'so-badge-info'; }
   }
@@ -254,7 +254,7 @@ const StoreOwnerHistoryPage = {
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
         <template v-else>
           <div v-if="!orders.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-history" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin pedidos completados</p></div>
-          <div class="so-card" v-for="o in orders" :key="o.id">
+          <div class="so-card" v-for="o in orders" :key="o.id" style="cursor:pointer" @click="$router.push('/store-owner/order/'+o.id)">
             <div class="so-card-body" style="display:flex;justify-content:space-between;align-items:center">
               <div>
                 <strong style="font-size:14px">#{{o.unique_order_id}}</strong>
@@ -366,6 +366,126 @@ const StoreOwnerEarningsPage = {
   }
 };
 
+const StoreOwnerMenuPage = {
+  template: `
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu" class="active"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar">
+          <span class="so-topbar-title">Productos</span>
+          <button class="so-btn so-btn-primary so-btn-sm" @click="openNew"><i class="fas fa-plus"></i> Nuevo</button>
+        </div>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu" class="active"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
+        </div>
+        <div style="margin-bottom:12px"><input v-model="search" placeholder="Buscar producto..." style="width:100%;padding:10px 14px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px"></div>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div v-if="!filteredItems.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-utensils" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin productos</p></div>
+          <div class="so-card" v-for="item in filteredItems" :key="item.id">
+            <div class="so-card-body" style="display:flex;gap:12px;align-items:center">
+              <img v-if="item.image" :src="item.image" style="width:50px;height:50px;border-radius:8px;object-fit:cover">
+              <div style="flex:1;min-width:0">
+                <strong style="font-size:14px">{{item.name}}</strong>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">{{Store.formatPrice(item.price)}} <span v-if="item.old_price>0" style="text-decoration:line-through">{{Store.formatPrice(item.old_price)}}</span></div>
+              </div>
+              <div style="display:flex;gap:4px;align-items:center">
+                <button class="so-btn so-btn-sm" :class="item.is_active?'so-btn-success':'so-btn-outline'" @click="toggleStatus(item)" style="font-size:11px">{{item.is_active?'ON':'OFF'}}</button>
+                <button class="so-btn so-btn-outline so-btn-sm" @click="startEdit(item)"><i class="fas fa-edit"></i></button>
+                <button class="so-btn so-btn-sm" style="background:#ffebee;color:#c62828" @click="deleteItem(item)"><i class="fas fa-trash"></i></button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+      <div v-if="showForm" class="so-modal" @click.self="showForm=false">
+        <div class="so-modal-content" style="max-height:90vh;overflow-y:auto">
+          <div class="so-modal-title">{{editItem ? 'Editar' : 'Nuevo'}} Producto</div>
+          <div class="so-form-group"><label>Nombre *</label><input v-model="form.name" placeholder="Nombre del producto"></div>
+          <div class="so-form-row">
+            <div class="so-form-group"><label>Precio *</label><input v-model="form.price" type="number" step="0.01"></div>
+            <div class="so-form-group"><label>Precio anterior</label><input v-model="form.old_price" type="number" step="0.01" placeholder="0"></div>
+          </div>
+          <div class="so-form-group"><label>Descripcion</label><textarea v-model="form.description" rows="2" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px;resize:vertical"></textarea></div>
+          <div class="so-form-group"><label>Categoria</label><select v-model="form.item_category_id" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px"><option :value="null">-- Sin categoria --</option><option v-for="c in categories" :key="c.id" :value="c.id">{{c.name}}</option></select></div>
+          <div class="so-form-group"><label>Addon Categories</label><div v-for="ac in addonCats" :key="ac.id" style="margin-bottom:4px"><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" :value="ac.id" v-model="form.addon_category_ids"> {{ac.name}}</label></div></div>
+          <div class="so-form-group"><label>Imagen</label><input type="file" accept="image/*" @change="onFile" style="font-size:13px"></div>
+          <div class="so-form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" v-model="form.is_recommended"> Recomendado</label></div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="so-btn so-btn-primary" style="flex:1" @click="save" :disabled="saving">{{saving?'Guardando...':'Guardar'}}</button>
+            <button class="so-btn so-btn-outline" style="flex:1" @click="showForm=false">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>`,
+  setup() { return { Store }; },
+  data() { return { items: [], categories: [], addonCats: [], loading: true, search: '', showForm: false, editItem: null, saving: false, imageFile: null, form: { name: '', price: '', old_price: '', description: '', item_category_id: null, addon_category_ids: [], is_recommended: false } }; },
+  computed: {
+    filteredItems() { if (!this.search) return this.items; const q = this.search.toLowerCase(); return this.items.filter(i => i.name.toLowerCase().includes(q)); }
+  },
+  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.load(); },
+  methods: {
+    async load() {
+      this.loading = true;
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        const [items, cats, addons] = await Promise.all([
+          API.post('/store-owner/get-menu', { token }),
+          API.post('/store-owner/get-categories', { token }),
+          API.post('/store-owner/get-addons', { token })
+        ]);
+        this.items = Array.isArray(items) ? items : [];
+        this.categories = Array.isArray(cats) ? cats : [];
+        this.addonCats = Array.isArray(addons) ? addons : [];
+      } catch(e) {}
+      this.loading = false;
+    },
+    openNew() { this.editItem = null; this.imageFile = null; this.form = { name: '', price: '', old_price: '', description: '', item_category_id: null, addon_category_ids: [], is_recommended: false }; this.showForm = true; },
+    startEdit(item) { this.editItem = item; this.imageFile = null; this.form = { name: item.name, price: item.price, old_price: item.old_price || '', description: item.description || '', item_category_id: item.item_category_id || null, addon_category_ids: item.addon_category_ids || [], is_recommended: !!item.is_recommended }; this.showForm = true; },
+    onFile(e) { this.imageFile = e.target.files[0] || null; },
+    async save() {
+      if (!this.form.name || !this.form.price) return;
+      this.saving = true;
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        const fd = new FormData();
+        fd.append('token', token);
+        fd.append('name', this.form.name);
+        fd.append('price', this.form.price);
+        fd.append('old_price', this.form.old_price || 0);
+        fd.append('description', this.form.description || '');
+        fd.append('item_category_id', this.form.item_category_id || '');
+        fd.append('addon_category_ids', JSON.stringify(this.form.addon_category_ids));
+        fd.append('is_recommended', this.form.is_recommended ? 1 : 0);
+        if (this.imageFile) fd.append('image', this.imageFile);
+        if (this.editItem) {
+          fd.append('item_id', this.editItem.id);
+          await fetch('/public/api/store-owner/update-item', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
+        } else {
+          await fetch('/public/api/store-owner/create-item', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
+        }
+        this.showForm = false;
+        await this.load();
+      } catch(e) { console.error(e); }
+      this.saving = false;
+    },
+    async toggleStatus(item) { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/toggle-item-status', { token, item_id: item.id }); if (res.success) item.is_active = res.is_active; } catch(e) {} },
+    async deleteItem(item) { if (!confirm('Eliminar ' + item.name + '?')) return; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-item', { token, item_id: item.id }); this.items = this.items.filter(i => i.id !== item.id); } catch(e) {} }
+  }
+};
+
 const StoreOwnerCategoriesPage = {
   template: `
     <div class="so-layout">
@@ -422,10 +542,24 @@ const StoreOwnerCategoriesPage = {
   data() { return { categories: [], loading: true, showForm: false, editCat: null, saving: false, form: { name: '' } }; },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.load(); },
   methods: {
-    async load() { this.loading = true; try { const token = localStorage.getItem('storeOwnerToken'); this.categories = await API.post('/store-owner/get-categories', { token }) || []; } catch(e) {} this.loading = false; },
+    async load() { this.loading = true; try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-categories', { token }); this.categories = Array.isArray(res) ? res : []; } catch(e) {} this.loading = false; },
     startEdit(cat) { this.editCat = cat; this.form = { name: cat.name }; this.showForm = true; },
-    async saveCat() { if (!this.form.name) return; this.saving = true; try { const token = localStorage.getItem('storeOwnerToken'); if (this.editCat) { await API.post('/store-owner/update-category', { token, category_id: this.editCat.id, name: this.form.name }); } else { await API.post('/store-owner/create-category', { token, name: this.form.name }); } this.showForm = false; await this.load(); } catch(e) {} this.saving = false; },
-    async deleteCat(cat) { if (!confirm('Eliminar '+cat.name+'?')) return; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-category', { token, category_id: cat.id }); this.categories = this.categories.filter(c => c.id !== cat.id); } catch(e) {} }
+    async saveCat() {
+      if (!this.form.name) return;
+      this.saving = true;
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        let res;
+        if (this.editCat) { res = await API.post('/store-owner/update-category', { token, category_id: this.editCat.id, name: this.form.name }); }
+        else { res = await API.post('/store-owner/create-category', { token, name: this.form.name }); }
+        if (res.success !== false) { this.showForm = false; await this.load(); }
+      } catch(e) { console.error(e); }
+      this.saving = false;
+    },
+    async deleteCat(cat) {
+      if (!confirm('Eliminar ' + cat.name + '?')) return;
+      try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/delete-category', { token, category_id: cat.id }); if (res.success !== false) this.categories = this.categories.filter(c => c.id !== cat.id); } catch(e) { console.error(e); }
+    }
   }
 };
 
@@ -511,17 +645,40 @@ const StoreOwnerAddonsPage = {
       this.loading = true;
       try {
         const token = localStorage.getItem('storeOwnerToken');
-        const cats = await API.post('/store-owner/get-addons', { token }) || [];
-        for (let cat of cats) { const items = await API.post('/store-owner/get-addon-items', { token, addon_category_id: cat.id }); cat.items = Array.isArray(items) ? items : []; }
-        this.addonCats = cats;
-      } catch(e) {}
+        const cats = await API.post('/store-owner/get-addons', { token });
+        const list = Array.isArray(cats) ? cats : [];
+        for (let cat of list) { const items = await API.post('/store-owner/get-addon-items', { token, addon_category_id: cat.id }); cat.items = Array.isArray(items) ? items : []; }
+        this.addonCats = list;
+      } catch(e) { console.error(e); }
       this.loading = false;
     },
     startEditCat(cat) { this.editCat = cat; this.catForm = { name: cat.name, type: cat.type || 'SINGLE' }; this.showCatForm = true; },
-    async saveCat() { if (!this.catForm.name) return; const token = localStorage.getItem('storeOwnerToken'); if (this.editCat) { await API.post('/store-owner/update-addon', { token, addon_id: this.editCat.id, name: this.catForm.name, type: this.catForm.type }); } else { await API.post('/store-owner/create-addon', { token, name: this.catForm.name, type: this.catForm.type }); } this.showCatForm = false; await this.load(); },
-    async deleteCat(cat) { if (!confirm('Eliminar '+cat.name+'?')) return; const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-addon', { token, addon_id: cat.id }); this.addonCats = this.addonCats.filter(c => c.id !== cat.id); },
+    async saveCat() {
+      if (!this.catForm.name) return;
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        if (this.editCat) { await API.post('/store-owner/update-addon', { token, addon_id: this.editCat.id, name: this.catForm.name, type: this.catForm.type }); }
+        else { await API.post('/store-owner/create-addon', { token, name: this.catForm.name, type: this.catForm.type }); }
+        this.showCatForm = false; await this.load();
+      } catch(e) { console.error(e); }
+    },
+    async deleteCat(cat) {
+      if (!confirm('Eliminar ' + cat.name + '?')) return;
+      try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-addon', { token, addon_id: cat.id }); this.addonCats = this.addonCats.filter(c => c.id !== cat.id); } catch(e) { console.error(e); }
+    },
     startEditAddon(cat, addon) { this.editAddon = addon; this.addonCatId = cat.id; this.addonForm = { name: addon.name, price: addon.price }; this.showAddonForm = true; },
-    async saveAddon() { if (!this.addonForm.name) return; const token = localStorage.getItem('storeOwnerToken'); if (this.editAddon) { await API.post('/store-owner/update-addon-item', { token, addon_id: this.editAddon.id, name: this.addonForm.name, price: this.addonForm.price || 0 }); } else { await API.post('/store-owner/create-addon-item', { token, addon_category_id: this.addonCatId, name: this.addonForm.name, price: this.addonForm.price || 0 }); } this.showAddonForm = false; await this.load(); },
-    async deleteAddon(cat, addon) { if (!confirm('Eliminar '+addon.name+'?')) return; const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-addon-item', { token, addon_id: addon.id }); cat.items = cat.items.filter(a => a.id !== addon.id); }
+    async saveAddon() {
+      if (!this.addonForm.name) return;
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        if (this.editAddon) { await API.post('/store-owner/update-addon-item', { token, addon_id: this.editAddon.id, name: this.addonForm.name, price: this.addonForm.price || 0 }); }
+        else { await API.post('/store-owner/create-addon-item', { token, addon_category_id: this.addonCatId, name: this.addonForm.name, price: this.addonForm.price || 0 }); }
+        this.showAddonForm = false; await this.load();
+      } catch(e) { console.error(e); }
+    },
+    async deleteAddon(cat, addon) {
+      if (!confirm('Eliminar ' + addon.name + '?')) return;
+      try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-addon-item', { token, addon_id: addon.id }); cat.items = cat.items.filter(a => a.id !== addon.id); } catch(e) { console.error(e); }
+    }
   }
 };

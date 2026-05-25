@@ -72,8 +72,20 @@ exports.getSingleOrder = async (req, res) => {
     const order = await Order.findByPk(req.body.order_id, {
       include: [{ association: 'orderitems', include: [{ association: 'order_item_addons' }] }],
     });
-    res.json(order);
+    if (!order) return res.json(null);
+    const result = order.toJSON();
+    // Fill empty item names from items table
+    if (result.orderitems && result.orderitems.length) {
+      for (let oi of result.orderitems) {
+        if (!oi.name && oi.item_id) {
+          const [rows] = await sequelize.query('SELECT name, price FROM items WHERE id = ?', { replacements: [oi.item_id] });
+          if (rows[0]) { oi.name = rows[0].name; if (!parseFloat(oi.price)) oi.price = rows[0].price; }
+        }
+      }
+    }
+    res.json(result);
   } catch (err) {
+    console.error('getSingleOrder error:', err.message);
     res.status(500).json(null);
   }
 };
@@ -187,7 +199,8 @@ exports.getPastOrders = async (req, res) => {
     if (!restaurant) return res.status(403).json([]);
     const orders = await Order.findAll({
       where: { restaurant_id: restaurant.id, orderstatus_id: { [Op.in]: [5, 6] } },
-      order: [['id', 'DESC']], limit: 20,
+      include: [{ association: 'orderitems' }],
+      order: [['id', 'DESC']], limit: 50,
     });
     res.json(orders);
   } catch (err) {
