@@ -219,11 +219,6 @@ router.post('/admin/store-owner/:id/stores/save', adminController.updateStoreOwn
 router.get('/admin/coupons', adminController.coupons);
 
 // Pages
-router.get('/admin/pages', adminController.pages);
-router.get('/admin/page/edit/:id', adminController.editPage);
-router.post('/admin/page/new/save', adminController.createPage);
-router.post('/admin/page/edit/save', adminController.updatePage);
-router.get('/admin/page/delete/:id', adminController.deletePage);
 
 // Translations
 router.get('/admin/translations', adminController.translations);

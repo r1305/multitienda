@@ -30,8 +30,6 @@ router.post('/get-restaurant-info/:slug', restaurant.getRestaurantInfo);
 router.post('/get-restaurant-info-by-id/:id', restaurant.getRestaurantInfoById);
 router.post('/get-restaurant-info-and-operational-status', restaurant.getRestaurantInfoAndOperationalStatus);
 router.post('/get-restaurant-items/:slug', restaurant.getRestaurantItems);
-router.post('/get-pages', misc.getPages);
-router.post('/get-single-page', misc.getSinglePage);
 router.post('/search-restaurants', restaurant.searchRestaurants);
 router.post('/send-otp', misc.sendOtp);
 router.post('/verify-otp', misc.verifyOtp);
