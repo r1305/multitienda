@@ -103,10 +103,6 @@ var body = `
                                 <p class="text-muted" style="font-size:12px">Se muestra como icono en la pesta\u00f1a del navegador y al agregar a inicio</p>
                                 ${s.faviconUrl ? '<div class="mb-2"><img src="'+s.faviconUrl+'" width="48" height="48" style="border-radius:8px;border:1px solid #eee"></div>' : ''}
                             </div>
-                            <form method="POST" action="/admin/settings/upload-favicon" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
-                                <input type="file" name="favicon" class="form-control-file" accept="image/*" required style="max-width:250px">
-                                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
-                            </form>
                         </div>
                     </div>
                 </div>
@@ -114,6 +110,15 @@ var body = `
         </div>
         <div class="card-footer"><button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Save Settings</button></div>
     </div>
-</form>`;
+</form>
+<div class="card mt-3">
+    <div class="card-header">Upload Favicon</div>
+    <div class="card-body">
+        <form method="POST" action="/admin/settings/upload-favicon" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+            <input type="file" name="favicon" class="form-control-file" accept="image/*" required style="max-width:250px">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
+        </form>
+    </div>
+</div>`;
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>
