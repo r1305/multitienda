@@ -573,18 +573,18 @@ exports.createCoupon = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    const { name, code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user } = req.body;
-    await sequelize.query('INSERT INTO coupons (name, code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user, restaurant_id, count, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,0,NOW(),NOW())', { replacements: [name || '', (code || '').toUpperCase(), discount_type || 'FIXED', discount || 0, max_discount || 0, min_sub_total || 0, max_count || 0, max_count_per_user || 0, restaurant.id] });
+    const { code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user } = req.body;
+    await sequelize.query('INSERT INTO coupons (code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user, restaurant_id, count, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,0,NOW(),NOW())', { replacements: [(code || '').toUpperCase(), discount_type || 'FIXED', discount || 0, max_discount || 0, min_sub_total || 0, max_count || 0, max_count_per_user || 0, restaurant.id] });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ success: false }); }
+  } catch (err) { console.error('createCoupon error:', err.message); res.status(500).json({ success: false }); }
 };
 
 exports.updateCoupon = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    const { coupon_id, name, code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user } = req.body;
-    await sequelize.query('UPDATE coupons SET name=?, code=?, discount_type=?, discount=?, max_discount=?, min_sub_total=?, max_count=?, max_count_per_user=?, updated_at=NOW() WHERE id=? AND restaurant_id=?', { replacements: [name || '', (code || '').toUpperCase(), discount_type || 'FIXED', discount || 0, max_discount || 0, min_sub_total || 0, max_count || 0, max_count_per_user || 0, coupon_id, restaurant.id] });
+    const { coupon_id, code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user } = req.body;
+    await sequelize.query('UPDATE coupons SET code=?, discount_type=?, discount=?, max_discount=?, min_sub_total=?, max_count=?, max_count_per_user=?, updated_at=NOW() WHERE id=? AND restaurant_id=?', { replacements: [(code || '').toUpperCase(), discount_type || 'FIXED', discount || 0, max_discount || 0, min_sub_total || 0, max_count || 0, max_count_per_user || 0, coupon_id, restaurant.id] });
     res.json({ success: true });
   } catch (err) { res.status(500).json({ success: false }); }
 };
