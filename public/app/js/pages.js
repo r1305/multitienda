@@ -326,12 +326,13 @@ const CartPage = {
       if (!this.couponCode) return;
       try {
         const res = await API.applyCoupon(null, this.couponCode, null, this.subtotal);
-        if (res.success) {
+        if (res.success && res.coupon) {
           this.couponOk = true;
-          if (res.discount_type === 'PERCENTAGE') this.discount = this.subtotal * res.discount / 100;
-          else this.discount = parseFloat(res.discount || 0);
+          if (res.coupon.discount_type === 'PERCENTAGE') this.discount = this.subtotal * parseFloat(res.coupon.discount) / 100;
+          else this.discount = parseFloat(res.coupon.discount || 0);
+          if (res.coupon.max_discount && this.discount > parseFloat(res.coupon.max_discount)) this.discount = parseFloat(res.coupon.max_discount);
           this.couponMsg = 'Cupón aplicado!';
-        } else { this.couponOk = false; this.couponMsg = 'Cupón inválido'; this.discount = 0; }
+        } else { this.couponOk = false; this.couponMsg = res.message || 'Cupón inválido'; this.discount = 0; }
       } catch(e) { this.couponMsg = 'Error aplicando cupón'; }
     },
     checkout() { this.$router.push('/checkout'); }
