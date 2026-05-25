@@ -431,61 +431,78 @@ const StoreOwnerCategoriesPage = {
 
 const StoreOwnerAddonsPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
-      <app-header title="Addons" :back="true"></app-header>
-      <div v-if="loading" class="loading"><div class="spinner"></div></div>
-      <template v-else>
-        <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:var(--muted)">{{addonCats.length}} categorias de addons</span>
-          <button style="background:var(--primary);color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none" @click="showCatForm=true;editCat=null;catForm={name:'',type:'SINGLE'}"><i class="fas fa-plus"></i> Nueva Categoria</button>
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons" class="active"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar">
+          <span class="so-topbar-title">Addons</span>
+          <button class="so-btn so-btn-primary so-btn-sm" @click="showCatForm=true;editCat=null;catForm={name:'',type:'SINGLE'}"><i class="fas fa-plus"></i> Nueva</button>
         </div>
-        <div style="padding:0 16px">
-          <div v-for="cat in addonCats" :key="cat.id" style="border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg)">
-              <div><strong style="font-size:14px">{{cat.name}}</strong><br><small style="color:var(--muted)">{{cat.type === 'SINGLE' ? 'Single' : 'Multiple'}}</small></div>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
+        </div>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div v-if="!addonCats.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-puzzle-piece" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin addon categories</p></div>
+          <div class="so-card" v-for="cat in addonCats" :key="cat.id">
+            <div class="so-card-header">
+              <div><strong>{{cat.name}}</strong> <span class="so-badge so-badge-info">{{cat.type==='SINGLE'?'Single':'Multiple'}}</span></div>
               <div style="display:flex;gap:4px">
-                <button style="background:none;padding:4px;font-size:13px;color:var(--primary)" @click="startEditCat(cat)"><i class="fas fa-edit"></i></button>
-                <button style="background:none;padding:4px;font-size:13px;color:#e53935" @click="deleteCat(cat)"><i class="fas fa-trash"></i></button>
+                <button class="so-btn so-btn-outline so-btn-sm" @click="startEditCat(cat)"><i class="fas fa-edit"></i></button>
+                <button class="so-btn so-btn-sm" style="background:#ffebee;color:#c62828" @click="deleteCat(cat)"><i class="fas fa-trash"></i></button>
               </div>
             </div>
-            <div style="padding:8px 12px">
-              <div v-for="addon in cat.items" :key="addon.id" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
-                <div><span style="font-size:13px">{{addon.name}}</span> <span style="font-size:12px;color:var(--muted)">{{Store.formatPrice(addon.price)}}</span></div>
-                <div style="display:flex;gap:4px">
-                  <button style="background:none;padding:2px;font-size:12px;color:var(--primary)" @click="startEditAddon(cat, addon)"><i class="fas fa-edit"></i></button>
-                  <button style="background:none;padding:2px;font-size:12px;color:#e53935" @click="deleteAddon(cat, addon)"><i class="fas fa-trash"></i></button>
-                </div>
-              </div>
-              <button style="background:none;color:var(--primary);font-size:12px;font-weight:600;padding:8px 0;border:none" @click="showAddonForm=true;addonCatId=cat.id;editAddon=null;addonForm={name:'',price:''}"><i class="fas fa-plus"></i> Agregar opcion</button>
+            <div class="so-card-body" style="padding:0">
+              <table class="so-table">
+                <tbody>
+                  <tr v-for="addon in cat.items" :key="addon.id">
+                    <td>{{addon.name}}</td>
+                    <td style="font-weight:600">{{Store.formatPrice(addon.price)}}</td>
+                    <td style="width:80px"><button class="so-btn so-btn-outline so-btn-sm" @click="startEditAddon(cat,addon)"><i class="fas fa-edit"></i></button> <button class="so-btn so-btn-sm" style="background:#ffebee;color:#c62828" @click="deleteAddon(cat,addon)"><i class="fas fa-trash"></i></button></td>
+                  </tr>
+                  <tr v-if="!cat.items||!cat.items.length"><td colspan="3" style="color:var(--muted);font-size:12px">Sin opciones</td></tr>
+                </tbody>
+              </table>
+              <div style="padding:8px 12px"><button class="so-btn so-btn-outline so-btn-sm" @click="showAddonForm=true;addonCatId=cat.id;editAddon=null;addonForm={name:'',price:''}"><i class="fas fa-plus"></i> Agregar opcion</button></div>
             </div>
           </div>
-          <div v-if="!addonCats.length" class="empty-state"><i class="fas fa-puzzle-piece"></i><p>Sin addon categories</p></div>
-        </div>
-      </template>
-      <div v-if="showCatForm" class="modal-overlay" @click.self="showCatForm=false">
-        <div class="modal-content">
-          <div class="modal-title">{{editCat ? 'Editar Categoria' : 'Nueva Categoria de Addon'}}</div>
-          <div style="margin-bottom:12px"><input v-model="catForm.name" placeholder="Nombre *" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></div>
-          <div style="margin-bottom:12px"><select v-model="catForm.type" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"><option value="SINGLE">Single (una opcion)</option><option value="MULTIPLE">Multiple (varias)</option></select></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn-primary" style="flex:1" @click="saveCat">Guardar</button>
-            <button style="flex:1;padding:12px;border-radius:8px;background:var(--bg);border:none" @click="showCatForm=false">Cancelar</button>
+        </template>
+      </div>
+      <div v-if="showCatForm" class="so-modal" @click.self="showCatForm=false">
+        <div class="so-modal-content">
+          <div class="so-modal-title">{{editCat?'Editar':'Nueva'}} Categoria de Addon</div>
+          <div class="so-form-group"><label>Nombre *</label><input v-model="catForm.name" placeholder="Ej: Tamano, Toppings"></div>
+          <div class="so-form-group"><label>Tipo</label><select v-model="catForm.type"><option value="SINGLE">Single (elige 1)</option><option value="MULTIPLE">Multiple (varias)</option></select></div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="so-btn so-btn-primary" style="flex:1" @click="saveCat">Guardar</button>
+            <button class="so-btn so-btn-outline" style="flex:1" @click="showCatForm=false">Cancelar</button>
           </div>
         </div>
       </div>
-      <div v-if="showAddonForm" class="modal-overlay" @click.self="showAddonForm=false">
-        <div class="modal-content">
-          <div class="modal-title">{{editAddon ? 'Editar Opcion' : 'Nueva Opcion'}}</div>
-          <div style="margin-bottom:12px"><input v-model="addonForm.name" placeholder="Nombre *" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></div>
-          <div style="margin-bottom:12px"><input v-model="addonForm.price" type="number" step="0.01" placeholder="Precio" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn-primary" style="flex:1" @click="saveAddon">Guardar</button>
-            <button style="flex:1;padding:12px;border-radius:8px;background:var(--bg);border:none" @click="showAddonForm=false">Cancelar</button>
+      <div v-if="showAddonForm" class="so-modal" @click.self="showAddonForm=false">
+        <div class="so-modal-content">
+          <div class="so-modal-title">{{editAddon?'Editar':'Nueva'}} Opcion</div>
+          <div class="so-form-group"><label>Nombre *</label><input v-model="addonForm.name" placeholder="Ej: Grande, Queso extra"></div>
+          <div class="so-form-group"><label>Precio</label><input v-model="addonForm.price" type="number" step="0.01" placeholder="0.00"></div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="so-btn so-btn-primary" style="flex:1" @click="saveAddon">Guardar</button>
+            <button class="so-btn so-btn-outline" style="flex:1" @click="showAddonForm=false">Cancelar</button>
           </div>
         </div>
       </div>
     </div>`,
-  components: { AppHeader },
   setup() { return { Store }; },
   data() { return { addonCats: [], loading: true, showCatForm: false, editCat: null, catForm: { name: '', type: 'SINGLE' }, showAddonForm: false, editAddon: null, addonCatId: null, addonForm: { name: '', price: '' } }; },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.load(); },
@@ -495,31 +512,16 @@ const StoreOwnerAddonsPage = {
       try {
         const token = localStorage.getItem('storeOwnerToken');
         const cats = await API.post('/store-owner/get-addons', { token }) || [];
-        for (let cat of cats) {
-          const items = await API.post('/store-owner/get-addon-items', { token, addon_category_id: cat.id });
-          cat.items = Array.isArray(items) ? items : [];
-        }
+        for (let cat of cats) { const items = await API.post('/store-owner/get-addon-items', { token, addon_category_id: cat.id }); cat.items = Array.isArray(items) ? items : []; }
         this.addonCats = cats;
       } catch(e) {}
       this.loading = false;
     },
     startEditCat(cat) { this.editCat = cat; this.catForm = { name: cat.name, type: cat.type || 'SINGLE' }; this.showCatForm = true; },
-    async saveCat() {
-      if (!this.catForm.name) return;
-      const token = localStorage.getItem('storeOwnerToken');
-      if (this.editCat) { await API.post('/store-owner/update-addon', { token, addon_id: this.editCat.id, name: this.catForm.name, type: this.catForm.type }); }
-      else { await API.post('/store-owner/create-addon', { token, name: this.catForm.name, type: this.catForm.type }); }
-      this.showCatForm = false; await this.load();
-    },
-    async deleteCat(cat) { if (!confirm('Eliminar ' + cat.name + ' y todas sus opciones?')) return; const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-addon', { token, addon_id: cat.id }); this.addonCats = this.addonCats.filter(c => c.id !== cat.id); },
+    async saveCat() { if (!this.catForm.name) return; const token = localStorage.getItem('storeOwnerToken'); if (this.editCat) { await API.post('/store-owner/update-addon', { token, addon_id: this.editCat.id, name: this.catForm.name, type: this.catForm.type }); } else { await API.post('/store-owner/create-addon', { token, name: this.catForm.name, type: this.catForm.type }); } this.showCatForm = false; await this.load(); },
+    async deleteCat(cat) { if (!confirm('Eliminar '+cat.name+'?')) return; const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-addon', { token, addon_id: cat.id }); this.addonCats = this.addonCats.filter(c => c.id !== cat.id); },
     startEditAddon(cat, addon) { this.editAddon = addon; this.addonCatId = cat.id; this.addonForm = { name: addon.name, price: addon.price }; this.showAddonForm = true; },
-    async saveAddon() {
-      if (!this.addonForm.name) return;
-      const token = localStorage.getItem('storeOwnerToken');
-      if (this.editAddon) { await API.post('/store-owner/update-addon-item', { token, addon_id: this.editAddon.id, name: this.addonForm.name, price: this.addonForm.price || 0 }); }
-      else { await API.post('/store-owner/create-addon-item', { token, addon_category_id: this.addonCatId, name: this.addonForm.name, price: this.addonForm.price || 0 }); }
-      this.showAddonForm = false; await this.load();
-    },
-    async deleteAddon(cat, addon) { if (!confirm('Eliminar ' + addon.name + '?')) return; const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-addon-item', { token, addon_id: addon.id }); cat.items = cat.items.filter(a => a.id !== addon.id); }
+    async saveAddon() { if (!this.addonForm.name) return; const token = localStorage.getItem('storeOwnerToken'); if (this.editAddon) { await API.post('/store-owner/update-addon-item', { token, addon_id: this.editAddon.id, name: this.addonForm.name, price: this.addonForm.price || 0 }); } else { await API.post('/store-owner/create-addon-item', { token, addon_category_id: this.addonCatId, name: this.addonForm.name, price: this.addonForm.price || 0 }); } this.showAddonForm = false; await this.load(); },
+    async deleteAddon(cat, addon) { if (!confirm('Eliminar '+addon.name+'?')) return; const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-addon-item', { token, addon_id: addon.id }); cat.items = cat.items.filter(a => a.id !== addon.id); }
   }
 };
