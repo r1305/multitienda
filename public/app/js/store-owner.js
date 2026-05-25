@@ -868,7 +868,7 @@ const StoreOwnerCouponsPage = {
               <div>
                 <strong style="font-size:14px">{{c.code}}</strong>
                 <div style="font-size:12px;color:var(--muted);margin-top:2px">{{c.discount_type==='PERCENTAGE' ? parseFloat(c.discount)+'%' : Store.formatPrice(c.discount)}} off</div>
-                <div style="font-size:11px;color:var(--muted)">Usado: {{c.count || 0}} veces</div>
+                <div style="font-size:11px;color:var(--muted)">Usado: {{c.used_count || 0}} veces</div>
               </div>
               <div style="display:flex;gap:4px">
                 <button class="so-btn so-btn-outline so-btn-sm" @click="startEdit(c)"><i class="fas fa-edit"></i></button>

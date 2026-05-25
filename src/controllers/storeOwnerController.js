@@ -564,7 +564,7 @@ exports.getCoupons = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json([]);
-    const [coupons] = await sequelize.query('SELECT * FROM coupons WHERE restaurant_id = ? ORDER BY id DESC', { replacements: [restaurant.id] });
+    const [coupons] = await sequelize.query('SELECT c.*, (SELECT COUNT(*) FROM orders WHERE coupon_name = c.code) as used_count FROM coupons c WHERE c.restaurant_id = ? ORDER BY c.id DESC', { replacements: [restaurant.id] });
     res.json(coupons);
   } catch (err) { res.status(500).json([]); }
 };

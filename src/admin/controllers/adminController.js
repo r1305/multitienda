@@ -644,7 +644,7 @@ exports.makeDefaultPopularGeoLocation = async (req, res) => {
 // ==================== 10. COUPONS ====================
 exports.coupons = async (req, res) => {
   try {
-    const [coupons] = await sequelize.query('SELECT * FROM coupons ORDER BY id DESC');
+    const [coupons] = await sequelize.query('SELECT c.*, r.name as restaurant_name, (SELECT COUNT(*) FROM orders WHERE coupon_name = c.code) as used_count FROM coupons c LEFT JOIN restaurants r ON c.restaurant_id = r.id ORDER BY c.id DESC');
     res.render('admin/coupons', { user: req.session.user, coupons, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     console.error(err);

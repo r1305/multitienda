@@ -19,7 +19,7 @@ if (typeof coupons !== 'undefined' && coupons.length) {
       <td>${c.name || '-'}</td>
       <td>${c.discount_type == 'PERCENTAGE' ? 'Percentage' : 'Fixed'}</td>
       <td>${c.discount}${c.discount_type == 'PERCENTAGE' ? '%' : (typeof currency !== 'undefined' ? currency : '$')}</td>
-      <td>${c.count || 0}</td>
+      <td>${c.used_count || 0}</td>
       <td>${c.restaurant_name || 'Global'}</td>
       <td><span class="badge badge-${c.is_active !== 0 ? 'success' : 'danger'}">${c.is_active !== 0 ? 'Active' : 'Inactive'}</span></td>
     </tr>`;
