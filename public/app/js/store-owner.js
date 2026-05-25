@@ -1,6 +1,7 @@
 // ==================== STORE OWNER APP PAGES ====================
 
 const StoreOwnerLoginPage = {
+  setup() { return { Store }; },
   template: `
     <div class="page" style="background:var(--white);min-height:100vh">
       <div style="padding:40px 16px;text-align:center">
@@ -511,6 +512,7 @@ const StoreOwnerMenuPage = {
 };
 
 const StoreOwnerCategoriesPage = {
+  setup() { return { Store }; },
   template: `
     <div class="so-layout">
       <nav class="so-sidebar">
@@ -716,6 +718,7 @@ const StoreOwnerAddonsPage = {
 };
 
 const StoreOwnerSettingsPage = {
+  setup() { return { Store }; },
   template: `
     <div class="so-layout">
       <nav class="so-sidebar">
