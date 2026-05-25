@@ -233,18 +233,6 @@ exports.getRatings = async (req, res) => {
   }
 };
 
-exports.getEarnings = async (req, res) => {
-  try {
-    const restaurant = await getOwnerRestaurant(req.user.id);
-    if (!restaurant) return res.status(403).json({ success: false });
-    const { RestaurantEarning } = require('../models');
-    const earnings = await RestaurantEarning.findAll({ where: { restaurant_id: restaurant.id }, order: [['id', 'DESC']] });
-    res.json({ success: true, earnings });
-  } catch (err) {
-    res.status(500).json({ success: false });
-  }
-};
-
 exports.sendPayoutRequest = async (req, res) => {
   try {
     res.json({ success: true, message: 'Payout request sent' });
@@ -339,20 +327,24 @@ exports.getEarnings = async (req, res) => {
     if (!restaurant) return res.status(403).json({ labels: [], values: [], total: 0, orderCount: 0 });
 
     const { filter, from, to } = req.query || {};
-    let startDate, endDate = new Date();
+    const today = new Date();
+    let startDate, endDate = today;
 
     if (filter === 'month') {
       startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     } else if (filter === 'custom' && from && to) {
       startDate = new Date(from);
-      endDate = new Date(to + 'T23:59:59');
+      endDate = new Date(to);
     } else {
       startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     }
 
+    const startStr = startDate.getFullYear() + '-' + String(startDate.getMonth()+1).padStart(2,'0') + '-' + String(startDate.getDate()).padStart(2,'0');
+    const endStr = endDate.getFullYear() + '-' + String(endDate.getMonth()+1).padStart(2,'0') + '-' + String(endDate.getDate()).padStart(2,'0');
+
     const [rows] = await sequelize.query(
-      'SELECT DATE(created_at) as day, SUM(total) as earnings, COUNT(*) as cnt FROM orders WHERE orderstatus_id = 5 AND restaurant_id = ? AND created_at >= ? AND created_at <= ? GROUP BY DATE(created_at) ORDER BY day ASC',
-      { replacements: [restaurant.id, startDate, endDate] }
+      'SELECT DATE(created_at) as day, SUM(total) as earnings, COUNT(*) as cnt FROM orders WHERE orderstatus_id = 5 AND restaurant_id = ? AND DATE(created_at) >= ? AND DATE(created_at) <= ? GROUP BY DATE(created_at) ORDER BY day ASC',
+      { replacements: [restaurant.id, startStr, endStr] }
     );
 
     const labels = [];
@@ -362,7 +354,7 @@ exports.getEarnings = async (req, res) => {
 
     const current = new Date(startDate);
     while (current <= endDate) {
-      const dayStr = current.toISOString().split('T')[0];
+      const dayStr = current.getFullYear() + '-' + String(current.getMonth()+1).padStart(2,'0') + '-' + String(current.getDate()).padStart(2,'0');
       labels.push(current.toLocaleDateString('es', { day: 'numeric', month: 'short' }));
       const found = rows.find(r => r.day === dayStr);
       const val = found ? parseFloat(found.earnings) : 0;
