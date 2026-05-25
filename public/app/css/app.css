@@ -16,7 +16,6 @@ button { border: none; cursor: pointer; font-family: inherit; }
 input, select, textarea { font-family: inherit; font-size: 16px; }
 
 /* Layout */
-.page { min-height: 100vh; padding-bottom: 70px; }
 .container { max-width: 480px; margin: 0 auto; }
 
 /* Header */
@@ -88,6 +87,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 
 /* Cart */
 .cart-float { position: fixed; bottom: 70px; left: 16px; right: 16px; background: var(--primary); color: #fff; padding: 14px 20px; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(255,87,34,.3); z-index: 90; }
+.page { min-height: 100vh; padding-bottom: 130px; }
 .cart-float-text { font-size: 13px; }
 .cart-float-total { font-weight: 700; font-size: 15px; }
 
