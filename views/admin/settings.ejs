@@ -21,15 +21,12 @@ var body = `
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group"><label>Store Name</label><input type="text" name="storeName" class="form-control" value="${s.storeName || ''}"></div>
-                            <div class="form-group"><label>Store URL</label><input type="text" name="storeUrl" class="form-control" value="${s.storeUrl || ''}"></div>
                             <div class="form-group"><label>Store Currency</label><input type="text" name="currencySymbol" class="form-control" value="${s.currencySymbol || '$'}"></div>
                             <div class="form-group"><label>Currency ID</label><input type="text" name="currencyId" class="form-control" value="${s.currencyId || 'USD'}"></div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group"><label>Map API Key</label><input type="text" name="googleApiKey" class="form-control" value="${s.googleApiKey || ''}"></div>
-                            <div class="form-group"><label>Tax Percentage (%)</label><input type="number" step="0.01" name="taxPercentage" class="form-control" value="${s.taxPercentage || '0'}"></div>
                             <div class="form-group"><label>Wallet Name</label><input type="text" name="walletName" class="form-control" value="${s.walletName || 'Wallet'}"></div>
-                            <div class="form-group"><label>Show Veg/Non-Veg</label><select name="showVegNonVeg" class="form-control"><option value="true" ${s.showVegNonVeg == 'true' ? 'selected' : ''}>Show</option><option value="false" ${s.showVegNonVeg != 'true' ? 'selected' : ''}>Hide</option></select></div>
                         </div>
                     </div>
                 </div>
@@ -52,7 +49,7 @@ var body = `
                         <div class="col-md-6">
                             <div class="form-group"><label>Base Delivery Charge</label><input type="number" step="0.01" name="baseDeliveryCharge" class="form-control" value="${s.baseDeliveryCharge || '0'}"></div>
                             <div class="form-group"><label>Extra Delivery Charge (per km)</label><input type="number" step="0.01" name="extraDeliveryCharge" class="form-control" value="${s.extraDeliveryCharge || '0'}"></div>
-                            <div class="form-group"><label>Radio de asignación de repartidores (km)</label><input type="number" step="0.1" name="deliveryRadius" class="form-control" value="${s.deliveryRadius || '10'}"></div>
+                            <div class="form-group"><label>Radio de asignacion de repartidores (km)</label><input type="number" step="0.1" name="deliveryRadius" class="form-control" value="${s.deliveryRadius || '10'}"></div>
                         </div>
                     </div>
                 </div>
@@ -60,13 +57,6 @@ var body = `
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group"><label>COD (Cash on Delivery)</label><select name="enableCod" class="form-control"><option value="true" ${s.enableCod == 'true' ? 'selected' : ''}>Enabled</option><option value="false" ${s.enableCod != 'true' ? 'selected' : ''}>Disabled</option></select></div>
-                            <div class="form-group"><label>Stripe Key</label><input type="text" name="stripePublicKey" class="form-control" value="${s.stripePublicKey || ''}"></div>
-                            <div class="form-group"><label>Stripe Secret</label><input type="text" name="stripeSecretKey" class="form-control" value="${s.stripeSecretKey || ''}"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group"><label>Razorpay Key</label><input type="text" name="razorpayKeyId" class="form-control" value="${s.razorpayKeyId || ''}"></div>
-                            <div class="form-group"><label>Razorpay Secret</label><input type="text" name="razorpayKeySecret" class="form-control" value="${s.razorpayKeySecret || ''}"></div>
-                            <div class="form-group"><label>PayStack Key</label><input type="text" name="paystackPublicKey" class="form-control" value="${s.paystackPublicKey || ''}"></div>
                         </div>
                     </div>
                 </div>
@@ -78,7 +68,6 @@ var body = `
                         </div>
                         <div class="col-md-6">
                             <div class="form-group"><label>Enable Push Notifications</label><select name="enablePushNotificationOrders" class="form-control"><option value="true" ${s.enablePushNotificationOrders == 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enablePushNotificationOrders != 'true' ? 'selected' : ''}>No</option></select></div>
-                            <div class="form-group"><label>Firebase Server Key</label><input type="text" name="firebaseSecret" class="form-control" value="${s.firebaseSecret || ''}"></div>
                         </div>
                     </div>
                 </div>
@@ -90,7 +79,6 @@ var body = `
                         </div>
                         <div class="col-md-6">
                             <div class="form-group"><label>Google Analytics Code</label><textarea name="googleAnalyticsCode" class="form-control" rows="3">${s.googleAnalyticsCode || ''}</textarea></div>
-                            <div class="form-group"><label>Footer Text</label><input type="text" name="footerText" class="form-control" value="${s.footerText || ''}"></div>
                         </div>
                     </div>
                     <hr>
@@ -98,7 +86,7 @@ var body = `
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Favicon / App Icon</label>
-                                <p class="text-muted" style="font-size:12px">Se muestra como icono en la pesta\u00f1a del navegador y al agregar a inicio</p>
+                                <p class="text-muted" style="font-size:12px">Se muestra como icono en la pestana del navegador y al agregar a inicio</p>
                                 ${s.faviconUrl ? '<div class="mb-2"><img src="'+s.faviconUrl+'" width="48" height="48" style="border-radius:8px;border:1px solid #eee"></div>' : ''}
                             </div>
                         </div>

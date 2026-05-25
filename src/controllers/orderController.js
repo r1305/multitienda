@@ -119,9 +119,6 @@ exports.placeOrder = async (req, res) => {
     orderTotal += delivery_charge + parseFloat(restaurant.restaurant_charges || 0);
 
     let tax_amount = 0;
-    if (settings.taxApplicable === 'true') {
-      tax_amount = (parseFloat(settings.taxPercentage) / 100) * orderTotal;
-    }
     orderTotal += tax_amount;
 
     if (tipAmount) orderTotal += parseFloat(tipAmount);
@@ -133,8 +130,8 @@ exports.placeOrder = async (req, res) => {
     const newOrder = await Order.create({
       unique_order_id, user_id: user.id, restaurant_id, orderstatus_id,
       total: orderTotal, sub_total, delivery_charge, actual_delivery_charge,
-      restaurant_charge: restaurant.restaurant_charges, tax: settings.taxPercentage || 0,
-      tax_amount, coupon_name, coupon_amount, tip_amount: tipAmount || 0,
+      restaurant_charge: restaurant.restaurant_charges, tax: 0,
+      tax_amount: 0, coupon_name, coupon_amount, tip_amount: tipAmount || 0,
       payment_mode: method, transaction_id: payment_token,
       address: delivery_type == 2 ? 'NA' : (location?.address || userAddress?.address || ''),
       location: JSON.stringify(location), delivery_type,
