@@ -53,7 +53,11 @@ const staticOptions = isProd ? { maxAge: '7d', etag: true } : {};
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads'), staticOptions));
 app.use('/assets', express.static(path.join(__dirname, 'public/assets'), { maxAge: '30d', etag: true }));
 app.use('/app', express.static(path.join(__dirname, 'public/app'), isProd ? { maxAge: '1d', etag: true } : {}));
-app.use('/OneSignalSDKWorker.js', (req, res) => res.sendFile(path.join(__dirname, 'public/OneSignalSDKWorker.js')));
+app.use('/OneSignalSDKWorker.js', (req, res) => {
+  res.set('Content-Type', 'application/javascript');
+  res.set('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(__dirname, 'public/OneSignalSDKWorker.js'));
+});
 
 // API routes
 const apiRoutes = require('./src/routes/api');

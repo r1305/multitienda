@@ -104,32 +104,48 @@ const StoreOwnerDashboardPage = {
 
 const StoreOwnerOrdersPage = {
   template: `
-    <div class="page" style="background:var(--bg);min-height:100vh">
-      <app-header title="Pedidos" :back="true"></app-header>
-      <div style="padding:8px 16px;display:flex;gap:8px;background:#fff;border-bottom:1px solid var(--border)">
-        <button v-for="tab in tabs" :key="tab.id" :style="{padding:'6px 12px',borderRadius:'16px',fontSize:'12px',fontWeight:500,border:'none',background:activeTab===tab.id?'var(--primary)':'var(--bg)',color:activeTab===tab.id?'#fff':'var(--muted)'}" @click="activeTab=tab.id">{{tab.label}}</button>
-      </div>
-      <div v-if="loading" class="loading"><div class="spinner"></div></div>
-      <template v-else>
-        <div v-if="!filteredOrders.length" class="empty-state"><i class="fas fa-receipt"></i><p>Sin pedidos</p></div>
-        <div style="padding:0 16px;margin-top:12px">
-          <div v-for="o in filteredOrders" :key="o.id" class="card" @click="$router.push('/store-owner/order/'+o.id)">
-            <div class="card-body">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <span style="font-weight:600;font-size:14px">#{{o.unique_order_id}}</span>
-                <span :style="{fontSize:'11px',padding:'3px 8px',borderRadius:'4px',fontWeight:600,background:statusColor(o.orderstatus_id),color:'#fff'}">{{statusText(o.orderstatus_id)}}</span>
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders" class="active"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar">
+          <span class="so-topbar-title">Pedidos</span>
+        </div>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders" class="active"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+          <button v-for="tab in tabs" :key="tab.id" class="so-btn so-btn-sm" :class="activeTab===tab.id?'so-btn-primary':'so-btn-outline'" @click="activeTab=tab.id">{{tab.label}}</button>
+        </div>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div v-if="!filteredOrders.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-receipt" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin pedidos</p></div>
+          <div class="so-card" v-for="o in filteredOrders" :key="o.id" style="cursor:pointer" @click="$router.push('/store-owner/order/'+o.id)">
+            <div class="so-card-body" style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <strong style="font-size:14px">#{{o.unique_order_id}}</strong>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">{{o.orderitems ? o.orderitems.length : 0}} items</div>
               </div>
-              <div style="font-size:13px;color:var(--muted)">{{o.orderitems ? o.orderitems.length : 0}} items</div>
-              <div style="display:flex;justify-content:space-between;margin-top:6px">
-                <span style="font-size:12px;color:var(--muted)">{{formatDate(o.created_at)}}</span>
-                <span style="font-weight:600">{{Store.formatPrice(o.total)}}</span>
+              <div style="text-align:right">
+                <span class="so-badge" :class="statusClass(o.orderstatus_id)">{{statusText(o.orderstatus_id)}}</span>
+                <div style="font-size:14px;font-weight:600;margin-top:4px">{{Store.formatPrice(o.total)}}</div>
               </div>
             </div>
           </div>
-        </div>
-      </template>
+        </template>
+      </div>
     </div>`,
-  components: { AppHeader },
   setup() { return { Store }; },
   data() { return { orders: [], loading: true, activeTab: 'new', tabs: [{ id: 'new', label: 'Nuevos' }, { id: 'preparing', label: 'Preparando' }, { id: 'all', label: 'Todos' }] }; },
   computed: {
@@ -142,17 +158,9 @@ const StoreOwnerOrdersPage = {
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadOrders(); this.interval = setInterval(() => this.loadOrders(), 20000); },
   beforeUnmount() { if (this.interval) clearInterval(this.interval); },
   methods: {
-    async loadOrders() {
-      try {
-        const token = localStorage.getItem('storeOwnerToken');
-        const res = await API.post('/store-owner/get-orders', { token });
-        this.orders = Array.isArray(res) ? res : (res.data || []);
-      } catch(e) {}
-      this.loading = false;
-    },
+    async loadOrders() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-orders', { token }); this.orders = Array.isArray(res) ? res : (res.data || []); } catch(e) {} this.loading = false; },
     statusText(id) { return {1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado'}[id] || ''; },
-    statusColor(id) { return {1:'#2196f3',2:'#ff9800',3:'#ff9800',4:'#ff9800',5:'#4caf50',6:'#f44336',7:'#4caf50',8:'#9e9e9e',10:'#9c27b0',11:'#2196f3'}[id] || '#9e9e9e'; },
-    formatDate(d) { if (!d) return ''; return new Date(d).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }); }
+    statusClass(id) { return [5].includes(id)?'so-badge-success':[6].includes(id)?'so-badge-danger':'so-badge-info'; }
   }
 };
 

@@ -68,8 +68,8 @@ app.use(router);
       window.OneSignalDeferred.push(async function(OneSignal) {
         await OneSignal.init({
           appId: Store.settings.onesignalAppId,
+          serviceWorkerParam: { scope: '/' },
           serviceWorkerPath: '/OneSignalSDKWorker.js',
-          notifyButton: { enable: true },
           allowLocalhostAsSecureOrigin: true
         });
         // Request permission explicitly
