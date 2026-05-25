@@ -69,7 +69,7 @@ app.use((err, req, res, next) => {
 if (typeof(PhusionPassenger) !== 'undefined') {
   app.listen('passenger');
 } else {
-  const PORT = process.env.PORT || process.env.APP_PORT || 3001;
+  const PORT = process.env.PORT || process.env.APP_PORT || 3000;
   sequelize.authenticate()
     .then(() => app.listen(PORT, () => console.log(`Server running on port ${PORT}`)))
     .catch(err => { console.error('DB failed:', err.message); process.exit(1); });

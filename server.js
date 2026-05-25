@@ -77,7 +77,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: isProd ? 'Internal server error' : err.message });
 });
 
-const PORT = process.env.APP_PORT || process.env.PORT || 3001;
+const PORT = process.env.APP_PORT || process.env.PORT || 3000;
 
 sequelize.authenticate()
   .then(() => {
