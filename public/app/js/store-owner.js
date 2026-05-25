@@ -75,6 +75,11 @@ const StoreOwnerDashboardPage = {
             <span v-if="stats.pendingOrders" style="background:var(--primary);color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">{{stats.pendingOrders}}</span>
             <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
           </div>
+          <div class="location-item" @click="$router.push('/store-owner/earnings')" style="background:#fff;border-radius:8px;margin-bottom:8px;box-shadow:var(--shadow)">
+            <i class="fas fa-chart-line" style="color:#4caf50"></i>
+            <span class="location-item-text">Mis Ganancias</span>
+            <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
+          </div>
           <div class="location-item" @click="$router.push('/store-owner/menu')" style="background:#fff;border-radius:8px;margin-bottom:8px;box-shadow:var(--shadow)">
             <i class="fas fa-utensils" style="color:var(--primary)"></i>
             <span class="location-item-text">Mi Menú</span>
@@ -318,5 +323,89 @@ const StoreOwnerHistoryPage = {
       this.loading = false;
     },
     formatDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+  }
+};
+
+
+const StoreOwnerEarningsPage = {
+  template: `
+    <div class="page" style="background:#fff;min-height:100vh">
+      <app-header title="Mis Ganancias" :back="true"></app-header>
+      <div v-if="loading" class="loading"><div class="spinner"></div></div>
+      <template v-else>
+        <div style="padding:16px;text-align:center;background:linear-gradient(135deg,#4caf50,#81c784);color:#fff;margin:16px;border-radius:var(--radius)">
+          <div style="font-size:13px;opacity:.8">Ganancias del periodo</div>
+          <div id="totalAmount" style="font-size:28px;font-weight:700;margin-top:4px">{{Store.formatPrice(total)}}</div>
+          <div style="font-size:12px;opacity:.7;margin-top:4px">{{orderCount}} pedidos completados</div>
+        </div>
+        <div style="padding:0 16px">
+          <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+            <button v-for="f in filters" :key="f.id" :style="{padding:'6px 12px',borderRadius:'16px',fontSize:'12px',fontWeight:500,border:'none',background:activeFilter===f.id?'#4caf50':'var(--bg)',color:activeFilter===f.id?'#fff':'var(--muted)'}" @click="setFilter(f.id)">{{f.label}}</button>
+          </div>
+          <div v-if="activeFilter==='custom'" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+            <input type="date" v-model="dateFrom" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+            <span style="color:var(--muted)">a</span>
+            <input type="date" v-model="dateTo" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+            <button style="padding:6px 12px;border-radius:6px;background:#4caf50;color:#fff;font-size:12px;font-weight:600;border:none" @click="loadData"><i class="fas fa-search"></i> Buscar</button>
+          </div>
+          <canvas id="earningsChart" style="width:100%;height:220px"></canvas>
+        </div>
+        <div class="section-title" style="margin-top:16px">Detalle por dia</div>
+        <div style="padding:0 16px">
+          <div v-for="(val, i) in chartData.values" :key="i" v-if="val > 0" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:13px;color:var(--muted)">{{chartData.labels[i]}}</span>
+            <span style="font-size:13px;font-weight:600;color:#4caf50">{{Store.formatPrice(val)}}</span>
+          </div>
+        </div>
+      </template>
+    </div>`,
+  components: { AppHeader },
+  setup() { return { Store }; },
+  data() {
+    const today = new Date().toISOString().split('T')[0];
+    return { loading: true, total: 0, orderCount: 0, chartData: { labels: [], values: [] }, activeFilter: 'week', dateFrom: today, dateTo: today, chart: null, filters: [{ id: 'week', label: '7 dias' }, { id: 'month', label: '30 dias' }, { id: 'custom', label: 'Rango' }] };
+  },
+  async mounted() {
+    if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; }
+    await this.loadData();
+    this.loadChart();
+  },
+  methods: {
+    setFilter(f) { this.activeFilter = f; if (f !== 'custom') this.loadData(); },
+    async loadData() {
+      this.loading = true;
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        let url = '/store-owner/get-earnings?filter=' + this.activeFilter;
+        if (this.activeFilter === 'custom') url += '&from=' + this.dateFrom + '&to=' + this.dateTo;
+        const res = await API.post(url, { token });
+        this.total = res.total || 0;
+        this.orderCount = res.orderCount || 0;
+        this.chartData = { labels: res.labels || [], values: res.values || [] };
+        this.$nextTick(() => this.loadChart());
+      } catch(e) {}
+      this.loading = false;
+    },
+    loadChart() {
+      const canvas = document.getElementById('earningsChart');
+      if (!canvas || !window.Chart) {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4';
+        s.onload = () => this.renderChart();
+        document.head.appendChild(s);
+        return;
+      }
+      this.renderChart();
+    },
+    renderChart() {
+      const canvas = document.getElementById('earningsChart');
+      if (!canvas) return;
+      if (this.chart) this.chart.destroy();
+      this.chart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels: this.chartData.labels, datasets: [{ label: 'Ganancias', data: this.chartData.values, backgroundColor: 'rgba(76,175,80,.7)', borderColor: '#4caf50', borderWidth: 1, borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v } }, x: { grid: { display: false } } } }
+      });
+    }
   }
 };

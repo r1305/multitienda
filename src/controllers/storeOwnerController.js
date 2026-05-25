@@ -295,3 +295,48 @@ async function getOwnerRestaurant(userId) {
   );
   return rows[0] || null;
 }
+
+exports.getEarnings = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ labels: [], values: [], total: 0, orderCount: 0 });
+
+    const { filter, from, to } = req.query || {};
+    let startDate, endDate = new Date();
+
+    if (filter === 'month') {
+      startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    } else if (filter === 'custom' && from && to) {
+      startDate = new Date(from);
+      endDate = new Date(to + 'T23:59:59');
+    } else {
+      startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const [rows] = await sequelize.query(
+      'SELECT DATE(created_at) as day, SUM(total) as earnings, COUNT(*) as cnt FROM orders WHERE orderstatus_id = 5 AND restaurant_id = ? AND created_at >= ? AND created_at <= ? GROUP BY DATE(created_at) ORDER BY day ASC',
+      { replacements: [restaurant.id, startDate, endDate] }
+    );
+
+    const labels = [];
+    const values = [];
+    let total = 0;
+    let orderCount = 0;
+
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      const dayStr = current.toISOString().split('T')[0];
+      labels.push(current.toLocaleDateString('es', { day: 'numeric', month: 'short' }));
+      const found = rows.find(r => r.day === dayStr);
+      const val = found ? parseFloat(found.earnings) : 0;
+      values.push(val);
+      total += val;
+      if (found) orderCount += parseInt(found.cnt);
+      current.setDate(current.getDate() + 1);
+    }
+
+    res.json({ labels, values, total, orderCount });
+  } catch (err) {
+    res.status(500).json({ labels: [], values: [], total: 0, orderCount: 0 });
+  }
+};

@@ -113,6 +113,7 @@ router.post('/store-owner/search-items', storeOwner.searchItems);
 router.post('/store-owner/edit-item', storeOwner.editItem);
 router.post('/store-owner/update-item', storeOwner.updateItem);
 router.post('/store-owner/get-past-orders', storeOwner.getPastOrders);
+router.post('/store-owner/get-earnings', storeOwner.getEarnings);
 router.post('/store-owner/search-orders', storeOwner.searchOrders);
 router.post('/store-owner/get-ratings', storeOwner.getRatings);
 router.post('/store-owner/get-earnings', storeOwner.getEarnings);
