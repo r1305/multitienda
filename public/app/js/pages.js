@@ -283,13 +283,14 @@ const CartPage = {
       </div>
       <template v-else>
         <div style="padding:0 16px">
-          <div v-for="item in cart" :key="item.id" class="cart-item">
+          <div v-for="(item, idx) in cart" :key="idx" class="cart-item">
             <div class="cart-item-info">
               <div class="cart-item-name">{{item.name}}</div>
-              <div class="cart-item-price">{{Store.formatPrice(item.price)}}</div>
+              <div v-if="item.selectedaddons && item.selectedaddons.length" style="font-size:11px;color:var(--muted);margin-top:2px">{{item.selectedaddons.map(a => a.name).join(', ')}}</div>
+              <div class="cart-item-price">{{Store.formatPrice(parseFloat(item.price) + (item.addonTotal || 0))}}</div>
             </div>
             <div class="qty-control">
-              <button class="qty-btn" @click="remove(item)">{{item.quantity === 1 ? '🗑' : '−'}}</button>
+              <button class="qty-btn" @click="remove(item, idx)">{{item.quantity === 1 ? '🗑' : '−'}}</button>
               <span class="qty-val">{{item.quantity}}</span>
               <button class="qty-btn" @click="add(item)">+</button>
             </div>
@@ -320,7 +321,7 @@ const CartPage = {
   },
   methods: {
     add(item) { Store.addItem(item); },
-    remove(item) { Store.removeItem(item.id); },
+    remove(item, idx) { Store.removeItemByIndex(idx); },
     async applyCoupon() {
       if (!this.couponCode) return;
       try {

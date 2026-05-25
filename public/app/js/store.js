@@ -7,7 +7,7 @@ const Store = Vue.reactive({
   currencyAlign: 'left',
 
   get cartCount() { return this.cart.reduce((sum, i) => sum + i.quantity, 0); },
-  get cartTotal() { return this.cart.reduce((sum, i) => sum + i.price * i.quantity, 0); },
+  get cartTotal() { return this.cart.reduce((sum, i) => sum + (parseFloat(i.price) + (i.addonTotal || 0)) * i.quantity, 0); },
   get isLoggedIn() { return !!this.user; },
 
   setLocation(loc) { this.location = loc; localStorage.setItem('appLocation', JSON.stringify(loc)); },
@@ -15,14 +15,25 @@ const Store = Vue.reactive({
   logout() { this.user = null; API.clearToken(); },
 
   addItem(item) {
-    const existing = this.cart.find(i => i.id === item.id);
-    if (existing) { existing.quantity++; }
-    else { this.cart.push({ ...item, quantity: 1 }); }
+    if (item.selectedaddons && item.selectedaddons.length) {
+      const key = item.id + '_' + item.selectedaddons.map(a => a.id).sort().join(',');
+      const existing = this.cart.find(i => i._key === key);
+      if (existing) { existing.quantity++; }
+      else { this.cart.push({ ...item, _key: key, quantity: 1 }); }
+    } else {
+      const existing = this.cart.find(i => i.id === item.id && !i.selectedaddons?.length);
+      if (existing) { existing.quantity++; }
+      else { this.cart.push({ ...item, quantity: 1 }); }
+    }
     this.saveCart();
   },
   removeItem(itemId) {
-    const idx = this.cart.findIndex(i => i.id === itemId);
+    const idx = this.cart.findIndex(i => i.id === itemId && !i.selectedaddons?.length);
     if (idx > -1) { if (this.cart[idx].quantity > 1) this.cart[idx].quantity--; else this.cart.splice(idx, 1); }
+    this.saveCart();
+  },
+  removeItemByIndex(idx) {
+    if (idx > -1 && idx < this.cart.length) { if (this.cart[idx].quantity > 1) this.cart[idx].quantity--; else this.cart.splice(idx, 1); }
     this.saveCart();
   },
   clearCart() { this.cart = []; this.saveCart(); },
