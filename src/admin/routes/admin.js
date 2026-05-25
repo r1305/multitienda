@@ -186,27 +186,15 @@ router.get('/admin/store/disable/:id', adminController.disableStore);
 router.get('/admin/store/delete/:id', adminController.deleteStore);
 router.get('/admin/store/earnings/:id', adminController.storeEarnings);
 
-// Items
+// Items (view only)
 router.get('/admin/items', adminController.items);
-router.get('/admin/item/edit/:id', adminController.editItem);
-router.post('/admin/item/edit/save', upload.single('image'), adminController.updateItem);
-router.post('/admin/item/new/save', upload.single('image'), adminController.createItem);
-router.get('/admin/item/disable/:id', adminController.disableItem);
 
-// Item Categories (Menu Categories)
+// Item Categories (view only)
 router.get('/admin/item-categories', adminController.itemCategories);
-router.post('/admin/item-category/new/save', adminController.createItemCategory);
-router.post('/admin/item-category/edit/save', adminController.updateItemCategory);
-router.get('/admin/item-category/disable/:id', adminController.disableItemCategory);
 
-// Addon Categories
+// Addon Categories (view only)
 router.get('/admin/addon-categories', adminController.addonCategories);
 router.get('/admin/addon-category/edit/:id', adminController.editAddonCategory);
-router.post('/admin/addon-category/edit/save', adminController.updateAddonCategory);
-router.post('/admin/addon-category/new/save', adminController.createAddonCategory);
-router.post('/admin/addon/new/save', adminController.createAddon);
-router.post('/admin/addon/edit/save', adminController.updateAddon);
-router.get('/admin/addon/delete/:id', adminController.deleteAddon);
 
 // Users
 router.get('/admin/users', adminController.users);
