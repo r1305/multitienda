@@ -327,20 +327,22 @@ exports.getEarnings = async (req, res) => {
     if (!restaurant) return res.status(403).json({ labels: [], values: [], total: 0, orderCount: 0 });
 
     const { filter, from, to } = req.query || {};
+    let startStr, endStr;
     const today = new Date();
-    let startDate, endDate = today;
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
 
     if (filter === 'month') {
-      startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      startStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      endStr = todayStr;
     } else if (filter === 'custom' && from && to) {
-      startDate = new Date(from);
-      endDate = new Date(to);
+      startStr = from;
+      endStr = to;
     } else {
-      startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      startStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      endStr = todayStr;
     }
-
-    const startStr = startDate.getFullYear() + '-' + String(startDate.getMonth()+1).padStart(2,'0') + '-' + String(startDate.getDate()).padStart(2,'0');
-    const endStr = endDate.getFullYear() + '-' + String(endDate.getMonth()+1).padStart(2,'0') + '-' + String(endDate.getDate()).padStart(2,'0');
 
     const [rows] = await sequelize.query(
       'SELECT DATE(created_at) as day, SUM(total) as earnings, COUNT(*) as cnt FROM orders WHERE orderstatus_id = 5 AND restaurant_id = ? AND DATE(created_at) >= ? AND DATE(created_at) <= ? GROUP BY DATE(created_at) ORDER BY day ASC',
@@ -352,8 +354,12 @@ exports.getEarnings = async (req, res) => {
     let total = 0;
     let orderCount = 0;
 
-    const current = new Date(startDate);
-    while (current <= endDate) {
+    // Generate days from startStr to endStr
+    const [sy, sm, sd] = startStr.split('-').map(Number);
+    const [ey, em, ed] = endStr.split('-').map(Number);
+    const current = new Date(sy, sm - 1, sd);
+    const end = new Date(ey, em - 1, ed);
+    while (current <= end) {
       const dayStr = current.getFullYear() + '-' + String(current.getMonth()+1).padStart(2,'0') + '-' + String(current.getDate()).padStart(2,'0');
       labels.push(current.toLocaleDateString('es', { day: 'numeric', month: 'short' }));
       const found = rows.find(r => r.day === dayStr);
