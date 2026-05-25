@@ -538,18 +538,28 @@ exports.deliverOrder = async (req, res) => {
 
     // Calculate and save delivery earning
     const order = await Order.findByPk(req.body.order_id);
-    const [dgDetails] = await sequelize.query('SELECT commission_type, fixed_commission, commission_rate, percentage_base FROM delivery_guy_details WHERE user_id = ?', { replacements: [req.user.id] });
+    const [dgDetails] = await sequelize.query('SELECT commission_type, fixed_commission, commission_rate, percentage_base, dynamic_base_distance, dynamic_base_price, dynamic_price_per_km FROM delivery_guy_details WHERE user_id = ?', { replacements: [req.user.id] });
     if (dgDetails[0] && order) {
       let earning = 0;
       const dg = dgDetails[0];
       if (dg.commission_type === 'percentage') {
         const base = dg.percentage_base === 'delivery_charge' ? parseFloat(order.delivery_charge || 0) : parseFloat(order.sub_total || order.total);
         earning = base * parseFloat(dg.commission_rate) / 100;
+      } else if (dg.commission_type === 'dynamic') {
+        const distance = parseFloat(order.distance || 0);
+        const baseDist = parseFloat(dg.dynamic_base_distance || 0);
+        const basePrice = parseFloat(dg.dynamic_base_price || 0);
+        const pricePerKm = parseFloat(dg.dynamic_price_per_km || 0);
+        if (distance <= baseDist) {
+          earning = basePrice;
+        } else {
+          earning = basePrice + (distance - baseDist) * pricePerKm;
+        }
       } else {
         earning = parseFloat(dg.fixed_commission || 0);
       }
       if (earning > 0) {
-        await sequelize.query('INSERT INTO delivery_earnings (user_id, order_id, amount, commission_type) VALUES (?,?,?,?)', { replacements: [req.user.id, order.id, earning, dg.commission_type || 'fixed'] });
+        await sequelize.query('INSERT INTO delivery_earnings (user_id, order_id, amount, commission_type) VALUES (?,?,?,?)', { replacements: [req.user.id, order.id, Math.round(earning * 100) / 100, dg.commission_type || 'fixed'] });
       }
     }
 

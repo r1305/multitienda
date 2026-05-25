@@ -512,10 +512,10 @@ exports.approveUser = async (req, res) => {
 
 exports.saveDeliveryCommission = async (req, res) => {
   try {
-    const { user_id, commission_type, fixed_commission, commission_rate, percentage_base } = req.body;
+    const { user_id, commission_type, fixed_commission, commission_rate, percentage_base, dynamic_base_distance, dynamic_base_price, dynamic_price_per_km } = req.body;
     await sequelize.query(
-      'UPDATE delivery_guy_details SET commission_type=?, fixed_commission=?, commission_rate=?, percentage_base=? WHERE user_id=?',
-      { replacements: [commission_type, fixed_commission || 0, commission_rate || 0, percentage_base || 'total', user_id] }
+      'UPDATE delivery_guy_details SET commission_type=?, fixed_commission=?, commission_rate=?, percentage_base=?, dynamic_base_distance=?, dynamic_base_price=?, dynamic_price_per_km=? WHERE user_id=?',
+      { replacements: [commission_type, fixed_commission || 0, commission_rate || 0, percentage_base || 'total', dynamic_base_distance || 0, dynamic_base_price || 0, dynamic_price_per_km || 0, user_id] }
     );
     req.flash('success', 'Comisión actualizada');
   } catch (err) { req.flash('error', 'Error al guardar comisión'); }
