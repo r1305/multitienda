@@ -739,7 +739,7 @@ const CheckoutPage = {
 const OrdersPage = {
   template: `
     <div class="page">
-      <app-header title="Mis Pedidos" :back="true"></app-header>
+      <app-header title="Mis Pedidos" :back="'/account'"></app-header>
       <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-receipt"></i><p>Inicia sesión para ver tus pedidos</p><button class="btn-primary" style="margin-top:16px;width:auto;padding:10px 24px;display:inline-block" @click="$router.push('/login')">Iniciar Sesión</button></div>
       <div v-else-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else>
