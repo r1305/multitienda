@@ -29,6 +29,8 @@ const routes = [
   { path: '/store-owner/orders', component: StoreOwnerOrdersPage },
   { path: '/store-owner/order/:id', component: StoreOwnerOrderDetailPage },
   { path: '/store-owner/menu', component: StoreOwnerMenuPage },
+  { path: '/store-owner/categories', component: StoreOwnerCategoriesPage },
+  { path: '/store-owner/addons', component: StoreOwnerAddonsPage },
   { path: '/store-owner/history', component: StoreOwnerHistoryPage },
   { path: '/store-owner/earnings', component: StoreOwnerEarningsPage },
 ];

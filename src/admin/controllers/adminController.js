@@ -290,19 +290,22 @@ exports.disableItem = async (req, res) => {
 exports.itemCategories = async (req, res) => {
   try {
     const [categories] = await sequelize.query(`
-      SELECT ic.*, (SELECT COUNT(*) FROM items WHERE item_category_id = ic.id) as items_count
-      FROM item_categories ic ORDER BY ic.id DESC
+      SELECT ic.*, r.name as restaurant_name, (SELECT COUNT(*) FROM items WHERE item_category_id = ic.id) as items_count
+      FROM item_categories ic
+      LEFT JOIN restaurants r ON ic.restaurant_id = r.id
+      ORDER BY ic.id DESC
     `);
-    res.render('admin/itemCategories', { user: req.session.user, categories, count: categories.length, success: req.flash('success')[0], error: req.flash('error')[0] });
+    const [restaurants] = await sequelize.query('SELECT id, name FROM restaurants ORDER BY name');
+    res.render('admin/itemCategories', { user: req.session.user, categories, count: categories.length, restaurants, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     console.error(err);
-    res.render('admin/itemCategories', { user: req.session.user, categories: [], count: 0, success: null, error: 'Error loading categories' });
+    res.render('admin/itemCategories', { user: req.session.user, categories: [], count: 0, restaurants: [], success: null, error: 'Error loading categories' });
   }
 };
 
 exports.createItemCategory = async (req, res) => {
   try {
-    await sequelize.query('INSERT INTO item_categories (name, is_enabled, created_at, updated_at) VALUES (?,1,NOW(),NOW())', { replacements: [req.body.name] });
+    await sequelize.query('INSERT INTO item_categories (name, restaurant_id, is_enabled, created_at, updated_at) VALUES (?,?,1,NOW(),NOW())', { replacements: [req.body.name, req.body.restaurant_id || null] });
     req.flash('success', 'Category created');
   } catch (err) { req.flash('error', 'Error creating category'); }
   res.redirect('/admin/item-categories');
@@ -310,7 +313,7 @@ exports.createItemCategory = async (req, res) => {
 
 exports.updateItemCategory = async (req, res) => {
   try {
-    await sequelize.query('UPDATE item_categories SET name=?, updated_at=NOW() WHERE id=?', { replacements: [req.body.name, req.body.id] });
+    await sequelize.query('UPDATE item_categories SET name=?, restaurant_id=?, updated_at=NOW() WHERE id=?', { replacements: [req.body.name, req.body.restaurant_id || null, req.body.id] });
     req.flash('success', 'Category updated');
   } catch (err) { req.flash('error', 'Error updating category'); }
   res.redirect('/admin/item-categories');
@@ -328,13 +331,16 @@ exports.disableItemCategory = async (req, res) => {
 exports.addonCategories = async (req, res) => {
   try {
     const [addonCategories] = await sequelize.query(`
-      SELECT ac.*, (SELECT COUNT(*) FROM addons WHERE addon_category_id = ac.id) as addons_count
-      FROM addon_categories ac ORDER BY ac.id DESC
+      SELECT ac.*, r.name as restaurant_name, (SELECT COUNT(*) FROM addons WHERE addon_category_id = ac.id) as addons_count
+      FROM addon_categories ac
+      LEFT JOIN restaurants r ON ac.restaurant_id = r.id
+      ORDER BY ac.id DESC
     `);
-    res.render('admin/addonCategories', { user: req.session.user, addonCategories, count: addonCategories.length, success: req.flash('success')[0], error: req.flash('error')[0] });
+    const [restaurants] = await sequelize.query('SELECT id, name FROM restaurants ORDER BY name');
+    res.render('admin/addonCategories', { user: req.session.user, addonCategories, count: addonCategories.length, restaurants, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     console.error(err);
-    res.render('admin/addonCategories', { user: req.session.user, addonCategories: [], count: 0, success: null, error: 'Error loading addon categories' });
+    res.render('admin/addonCategories', { user: req.session.user, addonCategories: [], count: 0, restaurants: [], success: null, error: 'Error loading addon categories' });
   }
 };
 
@@ -350,7 +356,7 @@ exports.editAddonCategory = async (req, res) => {
 
 exports.createAddonCategory = async (req, res) => {
   try {
-    await sequelize.query('INSERT INTO addon_categories (name, type, created_at, updated_at) VALUES (?,?,NOW(),NOW())', { replacements: [req.body.name, req.body.type || 'SINGLE'] });
+    await sequelize.query('INSERT INTO addon_categories (name, type, restaurant_id, created_at, updated_at) VALUES (?,?,?,NOW(),NOW())', { replacements: [req.body.name, req.body.type || 'SINGLE', req.body.restaurant_id || null] });
     req.flash('success', 'Addon category created');
   } catch (err) { req.flash('error', 'Error creating addon category'); }
   res.redirect('/admin/addon-categories');
@@ -358,7 +364,7 @@ exports.createAddonCategory = async (req, res) => {
 
 exports.updateAddonCategory = async (req, res) => {
   try {
-    await sequelize.query('UPDATE addon_categories SET name=?, type=?, updated_at=NOW() WHERE id=?', { replacements: [req.body.name, req.body.type || 'SINGLE', req.body.id] });
+    await sequelize.query('UPDATE addon_categories SET name=?, type=?, restaurant_id=?, updated_at=NOW() WHERE id=?', { replacements: [req.body.name, req.body.type || 'SINGLE', req.body.restaurant_id || null, req.body.id] });
     req.flash('success', 'Addon category updated');
   } catch (err) { req.flash('error', 'Error updating addon category'); }
   res.redirect('/admin/addon-categories');

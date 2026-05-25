@@ -390,3 +390,78 @@ exports.deleteItem = async (req, res) => {
     res.status(500).json({ success: false });
   }
 };
+
+// Categories CRUD for store owner
+exports.getCategories = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json([]);
+    const [categories] = await sequelize.query('SELECT * FROM item_categories WHERE restaurant_id = ? ORDER BY name', { replacements: [restaurant.id] });
+    res.json(categories);
+  } catch (err) { res.status(500).json([]); }
+};
+
+exports.createCategory = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('INSERT INTO item_categories (name, restaurant_id, is_enabled, created_at, updated_at) VALUES (?,?,1,NOW(),NOW())', { replacements: [req.body.name, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
+
+exports.updateCategory = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('UPDATE item_categories SET name=?, updated_at=NOW() WHERE id=? AND restaurant_id=?', { replacements: [req.body.name, req.body.category_id, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
+
+exports.deleteCategory = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('DELETE FROM item_categories WHERE id=? AND restaurant_id=?', { replacements: [req.body.category_id, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
+
+// Addons CRUD for store owner
+exports.getAddons = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json([]);
+    const [addons] = await sequelize.query('SELECT ac.*, (SELECT COUNT(*) FROM addons WHERE addon_category_id = ac.id) as addons_count FROM addon_categories ac WHERE ac.restaurant_id = ? ORDER BY ac.name', { replacements: [restaurant.id] });
+    res.json(addons);
+  } catch (err) { res.status(500).json([]); }
+};
+
+exports.createAddon = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('INSERT INTO addon_categories (name, type, restaurant_id, created_at, updated_at) VALUES (?,?,?,NOW(),NOW())', { replacements: [req.body.name, req.body.type || 'SINGLE', restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
+
+exports.updateAddon = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('UPDATE addon_categories SET name=?, type=?, updated_at=NOW() WHERE id=? AND restaurant_id=?', { replacements: [req.body.name, req.body.type || 'SINGLE', req.body.addon_id, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
+
+exports.deleteAddon = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('DELETE FROM addons WHERE addon_category_id = ? AND addon_category_id IN (SELECT id FROM addon_categories WHERE restaurant_id = ?)', { replacements: [req.body.addon_id, restaurant.id] });
+    await sequelize.query('DELETE FROM addon_categories WHERE id=? AND restaurant_id=?', { replacements: [req.body.addon_id, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};

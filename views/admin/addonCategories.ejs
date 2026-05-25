@@ -9,7 +9,7 @@ var body = `
     </div>
     <div class="card-body">
         <table class="table table-hover" id="addonCatTable">
-            <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Addons</th><th>Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th><th>Tienda</th><th>Type</th><th>Addons</th><th>Actions</th></tr></thead>
             <tbody>`;
 
 if (typeof addonCategories !== 'undefined' && addonCategories.length) {
@@ -17,6 +17,7 @@ if (typeof addonCategories !== 'undefined' && addonCategories.length) {
     body += `<tr>
       <td>${ac.id}</td>
       <td><strong>${ac.name}</strong></td>
+      <td><small>${ac.restaurant_name || 'Global'}</small></td>
       <td>${ac.type == 'SINGLE' ? 'Single' : 'Multiple'}</td>
       <td>${ac.addons_count || 0}</td>
       <td><a href="/admin/addon-category/edit/${ac.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a></td>
@@ -36,6 +37,7 @@ body += `</tbody></table></div></div>
                 <div class="modal-body">
                     <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" required></div>
                     <div class="form-group"><label>Type</label><select name="type" class="form-control"><option value="SINGLE">Single</option><option value="MULTIPLE">Multiple</option></select></div>
+                    <div class="form-group"><label>Tienda *</label><select name="restaurant_id" class="form-control" required>${typeof restaurants !== 'undefined' ? restaurants.map(function(r){ return '<option value="'+r.id+'">'+r.name+'</option>'; }).join('') : ''}</select></div>
                 </div>
                 <div class="modal-footer"><button type="submit" class="btn btn-primary">Create</button></div>
             </form>
