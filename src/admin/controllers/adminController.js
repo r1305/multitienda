@@ -1022,6 +1022,12 @@ exports.saveSettings = async (req, res) => {
         await sequelize.query('INSERT INTO settings (`key`, `value`) VALUES (?,?)', { replacements: [key, value] });
       }
     }
+    // Sync currencyFormat with currencySymbol
+    if (fields.currencySymbol) {
+      const [ex] = await sequelize.query("SELECT id FROM settings WHERE `key` = 'currencyFormat' LIMIT 1");
+      if (ex.length) await sequelize.query("UPDATE settings SET `value` = ? WHERE `key` = 'currencyFormat'", { replacements: [fields.currencySymbol] });
+      else await sequelize.query("INSERT INTO settings (`key`, `value`) VALUES ('currencyFormat', ?)", { replacements: [fields.currencySymbol] });
+    }
     req.flash('success', 'Settings saved');
   } catch (err) { console.error(err); req.flash('error', 'Error saving settings'); }
   res.redirect('/admin/settings');

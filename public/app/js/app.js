@@ -59,7 +59,8 @@ app.use(router);
     const settings = await API.getSettings();
     if (Array.isArray(settings)) {
       settings.forEach(s => { Store.settings[s.key] = s.value; });
-      if (Store.settings.currencyFormat) Store.currency = Store.settings.currencyFormat;
+      if (Store.settings.currencySymbol) Store.currency = Store.settings.currencySymbol;
+      else if (Store.settings.currencyFormat) Store.currency = Store.settings.currencyFormat;
       if (Store.settings.currencySymbolAlign) Store.currencyAlign = Store.settings.currencySymbolAlign;
     }
     // Initialize OneSignal
