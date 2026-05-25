@@ -345,11 +345,11 @@ exports.createItem = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    const { name, price, old_price, description, is_recommended } = req.body;
+    const { name, price, old_price, description, is_recommended, item_category_id } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : null;
     await sequelize.query(
-      'INSERT INTO items (name, price, old_price, description, is_recommended, image, restaurant_id, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,1,NOW(),NOW())',
-      { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, image, restaurant.id] }
+      'INSERT INTO items (name, price, old_price, description, is_recommended, image, item_category_id, restaurant_id, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,1,NOW(),NOW())',
+      { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, image, item_category_id || null, restaurant.id] }
     );
     res.json({ success: true });
   } catch (err) {
@@ -361,17 +361,17 @@ exports.updateItem = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    const { item_id, name, price, old_price, description, is_recommended } = req.body;
+    const { item_id, name, price, old_price, description, is_recommended, item_category_id } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : null;
     if (image) {
       await sequelize.query(
-        'UPDATE items SET name=?, price=?, old_price=?, description=?, is_recommended=?, image=?, updated_at=NOW() WHERE id=? AND restaurant_id=?',
-        { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, image, item_id, restaurant.id] }
+        'UPDATE items SET name=?, price=?, old_price=?, description=?, is_recommended=?, image=?, item_category_id=?, updated_at=NOW() WHERE id=? AND restaurant_id=?',
+        { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, image, item_category_id || null, item_id, restaurant.id] }
       );
     } else {
       await sequelize.query(
-        'UPDATE items SET name=?, price=?, old_price=?, description=?, is_recommended=?, updated_at=NOW() WHERE id=? AND restaurant_id=?',
-        { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, item_id, restaurant.id] }
+        'UPDATE items SET name=?, price=?, old_price=?, description=?, is_recommended=?, item_category_id=?, updated_at=NOW() WHERE id=? AND restaurant_id=?',
+        { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, item_category_id || null, item_id, restaurant.id] }
       );
     }
     res.json({ success: true });
