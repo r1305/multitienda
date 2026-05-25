@@ -27,6 +27,12 @@ async function sendPushNotification(title, message, userId = null, role = null, 
       data: { ...data, title, message },
     };
 
+    // Set launch URL if order info available
+    if (data.unique_order_id) {
+      payload.url = process.env.APP_URL ? process.env.APP_URL + '/order/' + data.unique_order_id : '/order/' + data.unique_order_id;
+      payload.web_url = payload.url;
+    }
+
     // Target specific user by external_id or tag
     if (userId) {
       payload.filters = [{ field: 'tag', key: 'user_id', relation: '=', value: String(userId) }];

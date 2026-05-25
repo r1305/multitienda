@@ -79,9 +79,9 @@ app.use(router);
         }
         // Handle notification click
         OneSignal.Notifications.addEventListener('click', (e) => {
-          const data = e.notification.additionalData || {};
+          const data = e.notification?.additionalData || e.notification?.data || e.data || {};
           if (data.unique_order_id) {
-            window.location.href = '/order/' + data.unique_order_id;
+            router.push('/order/' + data.unique_order_id);
           }
         });
         // Set user tags
