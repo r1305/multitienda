@@ -20,7 +20,7 @@ if (typeof deliveryGuys !== 'undefined' && deliveryGuys.length) {
       <td><strong>${dg.name}</strong></td>
       <td>${dg.phone || '-'}</td>
       <td>${dg.vehicle_number || '-'}</td>
-      <td><span class="badge badge-info">${commLabel}</span> ${commType}</td>
+      <td><span class="badge badge-info">${commLabel}</span><br><small class="text-muted">${commType}</small></td>
       <td><strong style="color:#28a745">${typeof currency !== 'undefined' ? currency : '$'}${dgEarnings}</strong></td>
       <td>${statusBadge}</td>
       <td>
