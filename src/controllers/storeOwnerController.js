@@ -574,7 +574,8 @@ exports.createCoupon = async (req, res) => {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
     const { code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user } = req.body;
-    await sequelize.query('INSERT INTO coupons (code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user, restaurant_id, count, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,0,NOW(),NOW())', { replacements: [(code || '').toUpperCase(), discount_type || 'FIXED', discount || 0, max_discount || 0, min_sub_total || 0, max_count || 0, max_count_per_user || 0, restaurant.id] });
+    const discountVal = Math.round(parseFloat(discount || 0) * 100) / 100;
+    await sequelize.query('INSERT INTO coupons (code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user, restaurant_id, count, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,0,NOW(),NOW())', { replacements: [(code || '').toUpperCase(), discount_type || 'FIXED', discountVal, max_discount || 0, min_sub_total || 0, max_count || 0, max_count_per_user || 0, restaurant.id] });
     res.json({ success: true });
   } catch (err) { console.error('createCoupon error:', err.message); res.status(500).json({ success: false }); }
 };
