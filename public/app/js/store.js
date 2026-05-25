@@ -8,8 +8,8 @@ const Store = Vue.reactive({
   currencyAlign: 'left',
   theme: localStorage.getItem('appTheme') || 'light',
 
-  applyTheme() { document.documentElement.setAttribute('data-theme', this.theme); },
-  toggleTheme() { this.theme = this.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('appTheme', this.theme); this.applyTheme(); },
+  applyTheme() { document.documentElement.setAttribute('data-theme', Store.theme); },
+  toggleTheme() { Store.theme = Store.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('appTheme', Store.theme); Store.applyTheme(); },
 
   get cartCount() { return this.cart.reduce((sum, i) => sum + i.quantity, 0); },
   get cartTotal() { return this.cart.reduce((sum, i) => sum + (i.addonTotal || parseFloat(i.price)) * i.quantity, 0); },

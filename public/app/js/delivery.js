@@ -76,8 +76,8 @@ const DeliveryOrdersPage = {
     <div class="page" style="background:var(--bg);min-height:100vh">
       <div class="header">
         <span class="header-title">Mis Pedidos</span>
-        <button style="background:none;font-size:16px;color:var(--text);padding:8px" @click="Store.toggleTheme()"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i></button>
-        <button style="background:none;font-size:14px;color:var(--primary);font-weight:600" @click="refresh"><i class="fas fa-sync-alt"></i></button>
+        <button style="background:none;font-size:18px;color:var(--text);padding:8px;flex-shrink:0" @click="Store.toggleTheme()"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i></button>
+        <button style="background:none;font-size:16px;color:var(--primary);font-weight:600;flex-shrink:0" @click="refresh"><i class="fas fa-sync-alt"></i></button>
       </div>
       <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:var(--white);border-bottom:1px solid var(--border)">
         <div><span style="font-size:13px;color:var(--muted)">Hola, </span><strong style="font-size:14px">{{user.name}}</strong></div>
