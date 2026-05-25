@@ -203,6 +203,9 @@ router.get('/admin/addon-categories', adminController.addonCategories);
 router.get('/admin/addon-category/edit/:id', adminController.editAddonCategory);
 router.post('/admin/addon-category/edit/save', adminController.updateAddonCategory);
 router.post('/admin/addon-category/new/save', adminController.createAddonCategory);
+router.post('/admin/addon/new/save', adminController.createAddon);
+router.post('/admin/addon/edit/save', adminController.updateAddon);
+router.get('/admin/addon/delete/:id', adminController.deleteAddon);
 
 // Users
 router.get('/admin/users', adminController.users);

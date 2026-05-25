@@ -465,3 +465,46 @@ exports.deleteAddon = async (req, res) => {
     res.json({ success: true });
   } catch (err) { res.status(500).json({ success: false }); }
 };
+
+// Addon items (individual options within an addon category)
+exports.getAddonItems = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json([]);
+    const [items] = await sequelize.query(
+      'SELECT a.* FROM addons a JOIN addon_categories ac ON a.addon_category_id = ac.id WHERE ac.restaurant_id = ? AND a.addon_category_id = ? ORDER BY a.name',
+      { replacements: [restaurant.id, req.body.addon_category_id] }
+    );
+    res.json(items);
+  } catch (err) { res.status(500).json([]); }
+};
+
+exports.createAddonItem = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    // Verify addon category belongs to this restaurant
+    const [ac] = await sequelize.query('SELECT id FROM addon_categories WHERE id = ? AND restaurant_id = ?', { replacements: [req.body.addon_category_id, restaurant.id] });
+    if (!ac.length) return res.status(403).json({ success: false });
+    await sequelize.query('INSERT INTO addons (name, price, addon_category_id, is_active, created_at, updated_at) VALUES (?,?,?,1,NOW(),NOW())', { replacements: [req.body.name, req.body.price || 0, req.body.addon_category_id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
+
+exports.updateAddonItem = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('UPDATE addons SET name=?, price=?, updated_at=NOW() WHERE id=? AND addon_category_id IN (SELECT id FROM addon_categories WHERE restaurant_id=?)', { replacements: [req.body.name, req.body.price || 0, req.body.addon_id, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
+
+exports.deleteAddonItem = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('DELETE FROM addons WHERE id=? AND addon_category_id IN (SELECT id FROM addon_categories WHERE restaurant_id=?)', { replacements: [req.body.addon_id, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};

@@ -347,11 +347,41 @@ exports.addonCategories = async (req, res) => {
 exports.editAddonCategory = async (req, res) => {
   try {
     const [rows] = await sequelize.query('SELECT * FROM addon_categories WHERE id = ? LIMIT 1', { replacements: [req.params.id] });
-    res.render('admin/editAddonCategory', { user: req.session.user, addonCategory: rows[0] || null, success: req.flash('success')[0], error: req.flash('error')[0] });
+    const [addons] = await sequelize.query('SELECT * FROM addons WHERE addon_category_id = ? ORDER BY name', { replacements: [req.params.id] });
+    const [restaurants] = await sequelize.query('SELECT id, name FROM restaurants ORDER BY name');
+    res.render('admin/editAddonCategory', { user: req.session.user, addonCategory: rows[0] || null, addons, restaurants, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     req.flash('error', 'Error loading addon category');
     res.redirect('/admin/addon-categories');
   }
+};
+
+exports.createAddon = async (req, res) => {
+  try {
+    const { addon_category_id, name, price } = req.body;
+    await sequelize.query('INSERT INTO addons (name, price, addon_category_id, is_active, created_at, updated_at) VALUES (?,?,?,1,NOW(),NOW())', { replacements: [name, price || 0, addon_category_id] });
+    req.flash('success', 'Addon created');
+  } catch (err) { req.flash('error', 'Error creating addon'); }
+  res.redirect('/admin/addon-category/edit/' + req.body.addon_category_id);
+};
+
+exports.updateAddon = async (req, res) => {
+  try {
+    const { id, name, price, addon_category_id } = req.body;
+    await sequelize.query('UPDATE addons SET name=?, price=?, updated_at=NOW() WHERE id=?', { replacements: [name, price || 0, id] });
+    req.flash('success', 'Addon updated');
+  } catch (err) { req.flash('error', 'Error updating addon'); }
+  res.redirect('/admin/addon-category/edit/' + req.body.addon_category_id);
+};
+
+exports.deleteAddon = async (req, res) => {
+  try {
+    const [addon] = await sequelize.query('SELECT addon_category_id FROM addons WHERE id = ?', { replacements: [req.params.id] });
+    await sequelize.query('DELETE FROM addons WHERE id = ?', { replacements: [req.params.id] });
+    req.flash('success', 'Addon deleted');
+    if (addon[0]) return res.redirect('/admin/addon-category/edit/' + addon[0].addon_category_id);
+  } catch (err) { req.flash('error', 'Error deleting addon'); }
+  res.redirect('/admin/addon-categories');
 };
 
 exports.createAddonCategory = async (req, res) => {
