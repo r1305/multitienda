@@ -103,7 +103,9 @@ exports.setDefaultAddress = async (req, res) => {
 // ─── Coupon ───────────────────────────────────────────────────────────────────
 exports.applyCoupon = async (req, res) => {
   try {
-    const coupon = await Coupon.findOne({ where: { code: req.body.code.toUpperCase() } });
+    const code = req.body.code || req.body.coupon;
+    if (!code) return res.json({ success: false, message: 'No coupon code provided' });
+    const coupon = await Coupon.findOne({ where: { code: code.toUpperCase() } });
     if (!coupon) return res.json({ success: false, message: 'Invalid coupon' });
     res.json({ success: true, coupon });
   } catch (err) {
