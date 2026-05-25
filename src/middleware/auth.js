@@ -24,4 +24,17 @@ function generateToken(user) {
   });
 }
 
-module.exports = { jwtAuth, generateToken };
+async function optionalAuth(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findByPk(decoded.sub);
+      if (user) req.user = user;
+    } catch (err) {}
+  }
+  next();
+}
+
+module.exports = { jwtAuth, generateToken, optionalAuth };

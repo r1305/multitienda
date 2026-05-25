@@ -325,7 +325,8 @@ const CartPage = {
     async applyCoupon() {
       if (!this.couponCode) return;
       try {
-        const res = await API.applyCoupon(null, this.couponCode, null, this.subtotal);
+        const restaurantId = Store.cart.length ? Store.cart[0].restaurant_id : null;
+        const res = await API.applyCoupon(null, this.couponCode, restaurantId, this.subtotal);
         if (res.success && res.coupon) {
           this.couponOk = true;
           if (res.coupon.discount_type === 'PERCENTAGE') this.discount = this.subtotal * parseFloat(res.coupon.discount) / 100;

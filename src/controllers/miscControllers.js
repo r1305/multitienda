@@ -106,10 +106,23 @@ exports.applyCoupon = async (req, res) => {
     const code = req.body.code || req.body.coupon;
     if (!code) return res.json({ success: false, message: 'No coupon code provided' });
     const coupon = await Coupon.findOne({ where: { code: code.toUpperCase() } });
-    if (!coupon) return res.json({ success: false, message: 'Invalid coupon' });
+    if (!coupon) return res.json({ success: false, message: 'Cupón inválido' });
+    // Check max uses
+    if (coupon.max_count > 0 && coupon.count >= coupon.max_count) return res.json({ success: false, message: 'Cupón agotado' });
+    // Check min subtotal
+    const subtotal = parseFloat(req.body.subtotal || 0);
+    if (coupon.min_sub_total > 0 && subtotal < parseFloat(coupon.min_sub_total)) return res.json({ success: false, message: 'Pedido mínimo: ' + parseFloat(coupon.min_sub_total).toFixed(2) });
+    // Check max uses per user
+    if (coupon.max_count_per_user > 0 && req.user) {
+      const [userUses] = await sequelize.query('SELECT COUNT(*) as cnt FROM orders WHERE user_id = ? AND coupon_name = ?', { replacements: [req.user.id, coupon.code] });
+      if (userUses[0] && parseInt(userUses[0].cnt) >= coupon.max_count_per_user) return res.json({ success: false, message: 'Ya usaste este cupón el máximo de veces permitido' });
+    }
+    // Check restaurant match
+    if (coupon.restaurant_id && req.body.restaurant_id && coupon.restaurant_id != req.body.restaurant_id) return res.json({ success: false, message: 'Cupón no válido para esta tienda' });
     res.json({ success: true, coupon });
   } catch (err) {
-    res.status(500).json({ success: false });
+    console.error('applyCoupon error:', err.message);
+    res.status(500).json({ success: false, message: 'Error al validar cupón' });
   }
 };
 

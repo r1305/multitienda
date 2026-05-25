@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const multer = require('multer');
 const path = require('path');
-const { jwtAuth } = require('../middleware/auth');
+const { jwtAuth, optionalAuth } = require('../middleware/auth');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, '../../public/uploads')),
@@ -66,7 +66,7 @@ router.use(jwtAuth);
 router.post('/get-ratable-order', misc.getRatableOrder);
 router.post('/rate-order', misc.rateOrder);
 router.post('/get-restaurant-info-with-favourite/:slug', restaurant.getRestaurantInfoWithFavourite);
-router.post('/apply-coupon', misc.applyCoupon);
+router.post('/apply-coupon', optionalAuth, misc.applyCoupon);
 router.post('/save-notification-token', misc.saveToken);
 router.post('/update-app-token-for-user', misc.updateAppTokenForUser);
 router.post('/get-payment-gateways', misc.getPaymentGateways);
