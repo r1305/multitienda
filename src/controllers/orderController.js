@@ -63,12 +63,13 @@ exports.placeOrder = async (req, res) => {
     let orderTotal = 0;
     for (const oI of orderItems) {
       const originalItem = await Item.findByPk(oI.id);
-      orderTotal += parseFloat(originalItem.price) * oI.quantity;
-      if (oI.selectedaddons) {
-        for (const sa of oI.selectedaddons) {
-          const addon = await Addon.findByPk(sa.addon_id);
-          if (addon) orderTotal += parseFloat(addon.price) * oI.quantity;
-        }
+      if (oI.selectedaddons && oI.selectedaddons.length) {
+        // Has addons: price is only the sum of addons
+        const addonSum = oI.selectedaddons.reduce((s, a) => s + parseFloat(a.price || 0), 0);
+        orderTotal += addonSum * oI.quantity;
+      } else {
+        // No addons: use item base price
+        orderTotal += parseFloat(originalItem.price) * oI.quantity;
       }
     }
 
