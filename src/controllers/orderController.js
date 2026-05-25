@@ -157,7 +157,10 @@ exports.placeOrder = async (req, res) => {
 
     // Save order items
     for (const oI of orderItems) {
-      const item = await Orderitem.create({ order_id: newOrder.id, item_id: oI.id, name: oI.name, quantity: oI.quantity, price: oI.price }, { transaction: t });
+      const originalItem = await Item.findByPk(oI.id);
+      const itemName = oI.name || (originalItem ? originalItem.name : 'Item');
+      const itemPrice = oI.price || (originalItem ? originalItem.price : 0);
+      const item = await Orderitem.create({ order_id: newOrder.id, item_id: oI.id, name: itemName, quantity: oI.quantity, price: itemPrice }, { transaction: t });
       if (oI.selectedaddons) {
         for (const sa of oI.selectedaddons) {
           await OrderItemAddon.create({ orderitem_id: item.id, addon_category_name: sa.addon_category_name, addon_name: sa.addon_name, addon_price: sa.price }, { transaction: t });

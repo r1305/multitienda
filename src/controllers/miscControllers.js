@@ -431,7 +431,17 @@ exports.getDeliveryOrders = async (req, res) => {
 exports.getSingleDeliveryOrder = async (req, res) => {
   try {
     const order = await Order.findByPk(req.body.order_id, { include: [{ association: 'restaurant' }, { association: 'orderitems', include: [{ association: 'order_item_addons' }] }] });
-    res.json(order);
+    if (!order) return res.json(null);
+    const result = order.toJSON();
+    if (result.orderitems && result.orderitems.length) {
+      for (let oi of result.orderitems) {
+        if (!oi.name && oi.item_id) {
+          const [rows] = await sequelize.query('SELECT name, price FROM items WHERE id = ?', { replacements: [oi.item_id] });
+          if (rows[0]) { oi.name = rows[0].name; if (!parseFloat(oi.price)) oi.price = rows[0].price; }
+        }
+      }
+    }
+    res.json(result);
   } catch (err) {
     res.status(500).json(null);
   }
