@@ -66,7 +66,7 @@ app.use(router);
       if (Store.settings.currencySymbolAlign) Store.currencyAlign = Store.settings.currencySymbolAlign;
     }
     // Initialize OneSignal
-    if (Store.settings.onesignalAppId && window.location.hostname !== 'localhost') {
+    if (Store.settings.onesignalAppId) {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {
         await OneSignal.init({
