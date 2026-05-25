@@ -1075,3 +1075,67 @@ exports.deletePaymentMethod = async (req, res) => {
   } catch (err) { req.flash('error', 'Error al eliminar'); }
   res.redirect('/admin/payment-methods');
 };
+
+exports.cleanData = async (req, res) => {
+  try {
+    const { pin_code } = req.body;
+    if (!pin_code) { req.flash('error', 'PIN Code requerido'); return res.redirect('/admin/settings'); }
+
+    // Verify PIN against superadmin
+    const [admins] = await sequelize.query("SELECT pin_code FROM users WHERE id = (SELECT model_id FROM model_has_roles WHERE role_id = 1 LIMIT 1) LIMIT 1");
+    if (!admins.length || admins[0].pin_code !== pin_code) {
+      req.flash('error', 'PIN Code incorrecto');
+      return res.redirect('/admin/settings');
+    }
+
+    // Get superadmin user id to preserve
+    const [adminUser] = await sequelize.query("SELECT model_id FROM model_has_roles WHERE role_id = 1 LIMIT 1");
+    const adminId = adminUser[0].model_id;
+
+    // Clean all data tables (preserve superadmin user, roles, settings)
+    await sequelize.query('DELETE FROM chats');
+    await sequelize.query('DELETE FROM notifications');
+    await sequelize.query('DELETE FROM order_item_addons');
+    await sequelize.query('DELETE FROM orderitems');
+    await sequelize.query('DELETE FROM orders');
+    await sequelize.query('DELETE FROM accept_deliveries');
+    await sequelize.query('DELETE FROM delivery_earnings');
+    await sequelize.query('DELETE FROM delivery_ignored_orders');
+    await sequelize.query('DELETE FROM ratings');
+    await sequelize.query('DELETE FROM addon_category_item');
+    await sequelize.query('DELETE FROM addons');
+    await sequelize.query('DELETE FROM addon_categories');
+    await sequelize.query('DELETE FROM items');
+    await sequelize.query('DELETE FROM item_categories');
+    await sequelize.query('DELETE FROM restaurants');
+    await sequelize.query('DELETE FROM restaurant_user');
+    await sequelize.query('DELETE FROM coupons');
+    await sequelize.query('DELETE FROM addresses');
+    await sequelize.query('DELETE FROM wallets');
+    await sequelize.query('DELETE FROM transactions');
+    await sequelize.query('DELETE FROM push_tokens');
+    await sequelize.query('DELETE FROM promo_sliders');
+    await sequelize.query('DELETE FROM delivery_guy_details');
+    await sequelize.query('DELETE FROM password_reset_otps');
+    await sequelize.query('DELETE FROM sms_otps');
+    await sequelize.query('DELETE FROM model_has_roles WHERE model_id != ?', { replacements: [adminId] });
+    await sequelize.query('DELETE FROM users WHERE id != ?', { replacements: [adminId] });
+
+    // Clean uploaded images
+    const fs = require('fs');
+    const path = require('path');
+    const uploadsDir = path.join(__dirname, '../../public/uploads');
+    if (fs.existsSync(uploadsDir)) {
+      const files = fs.readdirSync(uploadsDir);
+      for (const file of files) {
+        if (file !== '.gitkeep') fs.unlinkSync(path.join(uploadsDir, file));
+      }
+    }
+
+    req.flash('success', 'Todos los datos han sido eliminados correctamente');
+  } catch (err) {
+    console.error('Clean data error:', err.message);
+    req.flash('error', 'Error al limpiar datos: ' + err.message);
+  }
+  res.redirect('/admin/settings');
+};

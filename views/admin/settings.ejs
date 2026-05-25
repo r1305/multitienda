@@ -96,6 +96,16 @@ var body = `
             <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
         </form>
     </div>
+</div>
+<div class="card mt-3 border-danger">
+    <div class="card-header bg-danger text-white"><i class="fas fa-exclamation-triangle"></i> Zona Peligrosa</div>
+    <div class="card-body">
+        <p class="text-muted" style="font-size:13px;margin-bottom:12px">Esto eliminara TODOS los datos (pedidos, tiendas, items, usuarios) excepto el superadmin. Las imagenes subidas tambien seran eliminadas. Esta accion no se puede deshacer.</p>
+        <form method="POST" action="/admin/clean-data" onsubmit="return confirm('ATENCION: Esto eliminara TODOS los datos. Esta seguro?')" style="display:flex;gap:8px;align-items:center">
+            <input type="text" name="pin_code" placeholder="PIN Code" required class="form-control" style="max-width:150px">
+            <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Clean Data</button>
+        </form>
+    </div>
 </div>`;
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

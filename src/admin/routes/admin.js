@@ -273,4 +273,7 @@ router.post('/admin/payment-method/edit/save', adminController.updatePaymentMeth
 router.get('/admin/payment-method/toggle/:id', adminController.togglePaymentMethod);
 router.get('/admin/payment-method/delete/:id', adminController.deletePaymentMethod);
 
+// Clean data
+router.post('/admin/clean-data', adminController.cleanData);
+
 module.exports = router;

@@ -59,6 +59,9 @@ app.get('/OneSignalSDKWorker.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/OneSignalSDKWorker.js'));
 });
 
+// Install route
+app.use('/', require('./src/routes/install'));
+
 // API routes
 const apiRoutes = require('./src/routes/api');
 app.use('/api', apiRoutes);
