@@ -2,6 +2,7 @@ const Store = Vue.reactive({
   settings: {},
   location: JSON.parse(localStorage.getItem('appLocation') || 'null'),
   cart: JSON.parse(localStorage.getItem('appCart') || '[]'),
+  appliedCoupon: JSON.parse(localStorage.getItem('appCoupon') || 'null'),
   user: JSON.parse(localStorage.getItem('appUser') || 'null'),
   currency: '$',
   currencyAlign: 'left',
@@ -36,8 +37,8 @@ const Store = Vue.reactive({
     if (idx > -1 && idx < this.cart.length) { if (this.cart[idx].quantity > 1) this.cart[idx].quantity--; else this.cart.splice(idx, 1); }
     this.saveCart();
   },
-  clearCart() { this.cart = []; this.saveCart(); },
+  clearCart() { this.cart = []; this.appliedCoupon = null; this.saveCart(); },
   getItemQty(itemId) { const item = this.cart.find(i => i.id === itemId); return item ? item.quantity : 0; },
-  saveCart() { localStorage.setItem('appCart', JSON.stringify(this.cart)); },
+  saveCart() { localStorage.setItem('appCart', JSON.stringify(this.cart)); localStorage.setItem('appCoupon', JSON.stringify(this.appliedCoupon)); },
   formatPrice(val) { const n = parseFloat(val || 0).toFixed(2); return this.currencyAlign === 'left' ? this.currency + n : n + this.currency; }
 });

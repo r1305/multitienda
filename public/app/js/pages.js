@@ -333,7 +333,8 @@ const CartPage = {
           else this.discount = parseFloat(res.coupon.discount || 0);
           if (res.coupon.max_discount && this.discount > parseFloat(res.coupon.max_discount)) this.discount = parseFloat(res.coupon.max_discount);
           this.couponMsg = 'Cupón aplicado!';
-        } else { this.couponOk = false; this.couponMsg = res.message || 'Cupón inválido'; this.discount = 0; }
+          Store.appliedCoupon = { code: res.coupon.code }; Store.saveCart();
+        } else { this.couponOk = false; this.couponMsg = res.message || 'Cupón inválido'; this.discount = 0; Store.appliedCoupon = null; Store.saveCart(); }
       } catch(e) { this.couponMsg = 'Error aplicando cupón'; }
     },
     checkout() { this.$router.push('/checkout'); }
@@ -723,7 +724,7 @@ const CheckoutPage = {
           location: loc,
           total: { totalPrice: Store.cartTotal }, method, payment_token: '',
           delivery_type: 1, partial_wallet: false, dis: 0, pending_payment: false,
-          tipAmount: null, cash_change_amount: null, order_comment: '', coupon: null,
+          tipAmount: null, cash_change_amount: null, order_comment: '', coupon: Store.appliedCoupon,
           schedule_date: this.isScheduled ? this.scheduleDate : null,
           schedule_slot: this.isScheduled ? this.scheduleTime : null
         });
