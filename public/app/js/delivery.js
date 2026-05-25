@@ -2,7 +2,7 @@
 
 const DeliveryLoginPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <div style="padding:40px 16px;text-align:center">
         <i class="fas fa-motorcycle" style="font-size:50px;color:var(--primary);margin-bottom:16px"></i>
         <h2 style="font-size:20px;margin-bottom:4px">Delivery</h2>
@@ -72,16 +72,17 @@ const DeliveryOrdersPage = {
     <div class="page" style="background:var(--bg);min-height:100vh">
       <div class="header">
         <span class="header-title">Mis Pedidos</span>
+        <button style="background:none;font-size:16px;color:var(--text);padding:8px" @click="Store.toggleTheme()"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i></button>
         <button style="background:none;font-size:14px;color:var(--primary);font-weight:600" @click="refresh"><i class="fas fa-sync-alt"></i></button>
       </div>
-      <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:#fff;border-bottom:1px solid var(--border)">
+      <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:var(--white);border-bottom:1px solid var(--border)">
         <div><span style="font-size:13px;color:var(--muted)">Hola, </span><strong style="font-size:14px">{{user.name}}</strong></div>
         <div style="display:flex;gap:12px">
           <router-link to="/delivery/earnings" style="font-size:12px;color:var(--primary)"><i class="fas fa-chart-line"></i> Ganancias</router-link>
           <button style="background:none;font-size:12px;color:#e53935" @click="logout"><i class="fas fa-sign-out-alt"></i> Salir</button>
         </div>
       </div>
-      <div style="padding:8px 16px;display:flex;gap:8px;background:#fff;border-bottom:1px solid var(--border)">
+      <div style="padding:8px 16px;display:flex;gap:8px;background:var(--white);border-bottom:1px solid var(--border)">
         <button v-for="tab in tabs" :key="tab.id" :style="{padding:'6px 12px',borderRadius:'16px',fontSize:'12px',fontWeight:500,border:'none',background:activeTab===tab.id?'var(--primary)':'var(--bg)',color:activeTab===tab.id?'#fff':'var(--muted)'}" @click="activeTab=tab.id">{{tab.label}} <span v-if="tabCount(tab.id)" style="margin-left:4px">({{tabCount(tab.id)}})</span></button>
       </div>
       <div v-if="!gpsReady" style="padding:16px;text-align:center;background:#fff3e0;margin:12px 16px;border-radius:8px">
@@ -148,7 +149,7 @@ const DeliveryOrdersPage = {
 
 const DeliveryOrderDetailPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header :title="'Pedido #'+(order ? order.unique_order_id : '')" :back="true"></app-header>
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else-if="order">
@@ -199,7 +200,7 @@ const DeliveryOrderDetailPage = {
           <div ref="chatBox" style="background:var(--bg);border-radius:8px;padding:12px;max-height:250px;overflow-y:auto;margin-bottom:8px">
             <div v-if="!messages.length" style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Sin mensajes aun</div>
             <div v-for="m in messages" :key="m.id" :style="{marginBottom:'8px',display:'flex',justifyContent:m.sender_id==myId?'flex-end':'flex-start'}">
-              <div :style="{maxWidth:'75%',padding:'8px 12px',borderRadius:'12px',fontSize:'13px',background:m.sender_id==myId?'var(--primary)':'#fff',color:m.sender_id==myId?'#fff':'var(--text)',boxShadow:'0 1px 3px rgba(0,0,0,.1)'}">{{m.message}}<div :style="{fontSize:'10px',marginTop:'4px',opacity:.7}">{{formatTime(m.created_at)}}</div></div>
+              <div :style="{maxWidth:'75%',padding:'8px 12px',borderRadius:'12px',fontSize:'13px',background:m.sender_id==myId?'var(--primary)':'var(--white)',color:m.sender_id==myId?'#fff':'var(--text)',boxShadow:'0 1px 3px rgba(0,0,0,.1)'}">{{m.message}}<div :style="{fontSize:'10px',marginTop:'4px',opacity:.7}">{{formatTime(m.created_at)}}</div></div>
             </div>
           </div>
           <div style="display:flex;gap:8px">
@@ -240,7 +241,7 @@ const DeliveryOrderDetailPage = {
 
 const DeliveryHistoryPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Historial de Entregas" :back="true"></app-header>
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else>
@@ -268,7 +269,7 @@ const DeliveryHistoryPage = {
 
 const DeliveryEarningsPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Mis Ganancias" :back="true"></app-header>
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else>

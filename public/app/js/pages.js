@@ -1,4 +1,4 @@
-// ==================== 1. HOME ====================
+﻿// ==================== 1. HOME ====================
 const HomePage = {
   template: `
     <div class="page">
@@ -6,8 +6,8 @@ const HomePage = {
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else>
         <div v-if="!Store.location" style="padding:20px;text-align:center">
-          <p style="margin-bottom:12px;color:var(--muted)">Selecciona tu ubicación para ver restaurantes</p>
-          <button class="btn-primary" @click="$router.push('/location')"><i class="fas fa-map-marker-alt"></i> Seleccionar ubicación</button>
+          <p style="margin-bottom:12px;color:var(--muted)">Selecciona tu ubicaciÃ³n para ver restaurantes</p>
+          <button class="btn-primary" @click="$router.push('/location')"><i class="fas fa-map-marker-alt"></i> Seleccionar ubicaciÃ³n</button>
         </div>
         <template v-else>
           <div v-if="sliders.length" class="slider">
@@ -89,7 +89,7 @@ const HomePage = {
 // ==================== 2. LOCATION ====================
 const LocationPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Seleccionar ubicacion" :back="true"></app-header>
       <div class="gps-btn" @click="useGPS">
         <i class="fas fa-crosshairs"></i>
@@ -181,7 +181,7 @@ const StoreDetailPage = {
                 </div>
                 <div v-if="!item.image" style="margin-top:8px">
                   <div v-if="getQty(item.id)" class="qty-control">
-                    <button class="qty-btn" @click="removeFromCart(item)">−</button>
+                    <button class="qty-btn" @click="removeFromCart(item)">âˆ’</button>
                     <span class="qty-val">{{getQty(item.id)}}</span>
                     <button class="qty-btn" @click="addToCart(item)">+</button>
                   </div>
@@ -191,7 +191,7 @@ const StoreDetailPage = {
               <div v-if="item.image" class="item-card-img">
                 <img :src="item.image" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
                 <div v-if="getQty(item.id)" class="qty-control" style="position:absolute;bottom:-10px;left:50%;transform:translateX(-50%)">
-                  <button class="qty-btn" @click="removeFromCart(item)">−</button>
+                  <button class="qty-btn" @click="removeFromCart(item)">âˆ’</button>
                   <span class="qty-val">{{getQty(item.id)}}</span>
                   <button class="qty-btn" @click="addToCart(item)">+</button>
                 </div>
@@ -270,11 +270,11 @@ const StoreDetailPage = {
 // ==================== 5. CART ====================
 const CartPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Carrito" :back="true"></app-header>
       <div v-if="!cart.length" class="empty-state">
         <i class="fas fa-shopping-bag"></i>
-        <p>Tu carrito está vacío</p>
+        <p>Tu carrito estÃ¡ vacÃ­o</p>
         <button class="btn-primary" style="margin-top:20px;width:auto;padding:12px 30px;display:inline-block" @click="$router.push('/')">Ver restaurantes</button>
       </div>
       <template v-else>
@@ -286,14 +286,14 @@ const CartPage = {
               <div class="cart-item-price">{{Store.formatPrice(item.addonTotal || item.price)}}</div>
             </div>
             <div class="qty-control">
-              <button class="qty-btn" @click="remove(item, idx)">{{item.quantity === 1 ? '🗑' : '−'}}</button>
+              <button class="qty-btn" @click="remove(item, idx)">{{item.quantity === 1 ? 'ðŸ—‘' : 'âˆ’'}}</button>
               <span class="qty-val">{{item.quantity}}</span>
               <button class="qty-btn" @click="add(item)">+</button>
             </div>
           </div>
         </div>
         <div class="coupon-input">
-          <input v-model="couponCode" placeholder="Código de cupón">
+          <input v-model="couponCode" placeholder="CÃ³digo de cupÃ³n">
           <button @click="applyCoupon">Aplicar</button>
         </div>
         <div v-if="couponMsg" style="padding:0 16px;font-size:12px" :style="{color: couponOk?'green':'red'}">{{couponMsg}}</div>
@@ -328,10 +328,10 @@ const CartPage = {
           if (res.coupon.discount_type === 'PERCENTAGE') this.discount = this.subtotal * parseFloat(res.coupon.discount) / 100;
           else this.discount = parseFloat(res.coupon.discount || 0);
           if (res.coupon.max_discount && this.discount > parseFloat(res.coupon.max_discount)) this.discount = parseFloat(res.coupon.max_discount);
-          this.couponMsg = 'Cupón aplicado!';
+          this.couponMsg = 'CupÃ³n aplicado!';
           Store.appliedCoupon = { code: res.coupon.code }; Store.saveCart();
-        } else { this.couponOk = false; this.couponMsg = res.message || 'Cupón inválido'; this.discount = 0; Store.appliedCoupon = null; Store.saveCart(); }
-      } catch(e) { this.couponMsg = 'Error aplicando cupón'; }
+        } else { this.couponOk = false; this.couponMsg = res.message || 'CupÃ³n invÃ¡lido'; this.discount = 0; Store.appliedCoupon = null; Store.saveCart(); }
+      } catch(e) { this.couponMsg = 'Error aplicando cupÃ³n'; }
     },
     checkout() { this.$router.push('/checkout'); }
   }
@@ -340,7 +340,7 @@ const CartPage = {
 // Placeholder pages
 const ExplorePage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Buscar"></app-header>
       <div class="search-box" style="margin-top:0;border-radius:0;box-shadow:none;border-bottom:1px solid var(--border)">
         <i class="fas fa-search"></i>
@@ -391,20 +391,20 @@ const ExplorePage = {
 // ==================== 6. LOGIN ====================
 const LoginPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
-      <app-header title="Iniciar Sesión" :back="true"></app-header>
+    <div class="page" style="background:var(--white);min-height:100vh">
+      <app-header title="Iniciar SesiÃ³n" :back="true"></app-header>
       <div style="padding:24px 16px">
-        <div style="text-align:center;margin-bottom:30px"><i class="fas fa-user-circle" style="font-size:60px;color:var(--border)"></i><h2 style="margin-top:12px;font-size:20px">Bienvenido</h2><p style="color:var(--muted);font-size:13px">Inicia sesión para continuar</p></div>
+        <div style="text-align:center;margin-bottom:30px"><i class="fas fa-user-circle" style="font-size:60px;color:var(--border)"></i><h2 style="margin-top:12px;font-size:20px">Bienvenido</h2><p style="color:var(--muted);font-size:13px">Inicia sesiÃ³n para continuar</p></div>
         <div v-if="error" style="background:#ffebee;color:#c62828;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px">{{error}}</div>
         <form @submit.prevent="doLogin">
           <div style="margin-bottom:14px"><input v-model="email" type="email" placeholder="Email" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
-          <div style="margin-bottom:14px"><input v-model="password" type="password" placeholder="Contraseña" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
-          <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Cargando...' : 'Iniciar Sesión'}}</button>
+          <div style="margin-bottom:14px"><input v-model="password" type="password" placeholder="ContraseÃ±a" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
+          <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Cargando...' : 'Iniciar SesiÃ³n'}}</button>
         </form>
         <div style="text-align:center;margin-top:20px;font-size:13px">
-          <router-link to="/forgot-password" style="color:var(--primary)">Olvidé mi contraseña</router-link>
+          <router-link to="/forgot-password" style="color:var(--primary)">OlvidÃ© mi contraseÃ±a</router-link>
         </div>
-        <div style="text-align:center;margin-top:16px;font-size:13px">No tienes cuenta? <router-link to="/register" style="color:var(--primary);font-weight:600">Regístrate</router-link></div>
+        <div style="text-align:center;margin-top:16px;font-size:13px">No tienes cuenta? <router-link to="/register" style="color:var(--primary);font-weight:600">RegÃ­strate</router-link></div>
       </div>
     </div>`,
   components: { AppHeader },
@@ -428,7 +428,7 @@ const LoginPage = {
           this.$router.push('/account');
         }
         else this.error = 'Credenciales incorrectas';
-      } catch(e) { this.error = 'Error de conexión'; }
+      } catch(e) { this.error = 'Error de conexiÃ³n'; }
       this.loading = false;
     }
   }
@@ -437,18 +437,18 @@ const LoginPage = {
 // ==================== 7. REGISTER ====================
 const RegisterPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Crear Cuenta" :back="true"></app-header>
       <div style="padding:24px 16px">
         <div v-if="error" style="background:#ffebee;color:#c62828;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px">{{error}}</div>
         <form @submit.prevent="doRegister">
           <div style="margin-bottom:14px"><input v-model="name" type="text" placeholder="Nombre" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
           <div style="margin-bottom:14px"><input v-model="email" type="email" placeholder="Email" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
-          <div style="margin-bottom:14px"><input v-model="phone" type="tel" placeholder="Teléfono" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
-          <div style="margin-bottom:14px"><input v-model="password" type="password" placeholder="Contraseña" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
+          <div style="margin-bottom:14px"><input v-model="phone" type="tel" placeholder="TelÃ©fono" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
+          <div style="margin-bottom:14px"><input v-model="password" type="password" placeholder="ContraseÃ±a" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
           <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Creando...' : 'Crear Cuenta'}}</button>
         </form>
-        <div style="text-align:center;margin-top:16px;font-size:13px">Ya tienes cuenta? <router-link to="/login" style="color:var(--primary);font-weight:600">Inicia Sesión</router-link></div>
+        <div style="text-align:center;margin-top:16px;font-size:13px">Ya tienes cuenta? <router-link to="/login" style="color:var(--primary);font-weight:600">Inicia SesiÃ³n</router-link></div>
       </div>
     </div>`,
   components: { AppHeader },
@@ -460,7 +460,7 @@ const RegisterPage = {
         const res = await API.register(this.name, this.email, this.phone, this.password);
         if (res.success) { API.setToken(res.data.auth_token); Store.setUser(res.data); this.$router.push('/'); }
         else this.error = res.message || 'Error al registrar';
-      } catch(e) { this.error = 'Error de conexión'; }
+      } catch(e) { this.error = 'Error de conexiÃ³n'; }
       this.loading = false;
     }
   }
@@ -471,10 +471,10 @@ const FavoritesPage = {
   template: `
     <div class="page">
       <app-header title="Mis Favoritos" :back="true"></app-header>
-      <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-heart"></i><p>Inicia sesión para ver tus favoritos</p><button class="btn-primary" style="margin-top:16px;width:auto;padding:10px 24px;display:inline-block" @click="$router.push('/login')">Iniciar Sesión</button></div>
+      <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-heart"></i><p>Inicia sesiÃ³n para ver tus favoritos</p><button class="btn-primary" style="margin-top:16px;width:auto;padding:10px 24px;display:inline-block" @click="$router.push('/login')">Iniciar SesiÃ³n</button></div>
       <div v-else-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else>
-        <div v-if="!stores.length" class="empty-state"><i class="fas fa-heart-broken"></i><p>No tienes favoritos aún</p></div>
+        <div v-if="!stores.length" class="empty-state"><i class="fas fa-heart-broken"></i><p>No tienes favoritos aÃºn</p></div>
         <div style="padding:0 16px">
           <div v-for="s in stores" :key="s.id" class="store-card" @click="$router.push('/store/'+s.slug)">
             <img :src="s.image || '/assets/img/various/store-placeholder.png'" class="store-card-img">
@@ -500,7 +500,7 @@ const FavoritesPage = {
 // ==================== 9. NOTIFICATIONS ====================
 const NotificationsPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Notificaciones" :back="true"></app-header>
       <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-bell"></i><p>Inicia sesion para ver notificaciones</p><button class="btn-primary" style="margin-top:16px;width:auto;padding:10px 24px;display:inline-block" @click="\$router.push('/login')">Iniciar Sesion</button></div>
       <div v-else-if="loading" class="loading"><div class="spinner"></div></div>
@@ -508,7 +508,7 @@ const NotificationsPage = {
         <div v-if="!notifications.length" class="empty-state"><i class="fas fa-bell-slash"></i><p>No tienes notificaciones</p></div>
         <div v-else>
           <div style="padding:8px 16px;text-align:right" v-if="notifications.length"><button style="background:none;color:var(--primary);font-size:12px;font-weight:600" @click="markAll">Marcar todas como leidas</button></div>
-          <div v-for="n in notifications" :key="n.id" class="location-item" :style="{background: n.read_at ? '#fff' : '#fff8e1', cursor:'pointer'}" @click="goToOrder(n)">
+          <div v-for="n in notifications" :key="n.id" class="location-item" :style="{background: n.read_at ? 'var(--white)' : '#fff8e1', cursor:'pointer'}" @click="goToOrder(n)">
             <i class="fas fa-bell" :style="{color: n.read_at ? 'var(--muted)' : 'var(--primary)'}"></i>
             <div style="flex:1">
               <div style="font-size:14px;font-weight:500">{{n.data && n.data.title ? n.data.title : 'Notificacion'}}</div>
@@ -548,32 +548,32 @@ const NotificationsPage = {
 // ==================== 11. FORGOT PASSWORD ====================
 const ForgotPasswordPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
-      <app-header title="Recuperar Contraseña" :back="true"></app-header>
+    <div class="page" style="background:var(--white);min-height:100vh">
+      <app-header title="Recuperar ContraseÃ±a" :back="true"></app-header>
       <div style="padding:24px 16px">
         <template v-if="step===1">
-          <p style="color:var(--muted);font-size:13px;margin-bottom:20px">Ingresa tu email y te enviaremos un código para restablecer tu contraseña.</p>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:20px">Ingresa tu email y te enviaremos un cÃ³digo para restablecer tu contraseÃ±a.</p>
           <div v-if="error" style="background:#ffebee;color:#c62828;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px">{{error}}</div>
           <form @submit.prevent="sendCode">
             <div style="margin-bottom:14px"><input v-model="email" type="email" placeholder="Email" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
-            <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Enviando...' : 'Enviar Código'}}</button>
+            <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Enviando...' : 'Enviar CÃ³digo'}}</button>
           </form>
         </template>
         <template v-else-if="step===2">
-          <p style="color:var(--muted);font-size:13px;margin-bottom:20px">Ingresa el código enviado a {{email}}</p>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:20px">Ingresa el cÃ³digo enviado a {{email}}</p>
           <div v-if="error" style="background:#ffebee;color:#c62828;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px">{{error}}</div>
           <form @submit.prevent="verifyCode">
-            <div style="margin-bottom:14px"><input v-model="code" type="text" placeholder="Código" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px;text-align:center;letter-spacing:4px"></div>
+            <div style="margin-bottom:14px"><input v-model="code" type="text" placeholder="CÃ³digo" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px;text-align:center;letter-spacing:4px"></div>
             <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Verificando...' : 'Verificar'}}</button>
           </form>
         </template>
         <template v-else>
-          <p style="color:var(--muted);font-size:13px;margin-bottom:20px">Ingresa tu nueva contraseña</p>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:20px">Ingresa tu nueva contraseÃ±a</p>
           <div v-if="error" style="background:#ffebee;color:#c62828;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px">{{error}}</div>
           <div v-if="success" style="background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px">{{success}}</div>
           <form @submit.prevent="resetPassword">
-            <div style="margin-bottom:14px"><input v-model="password" type="password" placeholder="Nueva contraseña" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
-            <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Guardando...' : 'Cambiar Contraseña'}}</button>
+            <div style="margin-bottom:14px"><input v-model="password" type="password" placeholder="Nueva contraseÃ±a" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
+            <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Guardando...' : 'Cambiar ContraseÃ±a'}}</button>
           </form>
         </template>
       </div>
@@ -583,17 +583,17 @@ const ForgotPasswordPage = {
   methods: {
     async sendCode() {
       this.error = ''; this.loading = true;
-      try { const res = await API.forgotPassword(this.email); if (res.success) this.step = 2; else this.error = 'No se pudo enviar el código'; } catch(e) { this.error = 'Error de conexión'; }
+      try { const res = await API.forgotPassword(this.email); if (res.success) this.step = 2; else this.error = 'No se pudo enviar el cÃ³digo'; } catch(e) { this.error = 'Error de conexiÃ³n'; }
       this.loading = false;
     },
     async verifyCode() {
       this.error = ''; this.loading = true;
-      try { const res = await API.verifyResetOtp(this.email, this.code); if (res.success) this.step = 3; else this.error = 'Código inválido'; } catch(e) { this.error = 'Error'; }
+      try { const res = await API.verifyResetOtp(this.email, this.code); if (res.success) this.step = 3; else this.error = 'CÃ³digo invÃ¡lido'; } catch(e) { this.error = 'Error'; }
       this.loading = false;
     },
     async resetPassword() {
       this.error = ''; this.loading = true;
-      try { const res = await API.changePassword(this.email, this.code, this.password); if (res.success) { this.success = 'Contraseña cambiada!'; setTimeout(() => this.$router.push('/login'), 1500); } else this.error = 'Error al cambiar'; } catch(e) { this.error = 'Error'; }
+      try { const res = await API.changePassword(this.email, this.code, this.password); if (res.success) { this.success = 'ContraseÃ±a cambiada!'; setTimeout(() => this.$router.push('/login'), 1500); } else this.error = 'Error al cambiar'; } catch(e) { this.error = 'Error'; }
       this.loading = false;
     }
   }
@@ -602,12 +602,12 @@ const ForgotPasswordPage = {
 // ==================== ACCOUNT ====================
 const AccountPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Mi Cuenta"></app-header>
       <div v-if="!Store.isLoggedIn" style="padding:40px 16px;text-align:center">
         <i class="fas fa-user-circle" style="font-size:60px;color:var(--border)"></i>
-        <p style="margin:16px 0;color:var(--muted)">Inicia sesión para acceder a tu cuenta</p>
-        <button class="btn-primary" style="width:auto;padding:12px 30px;display:inline-block" @click="$router.push('/login')">Iniciar Sesión</button>
+        <p style="margin:16px 0;color:var(--muted)">Inicia sesiÃ³n para acceder a tu cuenta</p>
+        <button class="btn-primary" style="width:auto;padding:12px 30px;display:inline-block" @click="$router.push('/login')">Iniciar SesiÃ³n</button>
       </div>
       <template v-else>
         <div style="padding:20px 16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border)">
@@ -621,7 +621,7 @@ const AccountPage = {
           <div class="location-item" @click="$router.push('/favorites')"><i class="fas fa-heart"></i><span class="location-item-text">Mis Favoritos</span></div>
           <div class="location-item" @click="$router.push('/notifications')"><i class="fas fa-bell"></i><span class="location-item-text">Notificaciones</span></div>
           <div class="location-item" @click="Store.toggleTheme()"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i><span class="location-item-text">{{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</span></div>
-          <div class="location-item" @click="doLogout" style="color:#e53935"><i class="fas fa-sign-out-alt" style="color:#e53935"></i><span class="location-item-text">Cerrar Sesión</span></div>
+          <div class="location-item" @click="doLogout" style="color:#e53935"><i class="fas fa-sign-out-alt" style="color:#e53935"></i><span class="location-item-text">Cerrar SesiÃ³n</span></div>
         </div>
       </template>
     </div>`,
@@ -634,9 +634,9 @@ const AccountPage = {
 // ==================== 12. CHECKOUT ====================
 const CheckoutPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Pago" :back="true"></app-header>
-      <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-lock"></i><p>Inicia sesión para pagar</p><button class="btn-primary" style="margin-top:16px;width:auto;padding:10px 24px;display:inline-block" @click="$router.push('/login')">Iniciar Sesión</button></div>
+      <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-lock"></i><p>Inicia sesiÃ³n para pagar</p><button class="btn-primary" style="margin-top:16px;width:auto;padding:10px 24px;display:inline-block" @click="$router.push('/login')">Iniciar SesiÃ³n</button></div>
       <div v-else-if="processing" class="loading" style="padding-top:80px"><div class="spinner"></div><p style="text-align:center;margin-top:16px;color:var(--muted)">Procesando tu orden...</p></div>
       <template v-else>
         <div v-if="addresses.length" style="padding:12px 16px;border-bottom:1px solid var(--border)">
@@ -644,7 +644,7 @@ const CheckoutPage = {
           <div v-for="a in addresses" :key="a.id" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;margin-bottom:6px;cursor:pointer" :style="{border: selectedAddress && selectedAddress.id===a.id ? '2px solid var(--primary)' : '1px solid var(--border)'}" @click="selectedAddress=a">
             <i class="fas fa-map-marker-alt" :style="{color: selectedAddress && selectedAddress.id===a.id ? 'var(--primary)' : 'var(--muted)'}"></i>
             <div style="flex:1">
-              <div style="font-size:13px;font-weight:500">{{a.tag || a.house || 'Dirección'}}</div>
+              <div style="font-size:13px;font-weight:500">{{a.tag || a.house || 'DirecciÃ³n'}}</div>
               <div style="font-size:11px;color:var(--muted)">{{a.address}}</div>
             </div>
             <i v-if="selectedAddress && selectedAddress.id===a.id" class="fas fa-check-circle" style="color:var(--primary)"></i>
@@ -653,11 +653,11 @@ const CheckoutPage = {
         </div>
         <div v-else style="padding:12px 16px;border-bottom:1px solid var(--border)">
           <p style="font-size:13px;color:var(--muted)">No tienes direcciones guardadas</p>
-          <router-link to="/addresses" style="font-size:13px;color:var(--primary);font-weight:600">+ Agregar dirección</router-link>
+          <router-link to="/addresses" style="font-size:13px;color:var(--primary);font-weight:600">+ Agregar direcciÃ³n</router-link>
         </div>
         <div class="bill">
           <div class="bill-row"><span>Subtotal</span><span>{{Store.formatPrice(Store.cartTotal)}}</span></div>
-          <div class="bill-row"><span>Envío</span><span>{{Store.formatPrice(deliveryCharge)}}</span></div>
+          <div class="bill-row"><span>EnvÃ­o</span><span>{{Store.formatPrice(deliveryCharge)}}</span></div>
           <div v-if="restaurantCharge > 0" class="bill-row"><span>Cargo servicio</span><span>{{Store.formatPrice(restaurantCharge)}}</span></div>
           <div class="bill-row total"><span>Total</span><span>{{Store.formatPrice(total)}}</span></div>
         </div>
@@ -670,7 +670,7 @@ const CheckoutPage = {
             <input type="time" v-model="scheduleTime" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
           </div>
         </div>
-        <div class="section-title">Método de pago</div>
+        <div class="section-title">MÃ©todo de pago</div>
         <div style="padding:0 16px">
           <div v-for="gw in gateways" :key="gw.id" style="border-radius:8px;margin-bottom:8px;border:1px solid var(--border);padding:12px;cursor:pointer" @click="pay(gw.name)">
             <div style="display:flex;align-items:center;gap:10px">
@@ -715,7 +715,7 @@ const CheckoutPage = {
     gwIcon(name) { return name === 'COD' ? 'fas fa-money-bill' : 'fas fa-wallet'; },
     copyText(text) { navigator.clipboard.writeText(text); this.copied = true; setTimeout(() => { this.copied = false; }, 2000); },
     async pay(method) {
-      if (!this.selectedAddress && this.addresses.length) { this.error = 'Selecciona una dirección de entrega'; return; }
+      if (!this.selectedAddress && this.addresses.length) { this.error = 'Selecciona una direcciÃ³n de entrega'; return; }
       this.processing = true; this.error = '';
       try {
         const addr = this.selectedAddress || Store.location || {};
@@ -733,7 +733,7 @@ const CheckoutPage = {
         });
         if (res && res.success) { Store.clearCart(); this.$router.push('/order/' + res.data.unique_order_id); }
         else { this.error = res.message || 'Error al procesar la orden'; this.processing = false; }
-      } catch(e) { this.error = 'Error de conexión'; this.processing = false; }
+      } catch(e) { this.error = 'Error de conexiÃ³n'; this.processing = false; }
     }
   }
 };
@@ -743,10 +743,10 @@ const OrdersPage = {
   template: `
     <div class="page">
       <app-header title="Mis Pedidos" :back="'/account'"></app-header>
-      <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-receipt"></i><p>Inicia sesión para ver tus pedidos</p><button class="btn-primary" style="margin-top:16px;width:auto;padding:10px 24px;display:inline-block" @click="$router.push('/login')">Iniciar Sesión</button></div>
+      <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-receipt"></i><p>Inicia sesiÃ³n para ver tus pedidos</p><button class="btn-primary" style="margin-top:16px;width:auto;padding:10px 24px;display:inline-block" @click="$router.push('/login')">Iniciar SesiÃ³n</button></div>
       <div v-else-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else>
-        <div v-if="!orders.length" class="empty-state"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>
+        <div v-if="!orders.length" class="empty-state"><i class="fas fa-receipt"></i><p>No tienes pedidos aÃºn</p></div>
         <div style="padding:0 16px">
           <div v-for="o in orders" :key="o.id" class="card" style="cursor:pointer" @click="$router.push('/order/'+o.unique_order_id)">
             <div class="card-body">
@@ -783,7 +783,7 @@ const OrdersPage = {
 // ==================== 14. ORDER DETAIL / RUNNING ORDER ====================
 const OrderDetailPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header :title="'Orden #'+(order?order.unique_order_id:'')" :back="'/orders'"></app-header>
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else-if="order">
@@ -815,7 +815,7 @@ const OrderDetailPage = {
           <div style="background:var(--bg);border-radius:8px;padding:12px;max-height:250px;overflow-y:auto;margin-bottom:8px">
             <div v-if="!messages.length" style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Sin mensajes aun</div>
             <div v-for="m in messages" :key="m.id" :style="{marginBottom:'8px',display:'flex',justifyContent:m.sender_id==Store.user.id?'flex-end':'flex-start'}">
-              <div :style="{maxWidth:'75%',padding:'8px 12px',borderRadius:'12px',fontSize:'13px',background:m.sender_id==Store.user.id?'var(--primary)':'#fff',color:m.sender_id==Store.user.id?'#fff':'var(--text)',boxShadow:'0 1px 3px rgba(0,0,0,.1)'}">{{m.message}}<div :style="{fontSize:'10px',marginTop:'4px',opacity:.7}">{{formatTime(m.created_at)}}</div></div>
+              <div :style="{maxWidth:'75%',padding:'8px 12px',borderRadius:'12px',fontSize:'13px',background:m.sender_id==Store.user.id?'var(--primary)':'var(--white)',color:m.sender_id==Store.user.id?'#fff':'var(--text)',boxShadow:'0 1px 3px rgba(0,0,0,.1)'}">{{m.message}}<div :style="{fontSize:'10px',marginTop:'4px',opacity:.7}">{{formatTime(m.created_at)}}</div></div>
             </div>
           </div>
           <div style="display:flex;gap:8px">
@@ -864,8 +864,8 @@ const OrderDetailPage = {
       try { loc = this.order.location ? JSON.parse(this.order.location) : null; } catch(e) {}
       const center = rest ? { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) } : (loc ? { lat: loc.lat, lng: loc.lng } : { lat: 0, lng: 0 });
       this.map = new google.maps.Map(mapEl, { zoom: 14, center, disableDefaultUI: true, zoomControl: true });
-      if (rest) new google.maps.Marker({ position: { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) }, map: this.map, title: rest.name, icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#4caf50"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">🏪</text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
-      if (loc) new google.maps.Marker({ position: { lat: loc.lat, lng: loc.lng }, map: this.map, title: 'Tu ubicacion', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#2196f3"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">🏠</text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
+      if (rest) new google.maps.Marker({ position: { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) }, map: this.map, title: rest.name, icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#4caf50"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">ðŸª</text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
+      if (loc) new google.maps.Marker({ position: { lat: loc.lat, lng: loc.lng }, map: this.map, title: 'Tu ubicacion', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#2196f3"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">ðŸ </text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
       // Fit bounds
       if (rest && loc) {
         const bounds = new google.maps.LatLngBounds();
@@ -883,7 +883,7 @@ const OrderDetailPage = {
           if (gps && gps.delivery_lat && gps.delivery_long) {
             const pos = { lat: parseFloat(gps.delivery_lat), lng: parseFloat(gps.delivery_long) };
             if (this.deliveryMarker) { this.deliveryMarker.setPosition(pos); }
-            else { this.deliveryMarker = new google.maps.Marker({ position: pos, map: this.map, title: 'Repartidor', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#ff5722"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">🏍</text></svg>'), scaledSize: new google.maps.Size(40, 40) } }); }
+            else { this.deliveryMarker = new google.maps.Marker({ position: pos, map: this.map, title: 'Repartidor', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#ff5722"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">ðŸ</text></svg>'), scaledSize: new google.maps.Size(40, 40) } }); }
             // Draw route when picked up (status 4)
             if (this.order.orderstatus_id === 4) {
               let loc = null;
@@ -923,7 +923,7 @@ const OrderDetailPage = {
 // ==================== 15. ADDRESSES ====================
 const AddressesPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Mis Direcciones" :back="true"></app-header>
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else>
@@ -938,9 +938,9 @@ const AddressesPage = {
           <i v-else class="fas fa-check-circle" style="color:var(--primary)"></i>
         </div>
         <div style="padding:16px">
-          <div style="font-size:14px;font-weight:600;margin-bottom:12px">Agregar dirección</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:12px">Agregar direcciÃ³n</div>
           <form @submit.prevent="saveAddr">
-            <input v-model="newAddr.address" placeholder="Dirección" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:14px">
+            <input v-model="newAddr.address" placeholder="DirecciÃ³n" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:14px">
             <div style="display:flex;gap:8px;margin-bottom:8px">
               <input v-model="newAddr.house" placeholder="Casa/Depto" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
               <input v-model="newAddr.tag" placeholder="Etiqueta" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
@@ -965,7 +965,7 @@ const AddressesPage = {
       try { await API.setDefaultAddress(Store.user.id, a.id, Store.user.auth_token); this.defaultId = a.id; Store.setLocation({ lat: parseFloat(a.latitude), lng: parseFloat(a.longitude), address: a.address }); } catch(e) {}
     },
     async deleteAddr(id) {
-      if (!confirm('¿Eliminar dirección?')) return;
+      if (!confirm('Â¿Eliminar direcciÃ³n?')) return;
       try { await API.deleteAddress(Store.user.id, id, Store.user.auth_token); this.addresses = this.addresses.filter(a => a.id !== id); } catch(e) {}
     },
     async saveAddr() {
@@ -984,9 +984,9 @@ const AddressesPage = {
 // ==================== 16. WALLET ====================
 const WalletPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Mi Billetera" :back="true"></app-header>
-      <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-wallet"></i><p>Inicia sesión</p></div>
+      <div v-if="!Store.isLoggedIn" class="empty-state"><i class="fas fa-wallet"></i><p>Inicia sesiÃ³n</p></div>
       <template v-else>
         <div style="padding:20px 16px;text-align:center;background:linear-gradient(135deg,var(--primary),#ff8a65);color:#fff;margin:16px;border-radius:var(--radius)">
           <div style="font-size:13px;opacity:.8">Saldo disponible</div>
@@ -998,7 +998,7 @@ const WalletPage = {
           <div v-if="!transactions.length" class="empty-state" style="padding:20px"><p>Sin transacciones</p></div>
           <div v-for="t in transactions" :key="t.id" style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
             <div>
-              <div style="font-size:13px;font-weight:500">{{t.meta ? (JSON.parse(t.meta).description || 'Transacción') : 'Transacción'}}</div>
+              <div style="font-size:13px;font-weight:500">{{t.meta ? (JSON.parse(t.meta).description || 'TransacciÃ³n') : 'TransacciÃ³n'}}</div>
               <div style="font-size:11px;color:var(--muted)">{{formatDate(t.created_at)}}</div>
             </div>
             <div :style="{fontWeight:600,fontSize:'14px',color:t.type==='deposit'?'#4caf50':'#f44336'}">{{t.type==='deposit'?'+':'-'}}{{Store.formatPrice(t.amount)}}</div>
@@ -1022,10 +1022,10 @@ const WalletPage = {
 // ==================== 17. RATE ORDER ====================
 const RateOrderPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <app-header title="Calificar Orden" :back="true"></app-header>
       <div style="padding:24px 16px;text-align:center">
-        <div style="font-size:16px;font-weight:600;margin-bottom:20px">¿Cómo fue tu experiencia?</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:20px">Â¿CÃ³mo fue tu experiencia?</div>
         <div style="margin-bottom:20px">
           <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Restaurante</div>
           <div style="display:flex;justify-content:center;gap:8px">
@@ -1039,8 +1039,8 @@ const RateOrderPage = {
           </div>
         </div>
         <textarea v-model="comment" placeholder="Comentario (opcional)" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:14px;min-height:80px;margin-bottom:16px"></textarea>
-        <div v-if="success" style="background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px">¡Gracias por tu calificación!</div>
-        <button class="btn-primary" @click="submit" :disabled="submitting || success">{{submitting ? 'Enviando...' : 'Enviar Calificación'}}</button>
+        <div v-if="success" style="background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px">Â¡Gracias por tu calificaciÃ³n!</div>
+        <button class="btn-primary" @click="submit" :disabled="submitting || success">{{submitting ? 'Enviando...' : 'Enviar CalificaciÃ³n'}}</button>
       </div>
     </div>`,
   components: { AppHeader },

@@ -78,6 +78,36 @@
         .dataTables_filter input { border-radius: 6px; font-size: 13px; }
         .dataTables_length select { border-radius: 6px; }
         div.dataTables_wrapper div.dataTables_info { font-size: 12px; }
+
+        /* Dark Mode */
+        [data-theme="dark"] body { background: #121212; color: #e0e0e0; }
+        [data-theme="dark"] .top-bar { background: #1e1e1e; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+        [data-theme="dark"] .top-bar h5 { color: #e0e0e0; }
+        [data-theme="dark"] .card { background: #1e1e1e; box-shadow: 0 1px 6px rgba(0,0,0,.2); }
+        [data-theme="dark"] .card-header { background: #1e1e1e; border-color: #333; color: #e0e0e0; }
+        [data-theme="dark"] .card-body { color: #e0e0e0; }
+        [data-theme="dark"] .table { color: #e0e0e0; }
+        [data-theme="dark"] .table th { color: #999; border-color: #333; }
+        [data-theme="dark"] .table td { border-color: #2a2a2a; }
+        [data-theme="dark"] .table-hover tbody tr:hover { background: #2a2a2a; }
+        [data-theme="dark"] .form-control { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
+        [data-theme="dark"] .form-control:focus { background: #333; color: #e0e0e0; border-color: var(--primary); }
+        [data-theme="dark"] .modal-content { background: #1e1e1e; color: #e0e0e0; }
+        [data-theme="dark"] .modal-header { border-color: #333; }
+        [data-theme="dark"] .modal-footer { border-color: #333; }
+        [data-theme="dark"] .close { color: #e0e0e0; }
+        [data-theme="dark"] .alert-success { background: #1b3a1b; color: #66bb6a; }
+        [data-theme="dark"] .alert-danger { background: #3a1b1b; color: #ef5350; }
+        [data-theme="dark"] .alert-warning { background: #3a3a1b; color: #ffb74d; }
+        [data-theme="dark"] .custom-select, [data-theme="dark"] select.form-control { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
+        [data-theme="dark"] .dataTables_wrapper .dataTables_filter input { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
+        [data-theme="dark"] .dataTables_wrapper .dataTables_length select { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
+        [data-theme="dark"] .page-link { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
+        [data-theme="dark"] .page-item.active .page-link { background: var(--primary); border-color: var(--primary); }
+        [data-theme="dark"] .hamburger { color: #e0e0e0; }
+        [data-theme="dark"] .btn-outline-secondary { color: #ccc; border-color: #555; }
+        .theme-toggle { background: none; border: none; font-size: 18px; cursor: pointer; color: #6c757d; padding: 8px; }
+        [data-theme="dark"] .theme-toggle { color: #ffc107; }
     </style>
 </head>
 <body>
@@ -125,6 +155,7 @@
                 <h5><%= typeof pageTitle !== 'undefined' ? pageTitle : 'Admin' %></h5>
             </div>
             <div class="top-bar-user">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Modo oscuro"><i class="fas" id="themeIcon"></i></button>
                 <span><%= typeof user !== 'undefined' && user ? user.name : 'Admin' %></span>
                 <div class="avatar"><%= typeof user !== 'undefined' && user ? user.name[0].toUpperCase() : 'A' %></div>
             </div>
@@ -164,6 +195,19 @@
       });
       // DataTables responsive defaults
       $.extend($.fn.dataTable.defaults, { responsive: true, language: { search: '', searchPlaceholder: 'Buscar...', lengthMenu: '_MENU_ por página', info: '_START_-_END_ de _TOTAL_', paginate: { previous: '‹', next: '›' } } });
+
+      // Theme toggle
+      function toggleTheme() {
+        var t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('adminTheme', t);
+        updateThemeIcon();
+      }
+      function updateThemeIcon() {
+        var icon = document.getElementById('themeIcon');
+        if (icon) icon.className = 'fas ' + (document.documentElement.getAttribute('data-theme') === 'dark' ? 'fa-sun' : 'fa-moon');
+      }
+      (function() { var t = localStorage.getItem('adminTheme') || 'light'; document.documentElement.setAttribute('data-theme', t); updateThemeIcon(); })();
 
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {

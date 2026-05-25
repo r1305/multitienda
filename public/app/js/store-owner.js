@@ -1,19 +1,19 @@
-// ==================== STORE OWNER APP PAGES ====================
+﻿// ==================== STORE OWNER APP PAGES ====================
 
 const StoreOwnerLoginPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
+    <div class="page" style="background:var(--white);min-height:100vh">
       <div style="padding:40px 16px;text-align:center">
         <i class="fas fa-store" style="font-size:50px;color:var(--primary);margin-bottom:16px"></i>
         <h2 style="font-size:20px;margin-bottom:4px">Mi Tienda</h2>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:30px">Panel de administración de tu tienda</p>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:30px">Panel de administraciÃ³n de tu tienda</p>
       </div>
       <div style="padding:0 16px">
         <div v-if="error" style="background:#ffebee;color:#c62828;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px">{{error}}</div>
         <form @submit.prevent="doLogin">
           <div style="margin-bottom:14px"><input v-model="email" type="email" placeholder="Email" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
-          <div style="margin-bottom:14px"><input v-model="password" type="password" placeholder="Contraseña" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
-          <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Cargando...' : 'Iniciar Sesión'}}</button>
+          <div style="margin-bottom:14px"><input v-model="password" type="password" placeholder="ContraseÃ±a" required style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:15px"></div>
+          <button type="submit" class="btn-primary" :disabled="loading">{{loading ? 'Cargando...' : 'Iniciar SesiÃ³n'}}</button>
         </form>
         <div style="text-align:center;margin-top:20px"><router-link to="/" style="color:var(--muted);font-size:13px"><i class="fas fa-arrow-left"></i> Volver a la app</router-link></div>
       </div>
@@ -37,7 +37,7 @@ const StoreOwnerLoginPage = {
           }
           this.$router.push('/store-owner/dashboard');
         } else this.error = res.message || 'Credenciales incorrectas';
-      } catch(e) { this.error = 'Error de conexión'; }
+      } catch(e) { this.error = 'Error de conexiÃ³n'; }
       this.loading = false;
     }
   }
@@ -58,6 +58,7 @@ const StoreOwnerDashboardPage = {
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
         <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
+        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>
       </nav>
       <div class="so-main">
         <div class="so-topbar">
@@ -119,8 +120,7 @@ const StoreOwnerOrdersPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
-        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
-      </nav>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>`n        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>`n      </nav>
       <div class="so-main">
         <div class="so-topbar">
           <span class="so-topbar-title">Pedidos</span>
@@ -184,8 +184,7 @@ const StoreOwnerOrderDetailPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
-        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
-      </nav>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>`n        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>`n      </nav>
       <div class="so-main">
         <div class="so-topbar">
           <button style="background:none;border:none;font-size:18px" @click="$router.back()"><i class="fas fa-arrow-left"></i></button>
@@ -253,8 +252,7 @@ const StoreOwnerHistoryPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history" class="active"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
-        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
-      </nav>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>`n        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>`n      </nav>
       <div class="so-main">
         <div class="so-topbar"><span class="so-topbar-title">Historial</span></div>
         <div class="so-bottom-nav">
@@ -304,8 +302,7 @@ const StoreOwnerEarningsPage = {
         <router-link to="/store-owner/earnings" class="active"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
-        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
-      </nav>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>`n        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>`n      </nav>
       <div class="so-main">
         <div class="so-topbar"><span class="so-topbar-title">Ganancias</span></div>
         <div class="so-bottom-nav">
@@ -395,8 +392,7 @@ const StoreOwnerMenuPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
-        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
-      </nav>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>`n        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>`n      </nav>
       <div class="so-main">
         <div class="so-topbar">
           <span class="so-topbar-title">Productos</span>
@@ -518,8 +514,7 @@ const StoreOwnerCategoriesPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
-        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
-      </nav>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>`n        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>`n      </nav>
       <div class="so-main">
         <div class="so-topbar">
           <span class="so-topbar-title">Categorias</span>
@@ -598,8 +593,7 @@ const StoreOwnerAddonsPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
-        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
-      </nav>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>`n        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>`n      </nav>
       <div class="so-main">
         <div class="so-topbar">
           <span class="so-topbar-title">Addons</span>
@@ -721,8 +715,7 @@ const StoreOwnerSettingsPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings" class="active"><i class="fas fa-cog"></i> Settings</router-link>
-        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
-      </nav>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>`n        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>`n      </nav>
       <div class="so-main">
         <div class="so-topbar"><span class="so-topbar-title">Settings</span></div>
         <div class="so-bottom-nav">
@@ -847,8 +840,7 @@ const StoreOwnerCouponsPage = {
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
-        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
-      </nav>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>`n        <a @click="Store.toggleTheme()" style="cursor:pointer"><i :class="Store.theme==='dark'?'fas fa-sun':'fas fa-moon'"></i> {{Store.theme==='dark'?'Modo Claro':'Modo Oscuro'}}</a>`n      </nav>
       <div class="so-main">
         <div class="so-topbar">
           <span class="so-topbar-title">Cupones</span>
