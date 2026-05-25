@@ -43,86 +43,59 @@ const StoreOwnerLoginPage = {
 
 const StoreOwnerDashboardPage = {
   template: `
-    <div class="page" style="background:var(--bg);min-height:100vh">
-      <div class="header">
-        <span class="header-title">Mi Tienda</span>
-        <button style="background:none;font-size:14px;color:#e53935" @click="logout"><i class="fas fa-sign-out-alt"></i></button>
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar">
+          <span class="so-topbar-title">Dashboard</span>
+          <span style="font-size:12px;color:var(--muted)">{{store.name}}</span>
+        </div>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard" class="active"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
+        </div>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div><h2 style="font-size:20px;font-weight:700;margin:0">{{store.name || 'Mi Tienda'}}</h2><p style="font-size:13px;color:var(--muted);margin:4px 0 0">{{store.address || ''}}</p></div>
+            <button class="so-btn" :class="store.is_active?'so-btn-success':'so-btn-danger'" @click="toggleStatus">{{store.is_active ? 'Abierto' : 'Cerrado'}}</button>
+          </div>
+          <div class="so-stats">
+            <div class="so-stat"><div class="so-stat-value" style="color:var(--primary)">{{stats.todayOrders}}</div><div class="so-stat-label">Pedidos hoy</div></div>
+            <div class="so-stat"><div class="so-stat-value" style="color:#4caf50">{{Store.formatPrice(stats.todayEarnings)}}</div><div class="so-stat-label">Ganancias hoy</div></div>
+            <div class="so-stat"><div class="so-stat-value" style="color:#ff9800">{{stats.pendingOrders}}</div><div class="so-stat-label">Pendientes</div></div>
+          </div>
+          <div class="so-card">
+            <div class="so-card-header">Accesos rapidos</div>
+            <div class="so-card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+              <router-link to="/store-owner/orders" class="so-btn so-btn-primary" style="justify-content:center"><i class="fas fa-receipt"></i> Pedidos</router-link>
+              <router-link to="/store-owner/menu" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-utensils"></i> Productos</router-link>
+              <router-link to="/store-owner/categories" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-list"></i> Categorias</router-link>
+              <router-link to="/store-owner/addons" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+              <router-link to="/store-owner/earnings" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+            </div>
+          </div>
+        </template>
       </div>
-      <div v-if="loading" class="loading"><div class="spinner"></div></div>
-      <template v-else>
-        <div style="padding:16px;background:#fff;border-bottom:1px solid var(--border)">
-          <div style="font-size:18px;font-weight:700">{{store.name || 'Mi Tienda'}}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px">{{store.address || ''}}</div>
-          <div style="margin-top:10px;display:flex;gap:8px">
-            <span :style="{padding:'4px 10px',borderRadius:'12px',fontSize:'11px',fontWeight:600,background:store.is_active?'#e8f5e9':'#ffebee',color:store.is_active?'#2e7d32':'#c62828'}">{{store.is_active ? 'Abierto' : 'Cerrado'}}</span>
-            <button style="padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;background:var(--border);color:var(--text)" @click="toggleStatus">{{store.is_active ? 'Cerrar tienda' : 'Abrir tienda'}}</button>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px">
-          <div style="background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:var(--shadow)">
-            <div style="font-size:24px;font-weight:700;color:var(--primary)">{{stats.todayOrders}}</div>
-            <div style="font-size:11px;color:var(--muted)">Pedidos hoy</div>
-          </div>
-          <div style="background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:var(--shadow)">
-            <div style="font-size:24px;font-weight:700;color:#4caf50">{{Store.formatPrice(stats.todayEarnings)}}</div>
-            <div style="font-size:11px;color:var(--muted)">Ganancias hoy</div>
-          </div>
-        </div>
-        <div style="padding:0 16px">
-          <div class="location-item" @click="$router.push('/store-owner/orders')" style="background:#fff;border-radius:8px;margin-bottom:8px;box-shadow:var(--shadow)">
-            <i class="fas fa-receipt" style="color:var(--primary)"></i>
-            <span class="location-item-text" style="flex:1">Pedidos Nuevos</span>
-            <span v-if="stats.pendingOrders" style="background:var(--primary);color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">{{stats.pendingOrders}}</span>
-            <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
-          </div>
-          <div class="location-item" @click="$router.push('/store-owner/earnings')" style="background:#fff;border-radius:8px;margin-bottom:8px;box-shadow:var(--shadow)">
-            <i class="fas fa-chart-line" style="color:#4caf50"></i>
-            <span class="location-item-text">Mis Ganancias</span>
-            <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
-          </div>
-          <div class="location-item" @click="$router.push('/store-owner/menu')" style="background:#fff;border-radius:8px;margin-bottom:8px;box-shadow:var(--shadow)">
-            <i class="fas fa-utensils" style="color:var(--primary)"></i>
-            <span class="location-item-text">Mi Menú</span>
-            <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
-          </div>
-          <div class="location-item" @click="$router.push('/store-owner/categories')" style="background:#fff;border-radius:8px;margin-bottom:8px;box-shadow:var(--shadow)">
-            <i class="fas fa-list" style="color:var(--primary)"></i>
-            <span class="location-item-text">Categorias</span>
-            <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
-          </div>
-          <div class="location-item" @click="$router.push('/store-owner/addons')" style="background:#fff;border-radius:8px;margin-bottom:8px;box-shadow:var(--shadow)">
-            <i class="fas fa-puzzle-piece" style="color:var(--primary)"></i>
-            <span class="location-item-text">Addons</span>
-            <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
-          </div>
-          <div class="location-item" @click="$router.push('/store-owner/history')" style="background:#fff;border-radius:8px;margin-bottom:8px;box-shadow:var(--shadow)">
-            <i class="fas fa-history" style="color:var(--primary)"></i>
-            <span class="location-item-text">Historial</span>
-            <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
-          </div>
-        </div>
-      </template>
     </div>`,
   setup() { return { Store }; },
   data() { return { loading: true, store: {}, stats: { todayOrders: 0, todayEarnings: 0, pendingOrders: 0 } }; },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadDashboard(); },
   methods: {
-    async loadDashboard() {
-      try {
-        const token = localStorage.getItem('storeOwnerToken');
-        const res = await API.post('/store-owner/dashboard', { token });
-        if (res.store) this.store = res.store;
-        if (res.stats) this.stats = res.stats;
-      } catch(e) {}
-      this.loading = false;
-    },
-    async toggleStatus() {
-      try {
-        const token = localStorage.getItem('storeOwnerToken');
-        const res = await API.post('/store-owner/toggle-store-status', { token });
-        if (res.success) this.store.is_active = res.is_active;
-      } catch(e) {}
-    },
+    async loadDashboard() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/dashboard', { token }); if (res.store) this.store = res.store; if (res.stats) this.stats = res.stats; } catch(e) {} this.loading = false; },
+    async toggleStatus() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/toggle-store-status', { token }); if (res.success) this.store.is_active = res.is_active; } catch(e) {} },
     logout() { localStorage.removeItem('storeOwnerUser'); localStorage.removeItem('storeOwnerToken'); this.$router.push('/store-owner'); }
   }
 };
@@ -252,56 +225,80 @@ const StoreOwnerOrderDetailPage = {
 
 const StoreOwnerMenuPage = {
   template: `
-    <div class="page" style="background:#fff;min-height:100vh">
-      <app-header title="Mi Menu" :back="true"></app-header>
-      <div v-if="loading" class="loading"><div class="spinner"></div></div>
-      <template v-else>
-        <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:var(--muted)">{{items.length}} productos</span>
-          <button style="background:var(--primary);color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none" @click="showForm=true;editItem=null;form={name:'',price:'',old_price:'',description:'',is_recommended:false,image:null,imagePreview:'',item_category_id:'',addon_category_ids:[]}"><i class="fas fa-plus"></i> Agregar</button>
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu" class="active"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar">
+          <span class="so-topbar-title">Productos</span>
+          <button class="so-btn so-btn-primary so-btn-sm" @click="openNew"><i class="fas fa-plus"></i> Nuevo</button>
         </div>
-        <div style="padding:0 16px">
-          <div v-for="item in items" :key="item.id" class="item-card">
-            <div class="item-card-info" style="flex:1">
-              <div class="item-card-name">{{item.name}}</div>
-              <div style="font-size:12px;color:var(--muted)">{{item.description || ''}}</div>
-              <div class="item-card-price">{{Store.formatPrice(item.price)}}<span v-if="item.old_price > 0" class="item-card-old-price">{{Store.formatPrice(item.old_price)}}</span></div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-              <span :style="{fontSize:'10px',padding:'2px 6px',borderRadius:'4px',fontWeight:600,background:item.is_active?'#e8f5e9':'#ffebee',color:item.is_active?'#2e7d32':'#c62828'}">{{item.is_active ? 'Activo' : 'Inactivo'}}</span>
-              <div style="display:flex;gap:4px">
-                <button style="background:none;padding:4px;font-size:14px;color:var(--primary)" @click="startEdit(item)"><i class="fas fa-edit"></i></button>
-                <button style="background:none;padding:4px;font-size:14px" @click="toggleItem(item)"><i :class="item.is_active?'fas fa-toggle-on':'fas fa-toggle-off'" :style="{color:item.is_active?'var(--primary)':'#ccc'}"></i></button>
-                <button style="background:none;padding:4px;font-size:14px;color:#e53935" @click="deleteItem(item)"><i class="fas fa-trash"></i></button>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu" class="active"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
+        </div>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="font-size:18px;font-weight:600;margin:0">Productos ({{items.length}})</h2>
+            <button class="so-btn so-btn-primary" @click="openNew" style="display:none" id="desktopNewBtn"><i class="fas fa-plus"></i> Nuevo Producto</button>
+          </div>
+          <style>@media(min-width:992px){#desktopNewBtn{display:inline-flex!important}}</style>
+          <div class="so-products">
+            <div v-for="item in items" :key="item.id" class="so-product-card">
+              <img v-if="item.image" :src="item.image" class="so-product-img">
+              <div v-else class="so-product-img" style="display:flex;align-items:center;justify-content:center;color:#ccc"><i class="fas fa-image" style="font-size:30px"></i></div>
+              <div class="so-product-body">
+                <div class="so-product-name">{{item.name}}</div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:6px">{{item.description || ''}}</div>
+                <div class="so-product-meta">
+                  <span class="so-product-price">{{Store.formatPrice(item.price)}}</span>
+                  <span :class="item.is_active?'so-badge so-badge-success':'so-badge so-badge-danger'">{{item.is_active?'Activo':'Inactivo'}}</span>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:10px">
+                  <button class="so-btn so-btn-outline so-btn-sm" style="flex:1" @click="startEdit(item)"><i class="fas fa-edit"></i> Editar</button>
+                  <button class="so-btn so-btn-sm" :style="{background:item.is_active?'#fff3e0':'#e8f5e9',color:item.is_active?'#e65100':'#2e7d32'}" @click="toggleItem(item)"><i :class="item.is_active?'fas fa-eye-slash':'fas fa-eye'"></i></button>
+                  <button class="so-btn so-btn-sm" style="background:#ffebee;color:#c62828" @click="deleteItem(item)"><i class="fas fa-trash"></i></button>
+                </div>
               </div>
             </div>
           </div>
-          <div v-if="!items.length" class="empty-state"><i class="fas fa-utensils"></i><p>Sin productos. Agrega tu primer producto.</p></div>
-        </div>
-      </template>
-      <div v-if="showForm" class="modal-overlay" @click.self="showForm=false">
-        <div class="modal-content">
-          <div class="modal-title">{{editItem ? 'Editar Producto' : 'Nuevo Producto'}}</div>
-          <div style="margin-bottom:12px"><input v-model="form.name" placeholder="Nombre *" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></div>
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <input v-model="form.price" type="number" step="0.01" placeholder="Precio *" required style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
-            <input v-model="form.old_price" type="number" step="0.01" placeholder="Precio anterior" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+          <div v-if="!items.length" style="text-align:center;padding:60px 20px;color:var(--muted)"><i class="fas fa-utensils" style="font-size:40px;margin-bottom:12px;display:block"></i><p>Sin productos. Agrega tu primer producto.</p><button class="so-btn so-btn-primary" @click="openNew"><i class="fas fa-plus"></i> Agregar Producto</button></div>
+        </template>
+      </div>
+      <div v-if="showForm" class="so-modal" @click.self="showForm=false">
+        <div class="so-modal-content">
+          <div class="so-modal-title">{{editItem ? 'Editar Producto' : 'Nuevo Producto'}}</div>
+          <div class="so-form-row">
+            <div class="so-form-group"><label>Nombre *</label><input v-model="form.name" placeholder="Nombre del producto"></div>
+            <div class="so-form-group"><label>Categoria</label><select v-model="form.item_category_id"><option value="">-- Sin categoria --</option><option v-for="cat in categories" :key="cat.id" :value="cat.id">{{cat.name}}</option></select></div>
           </div>
-          <div style="margin-bottom:12px"><select v-model="form.item_category_id" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"><option value="">-- Categoria --</option><option v-for="cat in categories" :key="cat.id" :value="cat.id">{{cat.name}}</option></select></div>
-          <div v-if="addonCats.length" style="margin-bottom:12px"><label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Addon Categories</label><div v-for="ac in addonCats" :key="ac.id" style="margin-bottom:4px"><label style="font-size:13px;display:flex;align-items:center;gap:8px"><input type="checkbox" :value="ac.id" v-model="form.addon_category_ids"> {{ac.name}}</label></div></div>
-          <div style="margin-bottom:12px"><textarea v-model="form.description" placeholder="Descripcion" rows="2" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></textarea></div>
-          <div style="margin-bottom:12px"><label style="font-size:13px;color:var(--muted);display:block;margin-bottom:4px">Imagen del producto</label><input type="file" accept="image/*" ref="imageInput" @change="onImageChange" style="font-size:13px"></div>
-          <div v-if="form.imagePreview" style="margin-bottom:12px"><img :src="form.imagePreview" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div>
-          <div style="margin-bottom:12px"><label style="font-size:13px;display:flex;align-items:center;gap:8px"><input type="checkbox" v-model="form.is_recommended"> Recomendado</label></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn-primary" style="flex:1" @click="saveItem" :disabled="saving">{{saving ? 'Guardando...' : 'Guardar'}}</button>
-            <button style="flex:1;padding:12px;border-radius:8px;background:var(--bg);border:none;font-size:14px;font-weight:500" @click="showForm=false">Cancelar</button>
+          <div class="so-form-row">
+            <div class="so-form-group"><label>Precio *</label><input v-model="form.price" type="number" step="0.01" placeholder="0.00"></div>
+            <div class="so-form-group"><label>Precio anterior</label><input v-model="form.old_price" type="number" step="0.01" placeholder="0.00"></div>
+          </div>
+          <div class="so-form-group"><label>Descripcion</label><textarea v-model="form.description" rows="2" placeholder="Descripcion del producto"></textarea></div>
+          <div class="so-form-group"><label>Imagen</label><input type="file" accept="image/*" ref="imageInput" @change="onImageChange"><div v-if="form.imagePreview" style="margin-top:8px"><img :src="form.imagePreview" style="width:80px;height:80px;object-fit:cover;border-radius:8px"></div></div>
+          <div v-if="addonCats.length" class="so-form-group"><label>Addon Categories</label><div v-for="ac in addonCats" :key="ac.id" style="margin-bottom:4px"><label style="font-size:13px;display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" :value="ac.id" v-model="form.addon_category_ids"> {{ac.name}}</label></div></div>
+          <div class="so-form-group"><label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" v-model="form.is_recommended"> Recomendado</label></div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="so-btn so-btn-primary" style="flex:1" @click="saveItem" :disabled="saving">{{saving ? 'Guardando...' : 'Guardar'}}</button>
+            <button class="so-btn so-btn-outline" style="flex:1" @click="showForm=false">Cancelar</button>
           </div>
           <div v-if="formError" style="color:#c62828;font-size:12px;margin-top:8px;text-align:center">{{formError}}</div>
         </div>
       </div>
     </div>`,
-  components: { AppHeader },
   setup() { return { Store }; },
   data() { return { items: [], categories: [], addonCats: [], loading: true, showForm: false, editItem: null, saving: false, formError: '', form: { name: '', price: '', old_price: '', description: '', is_recommended: false, image: null, imagePreview: '', item_category_id: '', addon_category_ids: [] } }; },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadMenu(); this.loadCategories(); this.loadAddonCats(); },
@@ -309,6 +306,7 @@ const StoreOwnerMenuPage = {
     async loadMenu() { this.loading = true; try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-menu', { token }); this.items = Array.isArray(res) ? res : (res.data || []); } catch(e) {} this.loading = false; },
     async loadCategories() { try { const token = localStorage.getItem('storeOwnerToken'); this.categories = await API.post('/store-owner/get-categories', { token }) || []; } catch(e) {} },
     async loadAddonCats() { try { const token = localStorage.getItem('storeOwnerToken'); this.addonCats = await API.post('/store-owner/get-addons', { token }) || []; } catch(e) {} },
+    openNew() { this.editItem = null; this.form = { name: '', price: '', old_price: '', description: '', is_recommended: false, image: null, imagePreview: '', item_category_id: '', addon_category_ids: [] }; this.showForm = true; this.formError = ''; },
     startEdit(item) { this.editItem = item; this.form = { name: item.name, price: item.price, old_price: item.old_price || '', description: item.description || '', is_recommended: !!item.is_recommended, image: null, imagePreview: item.image || '', item_category_id: item.item_category_id || '', addon_category_ids: item.addon_category_ids || [] }; this.showForm = true; this.formError = ''; },
     onImageChange(e) { const file = e.target.files[0]; if (file) { this.form.image = file; this.form.imagePreview = URL.createObjectURL(file); } },
     async saveItem() {
