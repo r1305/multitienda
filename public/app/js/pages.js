@@ -90,40 +90,36 @@ const HomePage = {
 const LocationPage = {
   template: `
     <div class="page" style="background:#fff;min-height:100vh">
-      <app-header title="Seleccionar ubicación" :back="true"></app-header>
+      <app-header title="Seleccionar ubicacion" :back="true"></app-header>
       <div class="gps-btn" @click="useGPS">
         <i class="fas fa-crosshairs"></i>
-        <span>Usar mi ubicación actual</span>
+        <span>Usar mi ubicacion actual</span>
       </div>
-      <div v-if="addresses.length" class="section-title">Mis direcciones</div>
-      <div v-for="a in addresses" :key="a.id" class="location-item" @click="selectAddress(a)">
-        <i class="fas fa-home" style="color:var(--primary)"></i>
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:500">{{a.tag || a.house || 'Dirección'}}</div>
-          <div style="font-size:12px;color:var(--muted)">{{a.address}}</div>
+      <template v-if="Store.isLoggedIn">
+        <div v-if="addresses.length" class="section-title">Mis direcciones</div>
+        <div v-for="a in addresses" :key="a.id" class="location-item" @click="selectAddress(a)">
+          <i class="fas fa-home" style="color:var(--primary)"></i>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:500">{{a.tag || a.house || 'Direccion'}}</div>
+            <div style="font-size:12px;color:var(--muted)">{{a.address}}</div>
+          </div>
         </div>
-      </div>
-      <div class="section-title" v-if="places.length">Lugares populares</div>
-      <div v-for="p in places" :key="p.id" class="location-item" @click="selectPlace(p)">
-        <i class="fas fa-map-marker-alt"></i>
-        <span class="location-item-text">{{p.name}}</span>
-      </div>
+        <div v-if="!addresses.length && !gpsLoading" style="text-align:center;padding:30px;color:var(--muted)"><p style="font-size:13px">No tienes direcciones guardadas. Usa tu GPS o agrega una desde tu perfil.</p></div>
+      </template>
+      <template v-else>
+        <div style="text-align:center;padding:30px;color:var(--muted)"><p style="font-size:13px">Permite el acceso a tu ubicacion para mostrarte tiendas cercanas</p><p style="font-size:12px;margin-top:8px"><router-link to="/login" style="color:var(--primary);font-weight:600">Inicia sesion</router-link> para ver tus direcciones guardadas</p></div>
+      </template>
       <div v-if="gpsLoading" class="loading"><div class="spinner"></div></div>
     </div>`,
   components: { AppHeader },
-  data() { return { places: [], addresses: [], gpsLoading: false }; },
+  setup() { return { Store }; },
+  data() { return { addresses: [], gpsLoading: false }; },
   async mounted() {
-    const data = await API.getPopularLocations();
-    this.places = data || [];
     if (Store.isLoggedIn) {
       try { this.addresses = await API.getAddresses(Store.user.id, Store.user.auth_token) || []; } catch(e) {}
     }
   },
   methods: {
-    selectPlace(p) {
-      Store.setLocation({ lat: parseFloat(p.latitude), lng: parseFloat(p.longitude), address: p.name });
-      this.$router.push('/');
-    },
     selectAddress(a) {
       Store.setLocation({ lat: parseFloat(a.latitude), lng: parseFloat(a.longitude), address: a.address, house: a.house, tag: a.tag });
       this.$router.push('/');
@@ -134,13 +130,13 @@ const LocationPage = {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           const { latitude, longitude } = pos.coords;
-          let address = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          let address = latitude.toFixed(4) + ', ' + longitude.toFixed(4);
           try { const res = await API.coordinateToAddress(latitude, longitude); if (res) address = res; } catch(e) {}
           Store.setLocation({ lat: latitude, lng: longitude, address });
           this.gpsLoading = false;
           this.$router.push('/');
         },
-        () => { this.gpsLoading = false; alert('No se pudo obtener la ubicación'); },
+        () => { this.gpsLoading = false; alert('No se pudo obtener la ubicacion'); },
         { timeout: 10000 }
       );
     }

@@ -214,14 +214,6 @@ router.get('/admin/store-owners', adminController.storeOwners);
 router.get('/admin/store-owner/:id/stores', adminController.storeOwnerStores);
 router.post('/admin/store-owner/:id/stores/save', adminController.updateStoreOwnerStores);
 
-// Popular Geo Locations
-router.get('/admin/popular-geo-locations', adminController.popularGeoLocations);
-router.post('/admin/popular-geo-location/new/save', adminController.createPopularGeoLocation);
-router.get('/admin/popular-geo-location/edit/:id', adminController.editPopularGeoLocation);
-router.post('/admin/popular-geo-location/edit/save', adminController.updatePopularGeoLocation);
-router.get('/admin/popular-geo-location/disable/:id', adminController.disablePopularGeoLocation);
-router.get('/admin/popular-geo-location/delete/:id', adminController.deletePopularGeoLocation);
-router.get('/admin/popular-geo-location/make-default/:id', adminController.makeDefaultPopularGeoLocation);
 
 // Coupons (view only)
 router.get('/admin/coupons', adminController.coupons);
