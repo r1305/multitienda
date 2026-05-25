@@ -8,7 +8,7 @@ if (typeof payout !== 'undefined' && payout) {
     <div class="col-md-6">
       <div class="card"><div class="card-header">Payout Details</div><div class="card-body">
         <p><strong>Store:</strong> ${payout.restaurant_name || '-'}</p>
-        <p><strong>Amount:</strong> $${parseFloat(payout.amount || 0).toFixed(2)}</p>
+        <p><strong>Amount:</strong> ${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(payout.amount || 0).toFixed(2)}</p>
         <p><strong>Status:</strong> <span class="badge badge-${payout.status == 'completed' ? 'success' : 'warning'}">${payout.status || 'pending'}</span></p>
         <p><strong>Transaction Mode:</strong> ${payout.transaction_mode || '-'}</p>
         <p><strong>Transaction ID:</strong> ${payout.transaction_id || '-'}</p>

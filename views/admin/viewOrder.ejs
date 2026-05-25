@@ -9,7 +9,7 @@ if (typeof order !== 'undefined' && order) {
   var itemsHtml = '';
   if (typeof orderitems !== 'undefined' && orderitems.length) {
     orderitems.forEach(function(item) {
-      itemsHtml += `<tr><td>${item.name}</td><td>${item.quantity}</td><td>$${parseFloat(item.price||0).toFixed(2)}</td><td>$${(parseFloat(item.price||0)*parseInt(item.quantity||1)).toFixed(2)}</td></tr>`;
+      itemsHtml += `<tr><td>${item.name}</td><td>${item.quantity}</td><td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(item.price||0).toFixed(2)}</td><td>${typeof currency !== 'undefined' ? currency : '$'}${(parseFloat(item.price||0)*parseInt(item.quantity||1)).toFixed(2)}</td></tr>`;
     });
   }
 
@@ -46,11 +46,11 @@ if (typeof order !== 'undefined' && order) {
             <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
             <tbody>${itemsHtml}</tbody>
             <tfoot>
-              <tr><th colspan="3" class="text-right">Subtotal:</th><td>$${parseFloat(order.sub_total || order.total || 0).toFixed(2)}</td></tr>
-              ${order.coupon_amount ? `<tr><td colspan="3" class="text-right">Coupon:</td><td>-$${parseFloat(order.coupon_amount).toFixed(2)}</td></tr>` : ''}
-              ${order.tax_amount ? `<tr><td colspan="3" class="text-right">Tax:</td><td>$${parseFloat(order.tax_amount).toFixed(2)}</td></tr>` : ''}
-              ${order.delivery_charge ? `<tr><td colspan="3" class="text-right">Delivery:</td><td>$${parseFloat(order.delivery_charge).toFixed(2)}</td></tr>` : ''}
-              <tr><th colspan="3" class="text-right">Total:</th><th>$${parseFloat(order.total || 0).toFixed(2)}</th></tr>
+              <tr><th colspan="3" class="text-right">Subtotal:</th><td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.sub_total || order.total || 0).toFixed(2)}</td></tr>
+              ${order.coupon_amount ? `<tr><td colspan="3" class="text-right">Coupon:</td><td>-${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.coupon_amount).toFixed(2)}</td></tr>` : ''}
+              ${order.tax_amount ? `<tr><td colspan="3" class="text-right">Tax:</td><td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.tax_amount).toFixed(2)}</td></tr>` : ''}
+              ${order.delivery_charge ? `<tr><td colspan="3" class="text-right">Delivery:</td><td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.delivery_charge).toFixed(2)}</td></tr>` : ''}
+              <tr><th colspan="3" class="text-right">Total:</th><th>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.total || 0).toFixed(2)}</th></tr>
             </tfoot>
           </table>
           ${order.order_comment ? `<p><strong>Comment:</strong> ${order.order_comment}</p>` : ''}

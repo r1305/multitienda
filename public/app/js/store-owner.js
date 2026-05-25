@@ -360,7 +360,7 @@ const StoreOwnerEarningsPage = {
       if (this.chart) { this.chart.destroy(); this.chart = null; }
       this.chart = new Chart(canvas.getContext('2d'), {
         type: 'bar', data: { labels: this.chartData.labels, datasets: [{ label: 'Ganancias', data: this.chartData.values, backgroundColor: 'rgba(76,175,80,.7)', borderColor: '#4caf50', borderWidth: 1, borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v } }, x: { grid: { display: false } } } }
+        options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => Store.currency + v } }, x: { grid: { display: false } } } }
       });
     }
   }

@@ -18,7 +18,7 @@ if (typeof orders !== 'undefined' && orders.length) {
       <td><strong>${o.unique_order_id}</strong></td>
       <td>${o.user_name || '-'}</td>
       <td>${o.restaurant_name || '-'}</td>
-      <td>$${parseFloat(o.total || 0).toFixed(2)}</td>
+      <td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(o.total || 0).toFixed(2)}</td>
       <td><span class="badge badge-${statusColors[o.orderstatus_id] || 'secondary'}">${statusNames[o.orderstatus_id] || 'Unknown'}</span></td>
       <td>${o.payment_mode || 'COD'}</td>
       <td>${o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>

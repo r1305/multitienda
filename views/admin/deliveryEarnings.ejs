@@ -49,12 +49,12 @@ function loadChart(filter) {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { callback: v => '$' + v } },
+          y: { beginAtZero: true, ticks: { callback: v => '${typeof currency !== "undefined" ? currency : "$"}' + v } },
           x: { grid: { display: false } }
         }
       }
     });
-    document.getElementById('totalEarnings').textContent = '$' + data.total.toFixed(2);
+    document.getElementById('totalEarnings').textContent = '${typeof currency !== "undefined" ? currency : "$"}' + data.total.toFixed(2);
     document.getElementById('deliveryCount').textContent = data.deliveryCount + ' entregas';
   });
 }
@@ -76,7 +76,7 @@ if (typeof deliveryGuy !== 'undefined' && deliveryGuy) {
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px">
       <div>
         <span style="font-size:15px;font-weight:600"><i class="fas fa-motorcycle mr-1"></i> ${deliveryGuy.name}</span>
-        <span id="totalEarnings" class="ml-2 badge badge-primary" style="font-size:13px">$0.00</span>
+        <span id="totalEarnings" class="ml-2 badge badge-primary" style="font-size:13px">${typeof currency !== 'undefined' ? currency : '$'}0.00</span>
         <span id="deliveryCount" class="ml-1 badge badge-secondary" style="font-size:11px">0 entregas</span>
       </div>
       <div class="d-flex flex-wrap" style="gap:6px">

@@ -15,13 +15,13 @@ var body = `
 if (typeof items !== 'undefined' && items.length) {
   items.forEach(function(item) {
     var img = item.image ? `<img src="${item.image}" width="50" height="37" style="object-fit:cover;border-radius:4px">` : '-';
-    var oldP = item.old_price > 0 ? ` <small class="text-muted"><del>$${parseFloat(item.old_price).toFixed(2)}</del></small>` : '';
+    var oldP = item.old_price > 0 ? ` <small class="text-muted"><del>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(item.old_price).toFixed(2)}</del></small>` : '';
     body += `<tr>
       <td>${img}</td>
       <td><strong>${item.name}</strong></td>
       <td>${item.restaurant_name || '-'}</td>
       <td>${item.category_name || '-'}</td>
-      <td>$${parseFloat(item.price || 0).toFixed(2)}${oldP}</td>
+      <td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(item.price || 0).toFixed(2)}${oldP}</td>
       <td><span class="badge badge-${item.is_active ? 'success' : 'danger'}">${item.is_active ? 'Active' : 'Inactive'}</span></td>
       <td>
         <a href="/admin/item/edit/${item.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>

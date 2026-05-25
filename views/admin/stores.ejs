@@ -21,7 +21,7 @@ if (typeof stores !== 'undefined' && stores.length) {
       <td>${img}</td>
       <td><strong>${s.name}</strong><br><small class="text-muted">${s.address || ''}</small></td>
       <td><span class="badge badge-${s.is_active ? 'success' : 'danger'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
-      <td><strong style="color:#28a745">$${earnings}</strong></td>
+      <td><strong style="color:#28a745">${typeof currency !== 'undefined' ? currency : '$'}${earnings}</strong></td>
       <td>
         <a href="/admin/store/edit/${s.id}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>
         <a href="/admin/store/earnings/${s.id}" class="btn btn-sm btn-outline-success" title="Ganancias"><i class="fas fa-chart-line"></i></a>

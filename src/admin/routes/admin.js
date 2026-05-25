@@ -18,14 +18,15 @@ const auth = (req, res, next) => {
   res.redirect('/auth/login');
 };
 
-// Inject settings for OneSignal in admin views
+// Inject settings for admin views
 const injectSettings = async (req, res, next) => {
   try {
     const { sequelize } = require('../../models');
-    const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` = 'onesignalAppId'");
+    const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('onesignalAppId','currencySymbol','currencyFormat')");
     res.locals.settings = {};
     rows.forEach(r => { res.locals.settings[r.key] = r.value; });
-  } catch(e) {}
+    res.locals.currency = res.locals.settings.currencySymbol || res.locals.settings.currencyFormat || '$';
+  } catch(e) { res.locals.currency = '$'; }
   next();
 };
 

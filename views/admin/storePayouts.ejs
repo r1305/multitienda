@@ -13,7 +13,7 @@ if (typeof payouts !== 'undefined' && payouts.length) {
     body += `<tr>
       <td>${p.id}</td>
       <td>${p.restaurant_name || '-'}</td>
-      <td>$${parseFloat(p.amount || 0).toFixed(2)}</td>
+      <td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(p.amount || 0).toFixed(2)}</td>
       <td><span class="badge badge-${p.status == 'completed' ? 'success' : p.status == 'pending' ? 'warning' : 'secondary'}">${p.status || 'pending'}</span></td>
       <td>${p.transaction_id || '-'}</td>
       <td>${p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}</td>

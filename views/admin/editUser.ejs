@@ -9,7 +9,7 @@ if (typeof editUser !== 'undefined' && editUser) {
 
   var ordersHtml = '';
   if (typeof userOrders !== 'undefined' && userOrders.length) {
-    userOrders.slice(0,10).forEach(function(o) { ordersHtml += `<tr><td><a href="/admin/order/${o.unique_order_id}">#${o.unique_order_id}</a></td><td>$${parseFloat(o.total||0).toFixed(2)}</td></tr>`; });
+    userOrders.slice(0,10).forEach(function(o) { ordersHtml += `<tr><td><a href="/admin/order/${o.unique_order_id}">#${o.unique_order_id}</a></td><td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(o.total||0).toFixed(2)}</td></tr>`; });
   } else {
     ordersHtml = '<tr><td class="text-muted text-center py-2">No orders</td></tr>';
   }
@@ -41,7 +41,7 @@ if (typeof editUser !== 'undefined' && editUser) {
           <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update User</button>
         </form>
       </div></div>
-      <div class="card"><div class="card-header">Wallet (Balance: $${typeof walletBalance !== 'undefined' ? parseFloat(walletBalance || 0).toFixed(2) : '0.00'})</div><div class="card-body"><div class="row">
+      <div class="card"><div class="card-header">Wallet (Balance: ${typeof currency !== 'undefined' ? currency : '$'}${typeof walletBalance !== 'undefined' ? parseFloat(walletBalance || 0).toFixed(2) : '0.00'})</div><div class="card-body"><div class="row">
         <div class="col-md-6"><form method="POST" action="/admin/user/add-money-to-wallet"><input type="hidden" name="user_id" value="${u.id}"><div class="form-group"><label>Add Amount</label><input type="number" step="0.01" name="add_amount" class="form-control" required></div><div class="form-group"><label>Description</label><input type="text" name="add_amount_description" class="form-control"></div><button class="btn btn-success btn-sm">Add Money</button></form></div>
         <div class="col-md-6"><form method="POST" action="/admin/user/substract-money-from-wallet"><input type="hidden" name="user_id" value="${u.id}"><div class="form-group"><label>Subtract Amount</label><input type="number" step="0.01" name="substract_amount" class="form-control" required></div><div class="form-group"><label>Description</label><input type="text" name="substract_amount_description" class="form-control"></div><button class="btn btn-danger btn-sm">Subtract Money</button></form></div>
       </div></div></div>
