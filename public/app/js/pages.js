@@ -659,6 +659,15 @@ const CheckoutPage = {
           <div class="bill-row"><span>Envío</span><span>{{Store.formatPrice(deliveryCharge)}}</span></div>
           <div class="bill-row total"><span>Total</span><span>{{Store.formatPrice(total)}}</span></div>
         </div>
+        <div v-if="storeIsSchedulable" style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px"><input type="checkbox" v-model="isScheduled"> Programar pedido</label>
+          </div>
+          <div v-if="isScheduled" style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="date" v-model="scheduleDate" :min="todayDate" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+            <input type="time" v-model="scheduleTime" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+          </div>
+        </div>
         <div class="section-title">Método de pago</div>
         <div style="padding:0 16px">
           <div v-for="gw in gateways" :key="gw.id" class="location-item" style="border-radius:8px;margin-bottom:8px;border:1px solid var(--border)" @click="pay(gw.name)">
@@ -676,12 +685,22 @@ const CheckoutPage = {
     </div>`,
   components: { AppHeader },
   setup() { return { Store }; },
-  data() { return { gateways: [], processing: false, error: '', deliveryCharge: 0, addresses: [], selectedAddress: null }; },
-  computed: { total() { return Store.cartTotal + this.deliveryCharge; } },
+  data() { return { gateways: [], processing: false, error: '', deliveryCharge: 0, addresses: [], selectedAddress: null, isScheduled: false, scheduleDate: '', scheduleTime: '', storeIsSchedulable: false }; },
+  computed: {
+    total() { return Store.cartTotal + this.deliveryCharge; },
+    todayDate() { return new Date().toISOString().split('T')[0]; }
+  },
   async mounted() {
     if (!Store.isLoggedIn) return;
     try { const res = await API.getPaymentGateways(Store.user.auth_token, null); if (Array.isArray(res)) this.gateways = res; } catch(e) {}
     try { this.addresses = await API.getAddresses(Store.user.id, Store.user.auth_token) || []; if (this.addresses.length) this.selectedAddress = this.addresses[0]; } catch(e) {}
+    // Check if store is schedulable
+    if (Store.cart.length && Store.cart[0].restaurant_id) {
+      try {
+        const info = await API.post('/get-restaurant-info-by-id/' + Store.cart[0].restaurant_id, {});
+        if (info && info.is_schedulable) this.storeIsSchedulable = true;
+      } catch(e) {}
+    }
   },
   methods: {
     gwIcon(name) { return name === 'COD' ? 'fas fa-money-bill' : name === 'Stripe' ? 'fas fa-credit-card' : name === 'Razorpay' ? 'fas fa-credit-card' : 'fas fa-wallet'; },
@@ -694,11 +713,13 @@ const CheckoutPage = {
         const restaurantId = Store.cart[0] ? Store.cart[0].restaurant_id : null;
         const res = await API.placeOrder({
           token: Store.user.auth_token, user: { data: Store.user },
-          order: Store.cart.map(i => ({ id: i.id, quantity: i.quantity, restaurant_id: i.restaurant_id, selectedaddons: [] })),
+          order: Store.cart.map(i => ({ id: i.id, quantity: i.quantity, restaurant_id: i.restaurant_id, name: i.name, price: i.price, selectedaddons: i.selectedaddons || [] })),
           location: loc,
           total: { totalPrice: Store.cartTotal }, method, payment_token: '',
           delivery_type: 1, partial_wallet: false, dis: 0, pending_payment: false,
-          tipAmount: null, cash_change_amount: null, order_comment: '', coupon: null
+          tipAmount: null, cash_change_amount: null, order_comment: '', coupon: null,
+          schedule_date: this.isScheduled ? this.scheduleDate : null,
+          schedule_slot: this.isScheduled ? this.scheduleTime : null
         });
         if (res && res.success) { Store.clearCart(); this.$router.push('/order/' + res.data.unique_order_id); }
         else { this.error = res.message || 'Error al procesar la orden'; this.processing = false; }
