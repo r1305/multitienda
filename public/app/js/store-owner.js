@@ -348,7 +348,7 @@ const StoreOwnerEarningsPage = {
             <input type="date" v-model="dateTo" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
             <button style="padding:6px 12px;border-radius:6px;background:#4caf50;color:#fff;font-size:12px;font-weight:600;border:none" @click="loadData"><i class="fas fa-search"></i> Buscar</button>
           </div>
-          <canvas id="earningsChart" style="width:100%;height:220px"></canvas>
+          <div style="position:relative;height:220px;margin-bottom:16px"><canvas id="earningsChart"></canvas></div>
         </div>
         <div class="section-title" style="margin-top:16px">Detalle por dia</div>
         <div style="padding:0 16px">
@@ -399,12 +399,13 @@ const StoreOwnerEarningsPage = {
     },
     renderChart() {
       const canvas = document.getElementById('earningsChart');
-      if (!canvas) return;
-      if (this.chart) this.chart.destroy();
-      this.chart = new Chart(canvas.getContext('2d'), {
+      if (!canvas || !window.Chart) return;
+      if (this.chart) { this.chart.destroy(); this.chart = null; }
+      const ctx = canvas.getContext('2d');
+      this.chart = new Chart(ctx, {
         type: 'bar',
         data: { labels: this.chartData.labels, datasets: [{ label: 'Ganancias', data: this.chartData.values, backgroundColor: 'rgba(76,175,80,.7)', borderColor: '#4caf50', borderWidth: 1, borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v } }, x: { grid: { display: false } } } }
+        options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v } }, x: { grid: { display: false } } } }
       });
     }
   }
