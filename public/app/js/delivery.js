@@ -127,9 +127,19 @@ const DeliveryOrdersPage = {
     },
     emptyMsg() { return { available: 'No hay pedidos disponibles en tu zona', active: 'No tienes pedidos activos', completed: 'Sin entregas completadas' }[this.activeTab]; }
   },
-  mounted() { if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; } this.getLocation(); this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 30000); },
+  mounted() { if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; } this.getLocation(); this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 30000); this.requestNotifications(); },
   beforeUnmount() { if (this.interval) clearInterval(this.interval); },
   methods: {
+    requestNotifications() {
+      if (window.OneSignalDeferred) {
+        const user = JSON.parse(localStorage.getItem('deliveryUser') || '{}');
+        window.OneSignalDeferred.push(async function(OneSignal) {
+          const permission = await OneSignal.Notifications.permission;
+          if (!permission) await OneSignal.Notifications.requestPermission();
+          if (user.id) OneSignal.User.addTags({ user_id: String(user.id), role: 'delivery' });
+        });
+      }
+    },
     getLocation() { if (!navigator.geolocation) { this.gpsReady = true; this.refresh(); return; } navigator.geolocation.getCurrentPosition((pos) => { this.lat = pos.coords.latitude; this.lng = pos.coords.longitude; this.gpsReady = true; this.refresh(); }, () => { this.gpsReady = true; this.refresh(); }, { timeout: 10000 }); },
     async refresh() {
       this.loading = !this.allOrders.length && !this.myOrders.length;
