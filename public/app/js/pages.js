@@ -716,7 +716,7 @@ const CheckoutPage = {
         const restaurantId = Store.cart[0] ? Store.cart[0].restaurant_id : null;
         const res = await API.placeOrder({
           token: Store.user.auth_token, user: { data: Store.user },
-          order: Store.cart.map(i => ({ id: i.id, quantity: i.quantity, restaurant_id: i.restaurant_id, name: i.name, price: i.price, selectedaddons: i.selectedaddons || [] })),
+          order: Store.cart.map(i => ({ id: i.id, quantity: i.quantity, restaurant_id: i.restaurant_id, name: i.name, price: i.addonTotal || i.price, selectedaddons: (i.selectedaddons || []).map(a => ({ addon_id: a.id, addon_name: a.name, addon_category_name: a.addon_category_name || '', price: a.price })) })),
           location: loc,
           total: { totalPrice: Store.cartTotal }, method, payment_token: '',
           delivery_type: 1, partial_wallet: false, dis: 0, pending_payment: false,
@@ -790,7 +790,7 @@ const OrderDetailPage = {
             <div v-if="item.order_item_addons && item.order_item_addons.length" style="padding-left:24px;margin-bottom:4px"><div v-for="a in item.order_item_addons" :key="a.id" style="font-size:11px;color:var(--muted)">+ {{a.addon_name}} ({{Store.formatPrice(a.addon_price)}})</div></div>
           </div>
           <div class="bill-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><span>Subtotal</span><span>{{Store.formatPrice(order.sub_total || order.total)}}</span></div>
-          <div v-if="order.delivery_charge > 0" class="bill-row"><span>Envio</span><span>{{Store.formatPrice(order.delivery_charge)}}</span></div>
+          <div class="bill-row"><span>Envio</span><span>{{Store.formatPrice(order.delivery_charge || 0)}}</span></div>
           <div v-if="order.coupon_amount > 0" class="bill-row"><span>Cupon</span><span style="color:green">-{{Store.formatPrice(order.coupon_amount)}}</span></div>
           <div class="bill-row total"><span>Total</span><span>{{Store.formatPrice(order.total)}}</span></div>
         </div>
