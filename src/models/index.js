@@ -252,6 +252,8 @@ const PaymentGateway = sequelize.define('PaymentGateway', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: DataTypes.STRING,
   title: DataTypes.STRING,
+  account_number: DataTypes.STRING,
+  phone_number: DataTypes.STRING,
   is_active: { type: DataTypes.BOOLEAN, defaultValue: false },
 }, { tableName: 'payment_gateways' });
 

@@ -257,4 +257,11 @@ router.get('/admin/settings', adminController.settings);
 router.post('/admin/settings', adminController.saveSettings);
 router.post('/admin/settings/upload-favicon', upload.single('favicon'), adminController.uploadFavicon);
 
+// Payment Methods
+router.get('/admin/payment-methods', adminController.paymentMethods);
+router.post('/admin/payment-method/new/save', adminController.createPaymentMethod);
+router.post('/admin/payment-method/edit/save', adminController.updatePaymentMethod);
+router.get('/admin/payment-method/toggle/:id', adminController.togglePaymentMethod);
+router.get('/admin/payment-method/delete/:id', adminController.deletePaymentMethod);
+
 module.exports = router;

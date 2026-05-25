@@ -1032,3 +1032,46 @@ exports.saveSettings = async (req, res) => {
   } catch (err) { console.error(err); req.flash('error', 'Error saving settings'); }
   res.redirect('/admin/settings');
 };
+
+exports.paymentMethods = async (req, res) => {
+  try {
+    const [gateways] = await sequelize.query('SELECT * FROM payment_gateways ORDER BY id');
+    res.render('admin/paymentMethods', { user: req.session.user, gateways, success: req.flash('success')[0], error: req.flash('error')[0] });
+  } catch (err) {
+    res.render('admin/paymentMethods', { user: req.session.user, gateways: [], success: null, error: 'Error loading payment methods' });
+  }
+};
+
+exports.createPaymentMethod = async (req, res) => {
+  try {
+    const { name, account_number, phone_number } = req.body;
+    await sequelize.query('INSERT INTO payment_gateways (name, account_number, phone_number, is_active, created_at, updated_at) VALUES (?,?,?,1,NOW(),NOW())', { replacements: [name, account_number || null, phone_number || null] });
+    req.flash('success', 'Metodo de pago creado');
+  } catch (err) { req.flash('error', 'Error al crear'); }
+  res.redirect('/admin/payment-methods');
+};
+
+exports.updatePaymentMethod = async (req, res) => {
+  try {
+    const { id, name, account_number, phone_number } = req.body;
+    await sequelize.query('UPDATE payment_gateways SET name=?, account_number=?, phone_number=?, updated_at=NOW() WHERE id=?', { replacements: [name, account_number || null, phone_number || null, id] });
+    req.flash('success', 'Metodo actualizado');
+  } catch (err) { req.flash('error', 'Error al actualizar'); }
+  res.redirect('/admin/payment-methods');
+};
+
+exports.togglePaymentMethod = async (req, res) => {
+  try {
+    await sequelize.query('UPDATE payment_gateways SET is_active = NOT is_active WHERE id = ?', { replacements: [req.params.id] });
+    req.flash('success', 'Estado actualizado');
+  } catch (err) { req.flash('error', 'Error'); }
+  res.redirect('/admin/payment-methods');
+};
+
+exports.deletePaymentMethod = async (req, res) => {
+  try {
+    await sequelize.query('DELETE FROM payment_gateways WHERE id = ?', { replacements: [req.params.id] });
+    req.flash('success', 'Metodo eliminado');
+  } catch (err) { req.flash('error', 'Error al eliminar'); }
+  res.redirect('/admin/payment-methods');
+};

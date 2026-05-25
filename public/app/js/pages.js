@@ -671,22 +671,27 @@ const CheckoutPage = {
         </div>
         <div class="section-title">Método de pago</div>
         <div style="padding:0 16px">
-          <div v-for="gw in gateways" :key="gw.id" class="location-item" style="border-radius:8px;margin-bottom:8px;border:1px solid var(--border)" @click="pay(gw.name)">
-            <i :class="gwIcon(gw.name)" style="font-size:20px"></i>
-            <span class="location-item-text">{{gw.name === 'COD' ? 'Efectivo' : gw.name}}</span>
-            <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
+          <div v-for="gw in gateways" :key="gw.id" style="border-radius:8px;margin-bottom:8px;border:1px solid var(--border);padding:12px;cursor:pointer" @click="pay(gw.name)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <i :class="gwIcon(gw.name)" style="font-size:20px"></i>
+              <span style="flex:1;font-size:14px;font-weight:500">{{gw.name}}</span>
+              <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
+            </div>
+            <div v-if="gw.account_number" style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-left:30px"><span style="font-size:12px;color:var(--muted)">Cuenta: {{gw.account_number}}</span><i class="fas fa-copy" style="color:var(--primary);font-size:11px;cursor:pointer" @click.stop="copyText(gw.account_number)"></i></div>
+            <div v-if="gw.phone_number" style="display:flex;align-items:center;gap:6px;margin-top:4px;padding-left:30px"><span style="font-size:12px;color:var(--muted)">Cel: {{gw.phone_number}}</span><i class="fas fa-copy" style="color:var(--primary);font-size:11px;cursor:pointer" @click.stop="copyText(gw.phone_number)"></i></div>
           </div>
           <div v-if="!gateways.length" class="location-item" style="border-radius:8px;border:1px solid var(--border)" @click="pay('COD')">
             <i class="fas fa-money-bill" style="font-size:20px;color:green"></i>
             <span class="location-item-text">Pago en efectivo</span>
           </div>
         </div>
-        <div v-if="error" style="padding:16px;color:#c62828;font-size:13px">{{error}}</div>
+        <div v-if="copied" style="padding:4px 16px;font-size:12px;color:#4caf50;text-align:center"><i class="fas fa-check"></i> Copiado!</div>
+                <div v-if="error" style="padding:16px;color:#c62828;font-size:13px">{{error}}</div>
       </template>
     </div>`,
   components: { AppHeader },
   setup() { return { Store }; },
-  data() { return { gateways: [], processing: false, error: '', deliveryCharge: 0, restaurantCharge: 0, addresses: [], selectedAddress: null, isScheduled: false, scheduleDate: '', scheduleTime: '', storeIsSchedulable: false }; },
+  data() { return { gateways: [], processing: false, error: '', deliveryCharge: 0, restaurantCharge: 0, addresses: [], selectedAddress: null, isScheduled: false, scheduleDate: '', scheduleTime: '', storeIsSchedulable: false, copied: false }; },
   computed: {
     total() { return Store.cartTotal + this.deliveryCharge + this.restaurantCharge; },
     todayDate() { return new Date().toISOString().split('T')[0]; }
@@ -706,7 +711,8 @@ const CheckoutPage = {
     }
   },
   methods: {
-    gwIcon(name) { return name === 'COD' ? 'fas fa-money-bill' : name === 'Stripe' ? 'fas fa-credit-card' : name === 'Razorpay' ? 'fas fa-credit-card' : 'fas fa-wallet'; },
+    gwIcon(name) { return name === 'COD' ? 'fas fa-money-bill' : 'fas fa-wallet'; },
+    copyText(text) { navigator.clipboard.writeText(text); this.copied = true; setTimeout(() => { this.copied = false; }, 2000); },
     async pay(method) {
       if (!this.selectedAddress && this.addresses.length) { this.error = 'Selecciona una dirección de entrega'; return; }
       this.processing = true; this.error = '';
