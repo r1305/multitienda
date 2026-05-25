@@ -223,12 +223,8 @@ router.get('/admin/popular-geo-location/disable/:id', adminController.disablePop
 router.get('/admin/popular-geo-location/delete/:id', adminController.deletePopularGeoLocation);
 router.get('/admin/popular-geo-location/make-default/:id', adminController.makeDefaultPopularGeoLocation);
 
-// Coupons
+// Coupons (view only)
 router.get('/admin/coupons', adminController.coupons);
-router.get('/admin/coupon/edit/:id', adminController.editCoupon);
-router.post('/admin/coupon/new/save', adminController.createCoupon);
-router.post('/admin/coupon/edit/save', adminController.updateCoupon);
-router.get('/admin/coupon/delete/:id', adminController.deleteCoupon);
 
 // Pages
 router.get('/admin/pages', adminController.pages);

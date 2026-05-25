@@ -5,11 +5,11 @@ var body = `
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Coupons</span>
-        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newCouponModal"><i class="fas fa-plus"></i> New Coupon</button>
+        <span class="text-muted" style="font-size:12px"><i class="fas fa-info-circle"></i> Cupones se gestionan desde el panel del Store Owner</span>
     </div>
     <div class="card-body">
         <table class="table table-hover" id="couponsTable">
-            <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Discount</th><th>Count</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Discount</th><th>Count</th><th>Store</th><th>Status</th></tr></thead>
             <tbody>`;
 
 if (typeof coupons !== 'undefined' && coupons.length) {
@@ -20,42 +20,14 @@ if (typeof coupons !== 'undefined' && coupons.length) {
       <td>${c.discount_type == 'PERCENTAGE' ? 'Percentage' : 'Fixed'}</td>
       <td>${c.discount}${c.discount_type == 'PERCENTAGE' ? '%' : (typeof currency !== 'undefined' ? currency : '$')}</td>
       <td>${c.count || 0}</td>
+      <td>${c.restaurant_name || 'Global'}</td>
       <td><span class="badge badge-${c.is_active !== 0 ? 'success' : 'danger'}">${c.is_active !== 0 ? 'Active' : 'Inactive'}</span></td>
-      <td>
-        <a href="/admin/coupon/edit/${c.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
-        <a href="/admin/coupon/delete/${c.id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete?')"><i class="fas fa-trash"></i></a>
-      </td>
     </tr>`;
   });
 } else {
   body += '<tr><td colspan="7" class="text-center text-muted py-4">No coupons found</td></tr>';
 }
 
-body += `</tbody></table></div></div>
-
-<div class="modal fade" id="newCouponModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" action="/admin/coupon/new/save">
-                <div class="modal-header"><h5>New Coupon</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
-                <div class="modal-body">
-                    <div class="form-group"><label>Name</label><input type="text" name="name" class="form-control" required></div>
-                    <div class="form-group"><label>Code *</label><input type="text" name="code" class="form-control" required style="text-transform:uppercase"></div>
-                    <div class="form-group"><label>Discount Type</label><select name="discount_type" class="form-control"><option value="PERCENTAGE">Percentage</option><option value="FIXED">Fixed Amount</option></select></div>
-                    <div class="form-group"><label>Discount *</label><input type="number" step="0.01" name="discount" class="form-control" required></div>
-                    <div class="row">
-                        <div class="col-md-6"><div class="form-group"><label>Max Uses</label><input type="number" name="count" class="form-control" value="0"></div></div>
-                        <div class="col-md-6"><div class="form-group"><label>Max Per User</label><input type="number" name="max_count_per_user" class="form-control" value="0"></div></div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6"><div class="form-group"><label>Min Order</label><input type="number" step="0.01" name="min_subtotal" class="form-control" value="0"></div></div>
-                        <div class="col-md-6"><div class="form-group"><label>Max Discount</label><input type="number" step="0.01" name="max_discount" class="form-control" value="0"></div></div>
-                    </div>
-                </div>
-                <div class="modal-footer"><button type="submit" class="btn btn-primary">Create Coupon</button></div>
-            </form>
-        </div>
-    </div>
-</div>`;
+body += `</tbody></table></div></div>`;
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

@@ -145,5 +145,9 @@ router.post('/store-owner/get-inactive-items', storeOwner.getInactiveItems);
 router.post('/store-owner/get-store-page', storeOwner.getStorePage);
 router.post('/store-owner/update-store', upload.single('image'), storeOwner.updateStore);
 router.post('/store-owner/toggle-category-status', storeOwner.toggleCategoryStatus);
+router.post('/store-owner/get-coupons', storeOwner.getCoupons);
+router.post('/store-owner/create-coupon', storeOwner.createCoupon);
+router.post('/store-owner/update-coupon', storeOwner.updateCoupon);
+router.post('/store-owner/delete-coupon', storeOwner.deleteCoupon);
 
 module.exports = router;

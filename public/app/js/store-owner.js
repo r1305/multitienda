@@ -53,6 +53,7 @@ const StoreOwnerDashboardPage = {
         <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
@@ -87,6 +88,7 @@ const StoreOwnerDashboardPage = {
               <router-link to="/store-owner/menu" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-utensils"></i> Productos</router-link>
               <router-link to="/store-owner/categories" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-list"></i> Categorias</router-link>
               <router-link to="/store-owner/addons" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
               <router-link to="/store-owner/earnings" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-chart-line"></i> Ganancias</router-link>
             </div>
           </div>
@@ -113,6 +115,7 @@ const StoreOwnerOrdersPage = {
         <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
@@ -177,6 +180,7 @@ const StoreOwnerOrderDetailPage = {
         <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
@@ -245,6 +249,7 @@ const StoreOwnerHistoryPage = {
         <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history" class="active"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
@@ -295,6 +300,7 @@ const StoreOwnerEarningsPage = {
         <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
         <router-link to="/store-owner/earnings" class="active"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
@@ -385,6 +391,7 @@ const StoreOwnerMenuPage = {
         <router-link to="/store-owner/menu" class="active"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
@@ -507,6 +514,7 @@ const StoreOwnerCategoriesPage = {
         <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories" class="active"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
@@ -586,6 +594,7 @@ const StoreOwnerAddonsPage = {
         <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons" class="active"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
@@ -708,6 +717,7 @@ const StoreOwnerSettingsPage = {
         <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
         <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
         <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
         <router-link to="/store-owner/settings" class="active"><i class="fas fa-cog"></i> Settings</router-link>
@@ -820,5 +830,95 @@ const StoreOwnerSettingsPage = {
       } catch(e) { console.error(e); }
       this.saving = false;
     }
+  }
+};
+
+const StoreOwnerCouponsPage = {
+  template: `
+    <div class="so-layout">
+      <nav class="so-sidebar">
+        <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
+        <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
+        <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
+        <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
+        <router-link to="/store-owner/coupons" class="active"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
+        <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i> Ganancias</router-link>
+        <router-link to="/store-owner/history"><i class="fas fa-history"></i> Historial</router-link>
+        <router-link to="/store-owner/settings"><i class="fas fa-cog"></i> Settings</router-link>
+        <a @click="logout" style="cursor:pointer"><i class="fas fa-sign-out-alt"></i> Salir</a>
+      </nav>
+      <div class="so-main">
+        <div class="so-topbar">
+          <span class="so-topbar-title">Cupones</span>
+          <button class="so-btn so-btn-primary so-btn-sm" @click="openNew"><i class="fas fa-plus"></i> Nuevo</button>
+        </div>
+        <div class="so-bottom-nav">
+          <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
+          <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
+        </div>
+        <div v-if="loading" class="loading"><div class="spinner"></div></div>
+        <template v-else>
+          <div v-if="!coupons.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-ticket-alt" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin cupones</p></div>
+          <div class="so-card" v-for="c in coupons" :key="c.id">
+            <div class="so-card-body" style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <strong style="font-size:14px">{{c.code}}</strong>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">{{c.discount_type==='PERCENTAGE' ? c.discount+'%' : Store.formatPrice(c.discount)}} off {{c.name ? '- '+c.name : ''}}</div>
+                <div style="font-size:11px;color:var(--muted)">Usado: {{c.count || 0}} veces</div>
+              </div>
+              <div style="display:flex;gap:4px">
+                <button class="so-btn so-btn-outline so-btn-sm" @click="startEdit(c)"><i class="fas fa-edit"></i></button>
+                <button class="so-btn so-btn-sm" style="background:#ffebee;color:#c62828" @click="deleteCoupon(c)"><i class="fas fa-trash"></i></button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+      <div v-if="showForm" class="so-modal" @click.self="showForm=false">
+        <div class="so-modal-content" style="max-height:90vh;overflow-y:auto">
+          <div class="so-modal-title">{{editCoupon ? 'Editar' : 'Nuevo'}} Cupon</div>
+          <div class="so-form-group"><label>Nombre</label><input v-model="form.name" placeholder="Ej: Descuento verano"></div>
+          <div class="so-form-group"><label>Codigo *</label><input v-model="form.code" placeholder="Ej: VERANO20" style="text-transform:uppercase"></div>
+          <div class="so-form-group"><label>Tipo de descuento</label><select v-model="form.discount_type" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px"><option value="FIXED">Monto fijo</option><option value="PERCENTAGE">Porcentaje</option></select></div>
+          <div class="so-form-group"><label>Descuento *</label><input v-model="form.discount" type="number" step="0.01" placeholder="0"></div>
+          <div class="so-form-row">
+            <div class="so-form-group"><label>Descuento maximo</label><input v-model="form.max_discount" type="number" step="0.01" placeholder="0"></div>
+            <div class="so-form-group"><label>Pedido minimo</label><input v-model="form.min_sub_total" type="number" step="0.01" placeholder="0"></div>
+          </div>
+          <div class="so-form-row">
+            <div class="so-form-group"><label>Usos maximos</label><input v-model="form.max_count" type="number" placeholder="0 = ilimitado"></div>
+            <div class="so-form-group"><label>Max por usuario</label><input v-model="form.max_count_per_user" type="number" placeholder="0 = ilimitado"></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="so-btn so-btn-primary" style="flex:1" @click="save" :disabled="saving">{{saving?'Guardando...':'Guardar'}}</button>
+            <button class="so-btn so-btn-outline" style="flex:1" @click="showForm=false">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>`,
+  setup() { return { Store }; },
+  data() { return { coupons: [], loading: true, showForm: false, editCoupon: null, saving: false, form: { name: '', code: '', discount_type: 'FIXED', discount: '', max_discount: '', min_sub_total: '', max_count: '', max_count_per_user: '' } }; },
+  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.load(); },
+  methods: {
+    async load() { this.loading = true; try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/get-coupons', { token }); this.coupons = Array.isArray(res) ? res : []; } catch(e) {} this.loading = false; },
+    openNew() { this.editCoupon = null; this.form = { name: '', code: '', discount_type: 'FIXED', discount: '', max_discount: '', min_sub_total: '', max_count: '', max_count_per_user: '' }; this.showForm = true; },
+    startEdit(c) { this.editCoupon = c; this.form = { name: c.name || '', code: c.code, discount_type: c.discount_type || 'FIXED', discount: c.discount, max_discount: c.max_discount || '', min_sub_total: c.min_sub_total || '', max_count: c.max_count || '', max_count_per_user: c.max_count_per_user || '' }; this.showForm = true; },
+    async save() {
+      if (!this.form.code || !this.form.discount) return;
+      this.saving = true;
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        if (this.editCoupon) { await API.post('/store-owner/update-coupon', { token, coupon_id: this.editCoupon.id, ...this.form }); }
+        else { await API.post('/store-owner/create-coupon', { token, ...this.form }); }
+        this.showForm = false; await this.load();
+      } catch(e) { console.error(e); }
+      this.saving = false;
+    },
+    async deleteCoupon(c) { if (!confirm('Eliminar cupon ' + c.code + '?')) return; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-coupon', { token, coupon_id: c.id }); this.coupons = this.coupons.filter(x => x.id !== c.id); } catch(e) {} },
+    logout() { localStorage.removeItem('storeOwnerUser'); localStorage.removeItem('storeOwnerToken'); this.$router.push('/store-owner'); }
   }
 };

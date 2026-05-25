@@ -558,3 +558,42 @@ exports.deleteAddonItem = async (req, res) => {
     res.json({ success: true });
   } catch (err) { res.status(500).json({ success: false }); }
 };
+
+// Coupons CRUD for store owner
+exports.getCoupons = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json([]);
+    const [coupons] = await sequelize.query('SELECT * FROM coupons WHERE restaurant_id = ? ORDER BY id DESC', { replacements: [restaurant.id] });
+    res.json(coupons);
+  } catch (err) { res.status(500).json([]); }
+};
+
+exports.createCoupon = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const { name, code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user } = req.body;
+    await sequelize.query('INSERT INTO coupons (name, code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user, restaurant_id, count, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,0,NOW(),NOW())', { replacements: [name || '', (code || '').toUpperCase(), discount_type || 'FIXED', discount || 0, max_discount || 0, min_sub_total || 0, max_count || 0, max_count_per_user || 0, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
+
+exports.updateCoupon = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const { coupon_id, name, code, discount_type, discount, max_discount, min_sub_total, max_count, max_count_per_user } = req.body;
+    await sequelize.query('UPDATE coupons SET name=?, code=?, discount_type=?, discount=?, max_discount=?, min_sub_total=?, max_count=?, max_count_per_user=?, updated_at=NOW() WHERE id=? AND restaurant_id=?', { replacements: [name || '', (code || '').toUpperCase(), discount_type || 'FIXED', discount || 0, max_discount || 0, min_sub_total || 0, max_count || 0, max_count_per_user || 0, coupon_id, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
+
+exports.deleteCoupon = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await sequelize.query('DELETE FROM coupons WHERE id=? AND restaurant_id=?', { replacements: [req.body.coupon_id, restaurant.id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+};
