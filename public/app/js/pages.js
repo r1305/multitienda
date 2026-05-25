@@ -698,12 +698,13 @@ const CheckoutPage = {
     if (!Store.isLoggedIn) return;
     try { const res = await API.getPaymentGateways(Store.user.auth_token, null); if (Array.isArray(res)) this.gateways = res; } catch(e) {}
     try { this.addresses = await API.getAddresses(Store.user.id, Store.user.auth_token) || []; if (this.addresses.length) this.selectedAddress = this.addresses[0]; } catch(e) {}
-    // Check if store is schedulable
+    // Check if store is schedulable and load charges
     if (Store.cart.length && Store.cart[0].restaurant_id) {
       try {
         const info = await API.post('/get-restaurant-info-by-id/' + Store.cart[0].restaurant_id, {});
         if (info && info.is_schedulable) this.storeIsSchedulable = true;
         if (info && info.restaurant_charges) this.restaurantCharge = parseFloat(info.restaurant_charges);
+        if (info && info.delivery_charges) this.deliveryCharge = parseFloat(info.delivery_charges);
       } catch(e) {}
     }
   },

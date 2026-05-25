@@ -538,12 +538,13 @@ exports.deliverOrder = async (req, res) => {
 
     // Calculate and save delivery earning
     const order = await Order.findByPk(req.body.order_id);
-    const [dgDetails] = await sequelize.query('SELECT commission_type, fixed_commission, commission_rate FROM delivery_guy_details WHERE user_id = ?', { replacements: [req.user.id] });
+    const [dgDetails] = await sequelize.query('SELECT commission_type, fixed_commission, commission_rate, percentage_base FROM delivery_guy_details WHERE user_id = ?', { replacements: [req.user.id] });
     if (dgDetails[0] && order) {
       let earning = 0;
       const dg = dgDetails[0];
       if (dg.commission_type === 'percentage') {
-        earning = parseFloat(order.sub_total || order.total) * parseFloat(dg.commission_rate) / 100;
+        const base = dg.percentage_base === 'delivery_charge' ? parseFloat(order.delivery_charge || 0) : parseFloat(order.sub_total || order.total);
+        earning = base * parseFloat(dg.commission_rate) / 100;
       } else {
         earning = parseFloat(dg.fixed_commission || 0);
       }

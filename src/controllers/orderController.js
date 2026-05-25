@@ -93,10 +93,11 @@ exports.placeOrder = async (req, res) => {
     }
 
     let delivery_charge = 0, actual_delivery_charge = 0, distance = 0;
-    const userAddress = req.body.user?.data?.default_address;
+    const userLat = req.body.location?.lat || req.body.user?.data?.default_address?.latitude;
+    const userLng = req.body.location?.lng || req.body.user?.data?.default_address?.longitude;
 
-    if (delivery_type == 1 && userAddress) {
-      distance = getDistance(userAddress.latitude, userAddress.longitude, restaurant.latitude, restaurant.longitude);
+    if (delivery_type == 1 && userLat && userLng) {
+      distance = getDistance(parseFloat(userLat), parseFloat(userLng), parseFloat(restaurant.latitude), parseFloat(restaurant.longitude));
       if (restaurant.delivery_charge_type === 'DYNAMIC') {
         if (distance > restaurant.base_delivery_distance) {
           const extra = ((distance - restaurant.base_delivery_distance) / restaurant.extra_delivery_distance) * restaurant.extra_delivery_charge;
