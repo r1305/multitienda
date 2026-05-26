@@ -78,30 +78,23 @@ Store.applyTheme();
           appId: Store.settings.onesignalAppId,
           allowLocalhostAsSecureOrigin: true,
           notifyButton: { enable: false },
+          serviceWorkerPath: '/OneSignalSDKWorker.js',
           serviceWorkerParam: { scope: '/' },
         });
-        // Show notifications even when page is in foreground
         OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
           event.notification.display();
         });
-        // Request permission explicitly
-        const permission = await OneSignal.Notifications.permission;
-        if (!permission) {
-          await OneSignal.Notifications.requestPermission();
-        }
-        // Handle notification click
         OneSignal.Notifications.addEventListener('click', (e) => {
           const data = e.notification?.additionalData || e.notification?.data || e.data || {};
-          if (data.unique_order_id || data.order_id) {
-            const deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
-            const storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null');
-            if (deliveryUser) {
-              router.push('/delivery/order/' + (data.order_id || data.unique_order_id));
-            } else if (storeOwnerUser) {
-              router.push('/store-owner/order/' + (data.order_id || data.unique_order_id));
-            } else if (data.unique_order_id) {
-              router.push('/order/' + data.unique_order_id);
-            }
+          if (!data.order_id && !data.unique_order_id) return;
+          const storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null');
+          const deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
+          if (data.type === 'new_order' || data.recipient_role === 'store_owner' || storeOwnerUser) {
+            router.push('/store-owner/order/' + data.order_id);
+          } else if (data.recipient_role === 'delivery' || deliveryUser) {
+            router.push('/delivery/order/' + (data.order_id || data.unique_order_id));
+          } else if (data.unique_order_id) {
+            router.push('/order/' + data.unique_order_id);
           }
         });
         PushNotifications.registerForContext();

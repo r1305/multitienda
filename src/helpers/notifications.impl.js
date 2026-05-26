@@ -26,6 +26,15 @@ function getFirebaseApp() {
   }
 }
 
+async function postOneSignal(apiKey, payload) {
+  const response = await fetch('https://onesignal.com/api/v1/notifications', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + apiKey },
+    body: JSON.stringify(payload),
+  });
+  return response.json();
+}
+
 async function getOneSignalKeys() {
   const cache = require('./cache');
   const cached = await cache.get('settings:onesignal');
@@ -69,35 +78,36 @@ async function sendViaOneSignal(title, message, userId, role, data) {
       payload.web_url = payload.url;
     }
 
-    if (userId) {
+    if (!userId && data.restaurant_id && data.recipient_role === 'store_owner') {
+      payload.filters = [
+        { field: 'tag', key: 'restaurant_id', relation: '=', value: String(data.restaurant_id) },
+        { field: 'tag', key: 'role', relation: '=', value: 'store_owner' },
+      ];
+    } else if (userId) {
       const uid = String(userId);
-      payload.filters = [{ field: 'tag', key: 'user_id', relation: '=', value: uid }];
+      payload.include_aliases = { external_id: [uid] };
+      payload.target_channel = 'push';
     } else if (role) {
       payload.filters = [{ field: 'tag', key: 'role', relation: '=', value: role }];
     } else {
       payload.included_segments = ['All'];
     }
 
-    let response = await fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + config.onesignalRestApiKey },
-      body: JSON.stringify(payload),
-    });
-    let result = await response.json();
-    const noRecipients = userId && (result.errors || result.recipients === 0);
-    if (noRecipients) {
-      const aliasPayload = { ...payload };
-      delete aliasPayload.filters;
-      aliasPayload.include_aliases = { external_id: [String(userId)] };
-      aliasPayload.target_channel = 'push';
-      response = await fetch('https://onesignal.com/api/v1/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + config.onesignalRestApiKey },
-        body: JSON.stringify(aliasPayload),
-      });
-      result = await response.json();
+    let result = await postOneSignal(config.onesignalRestApiKey, payload);
+
+    if (userId && (result.errors || result.recipients === 0)) {
+      const tagPayload = { ...payload };
+      delete tagPayload.include_aliases;
+      delete tagPayload.target_channel;
+      tagPayload.filters = [{ field: 'tag', key: 'user_id', relation: '=', value: String(userId) }];
+      result = await postOneSignal(config.onesignalRestApiKey, tagPayload);
     }
-    if (result.errors) console.error('OneSignal error:', result.errors);
+
+    if (result.errors) {
+      console.error('OneSignal error:', JSON.stringify(result.errors));
+    } else if (userId && result.recipients === 0) {
+      console.warn('OneSignal: no recipients for user', userId);
+    }
     return result;
   } catch (e) {
     console.error('OneSignal error:', e.message);
@@ -232,12 +242,12 @@ async function saveFCMToken(userId, token, platform = 'android') {
 }
 
 async function notifyStoreNewOrder(order, restaurantId) {
+  const rid = Number(restaurantId);
   const [owners] = await sequelize.query(
     'SELECT user_id FROM restaurant_user WHERE restaurant_id = ?',
-    { replacements: [Number(restaurantId)] }
+    { replacements: [rid] }
   );
   const ownerIds = [...new Set(owners.map((o) => Number(o.user_id)).filter((id) => id > 0))];
-  if (!ownerIds.length) return;
 
   const title = '¡Nuevo pedido!';
   const message = `Pedido #${order.unique_order_id} — revisa y acepta`;
@@ -246,11 +256,32 @@ async function notifyStoreNewOrder(order, restaurantId) {
     unique_order_id: order.unique_order_id,
     type: 'new_order',
     recipient_role: 'store_owner',
+    restaurant_id: rid,
   };
+
+  if (!ownerIds.length) {
+    console.warn('[notifyStoreNewOrder] No owners in restaurant_user for restaurant', rid);
+  }
 
   for (const userId of ownerIds) {
     await saveNotification(userId, title, message, data);
-    await sendPushNotification(title, message, userId, null, data);
+  }
+
+  const restaurantResult = await sendViaOneSignal(title, message, null, null, data);
+  const restaurantPushFailed = !restaurantResult
+    || restaurantResult.errors
+    || (typeof restaurantResult.recipients === 'number' && restaurantResult.recipients === 0);
+
+  if (restaurantPushFailed && ownerIds.length) {
+    for (const userId of ownerIds) {
+      await sendPushNotification(title, message, userId, null, {
+        order_id: data.order_id,
+        unique_order_id: data.unique_order_id,
+        type: 'new_order',
+      });
+    }
+  } else if (restaurantPushFailed) {
+    console.warn('[notifyStoreNewOrder] No push recipients for restaurant', rid, '- assign owner in admin and open /store-owner with notifications enabled');
   }
 }
 

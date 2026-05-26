@@ -27,8 +27,10 @@ const StoreOwnerLoginPage = {
       try {
         const res = await API.post('/store-owner/login', { email: this.email, password: this.password });
         if (res.success) {
-          localStorage.setItem('storeOwnerUser', JSON.stringify(res.data));
+          const userData = { ...res.data, restaurant_id: res.data.restaurant?.id };
+          localStorage.setItem('storeOwnerUser', JSON.stringify(userData));
           localStorage.setItem('storeOwnerToken', res.data.auth_token);
+          PushNotifications.registerStoreOwner(res.data.id, userData.restaurant_id);
           this.$router.push('/store-owner/dashboard');
         } else this.error = res.message || 'Credenciales incorrectas';
       } catch(e) { this.error = 'Error de conexión'; }
@@ -94,7 +96,24 @@ const StoreOwnerDashboardPage = {
   data() { return { loading: true, store: {}, stats: { todayOrders: 0, todayEarnings: 0, pendingOrders: 0 } }; },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } PushNotifications.registerForContext(); this.loadDashboard(); },
   methods: {
-    async loadDashboard() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/dashboard', { token }); if (res.store) this.store = res.store; if (res.stats) this.stats = res.stats; } catch(e) {} this.loading = false; },
+    async loadDashboard() {
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        const res = await API.post('/store-owner/dashboard', { token });
+        if (res.store) {
+          this.store = res.store;
+          const u = JSON.parse(localStorage.getItem('storeOwnerUser') || '{}');
+          if (u.id) {
+            u.restaurant_id = res.store.id;
+            u.restaurant = res.store;
+            localStorage.setItem('storeOwnerUser', JSON.stringify(u));
+            PushNotifications.registerStoreOwner(u.id, res.store.id);
+          }
+        }
+        if (res.stats) this.stats = res.stats;
+      } catch (e) {}
+      this.loading = false;
+    },
     async toggleStatus() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/toggle-store-status', { token }); if (res.success) this.store.is_active = res.is_active; } catch(e) {} },
     logout() { localStorage.removeItem('storeOwnerUser'); localStorage.removeItem('storeOwnerToken'); this.$router.push('/store-owner'); }
   }
