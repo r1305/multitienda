@@ -181,11 +181,13 @@ exports.placeOrder = async (req, res) => {
 
     await t.commit();
 
-    // Send notifications
-    const { notifyStoreNewOrder, notifyDeliveryNewOrder } = require('../helpers/notifications');
-    await notifyStoreNewOrder(newOrder, restaurant_id);
-    // If auto-accepted (status 2), also notify delivery guys
-    if (newOrder.orderstatus_id === 2) await notifyDeliveryNewOrder(newOrder);
+    try {
+      const impl = require('../helpers/notifications.impl');
+      await impl.notifyStoreNewOrder(newOrder, restaurant_id);
+      if (newOrder.orderstatus_id === 2) await impl.notifyDeliveryNewOrder(newOrder);
+    } catch (notifErr) {
+      console.error('Order notification error:', notifErr.message);
+    }
 
     res.json({ success: true, data: newOrder });
   } catch (err) {

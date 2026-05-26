@@ -29,13 +29,6 @@ const StoreOwnerLoginPage = {
         if (res.success) {
           localStorage.setItem('storeOwnerUser', JSON.stringify(res.data));
           localStorage.setItem('storeOwnerToken', res.data.auth_token);
-          if (window.OneSignalDeferred) {
-            window.OneSignalDeferred.push(async function(OneSignal) {
-              const permission = await OneSignal.Notifications.permission;
-              if (!permission) await OneSignal.Notifications.requestPermission();
-              OneSignal.User.addTags({ user_id: String(res.data.id), role: 'store_owner' });
-            });
-          }
           this.$router.push('/store-owner/dashboard');
         } else this.error = res.message || 'Credenciales incorrectas';
       } catch(e) { this.error = 'Error de conexión'; }
@@ -99,7 +92,7 @@ const StoreOwnerDashboardPage = {
     </div>`,
   setup() { return { Store }; },
   data() { return { loading: true, store: {}, stats: { todayOrders: 0, todayEarnings: 0, pendingOrders: 0 } }; },
-  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadDashboard(); },
+  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } PushNotifications.registerForContext(); this.loadDashboard(); },
   methods: {
     async loadDashboard() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/dashboard', { token }); if (res.store) this.store = res.store; if (res.stats) this.stats = res.stats; } catch(e) {} this.loading = false; },
     async toggleStatus() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/toggle-store-status', { token }); if (res.success) this.store.is_active = res.is_active; } catch(e) {} },
@@ -164,7 +157,7 @@ const StoreOwnerOrdersPage = {
       return [...this.orders, ...this.pastOrders];
     }
   },
-  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadOrders(); this.interval = setInterval(() => this.loadOrders(), 20000); },
+  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } PushNotifications.registerForContext(); this.loadOrders(); this.interval = setInterval(() => this.loadOrders(), 20000); },
   beforeUnmount() { if (this.interval) clearInterval(this.interval); },
   methods: {
     async loadOrders() { try { const token = localStorage.getItem('storeOwnerToken'); const [res, past] = await Promise.all([API.post('/store-owner/get-orders', { token }), API.post('/store-owner/get-past-orders', { token })]); this.orders = Array.isArray(res) ? res : (res.data || []); this.pastOrders = Array.isArray(past) ? past : (past.data || []); } catch(e) {} this.loading = false; },

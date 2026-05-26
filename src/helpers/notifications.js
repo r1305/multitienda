@@ -6,7 +6,8 @@ async function sendPushNotification(title, message, userId = null, role = null, 
 }
 
 async function notifyStoreNewOrder(order, restaurantId) {
-  return enqueue('notifyStoreNewOrder', { args: [order, restaurantId] });
+  const impl = require('./notifications.impl');
+  return impl.notifyStoreNewOrder(order, restaurantId);
 }
 
 async function notifyDeliveryNewOrder(order) {

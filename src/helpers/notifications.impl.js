@@ -54,7 +54,10 @@ async function sendViaOneSignal(title, message, userId, role, data) {
     };
 
     const baseUrl = process.env.APP_URL || '';
-    if (data.type === 'chat' && data.order_id) {
+    if (data.type === 'new_order' && data.order_id) {
+      payload.url = baseUrl + '/store-owner/order/' + data.order_id;
+      payload.web_url = payload.url;
+    } else if (data.type === 'chat' && data.order_id) {
       if (data.recipient_role === 'delivery') {
         payload.url = baseUrl + '/delivery/order/' + data.order_id;
       } else if (data.unique_order_id) {
@@ -231,13 +234,23 @@ async function saveFCMToken(userId, token, platform = 'android') {
 async function notifyStoreNewOrder(order, restaurantId) {
   const [owners] = await sequelize.query(
     'SELECT user_id FROM restaurant_user WHERE restaurant_id = ?',
-    { replacements: [restaurantId] }
+    { replacements: [Number(restaurantId)] }
   );
-  const title = 'Nuevo pedido!';
-  const message = `Tienes un nuevo pedido #${order.unique_order_id}`;
-  for (const owner of owners) {
-    await saveNotification(owner.user_id, title, message);
-    await sendPushNotification(title, message, owner.user_id, null, { order_id: String(order.id), unique_order_id: order.unique_order_id });
+  const ownerIds = [...new Set(owners.map((o) => Number(o.user_id)).filter((id) => id > 0))];
+  if (!ownerIds.length) return;
+
+  const title = '¡Nuevo pedido!';
+  const message = `Pedido #${order.unique_order_id} — revisa y acepta`;
+  const data = {
+    order_id: Number(order.id),
+    unique_order_id: order.unique_order_id,
+    type: 'new_order',
+    recipient_role: 'store_owner',
+  };
+
+  for (const userId of ownerIds) {
+    await saveNotification(userId, title, message, data);
+    await sendPushNotification(title, message, userId, null, data);
   }
 }
 
