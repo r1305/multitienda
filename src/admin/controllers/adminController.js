@@ -2,18 +2,21 @@ const { sequelize } = require('../../models');
 
 exports.dashboard = async (req, res) => {
   try {
-    const [[{ totalOrders }]] = await sequelize.query('SELECT COUNT(*) as totalOrders FROM orders');
-    const [[{ completedOrders }]] = await sequelize.query("SELECT COUNT(*) as completedOrders FROM orders WHERE orderstatus_id = 5");
-    const [[{ pendingOrders }]] = await sequelize.query("SELECT COUNT(*) as pendingOrders FROM orders WHERE orderstatus_id IN (1,2,3,4,7,10,11)");
-    const [[{ cancelledOrders }]] = await sequelize.query("SELECT COUNT(*) as cancelledOrders FROM orders WHERE orderstatus_id = 6");
-    const [[{ totalUsers }]] = await sequelize.query('SELECT COUNT(*) as totalUsers FROM users');
-    const [[{ totalStores }]] = await sequelize.query('SELECT COUNT(*) as totalStores FROM restaurants');
-    const [[{ totalDelivery }]] = await sequelize.query("SELECT COUNT(*) as totalDelivery FROM users u INNER JOIN model_has_roles mr ON u.id = mr.model_id INNER JOIN roles r ON mr.role_id = r.id WHERE r.name = 'Delivery Guy'");
-    const [[{ todayOrders }]] = await sequelize.query("SELECT COUNT(*) as todayOrders FROM orders WHERE DATE(created_at) = CURDATE()");
-    const [[{ todayRevenue }]] = await sequelize.query("SELECT COALESCE(SUM(total),0) as todayRevenue FROM orders WHERE orderstatus_id = 5 AND DATE(created_at) = CURDATE()");
-    const [[{ totalRevenue }]] = await sequelize.query("SELECT COALESCE(SUM(total),0) as totalRevenue FROM orders WHERE orderstatus_id = 5");
+    const q = async (sql, def = 0) => { try { const [[r]] = await sequelize.query(sql); return Object.values(r)[0]; } catch(e) { return def; } };
+    const qa = async (sql) => { try { const [r] = await sequelize.query(sql); return r; } catch(e) { return []; } };
 
-    const [recentOrders] = await sequelize.query(`
+    const totalOrders = await q('SELECT COUNT(*) as v FROM orders');
+    const completedOrders = await q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id = 5");
+    const pendingOrders = await q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id IN (1,2,3,4,7,10,11)");
+    const cancelledOrders = await q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id = 6");
+    const totalUsers = await q('SELECT COUNT(*) as v FROM users');
+    const totalStores = await q('SELECT COUNT(*) as v FROM restaurants');
+    const totalDelivery = await q("SELECT COUNT(*) as v FROM users u INNER JOIN model_has_roles mr ON u.id = mr.model_id INNER JOIN roles r ON mr.role_id = r.id WHERE r.name = 'Delivery Guy'");
+    const todayOrders = await q("SELECT COUNT(*) as v FROM orders WHERE DATE(created_at) = CURDATE()");
+    const todayRevenue = await q("SELECT COALESCE(SUM(total),0) as v FROM orders WHERE orderstatus_id = 5 AND DATE(created_at) = CURDATE()");
+    const totalRevenue = await q("SELECT COALESCE(SUM(total),0) as v FROM orders WHERE orderstatus_id = 5");
+
+    const recentOrders = await qa(`
       SELECT o.id, o.unique_order_id, o.total, o.orderstatus_id, o.payment_mode, o.created_at,
         u.name as user_name, r.name as restaurant_name
       FROM orders o
@@ -22,14 +25,14 @@ exports.dashboard = async (req, res) => {
       ORDER BY o.id DESC LIMIT 8
     `);
 
-    const [topStores] = await sequelize.query(`
+    const topStores = await qa(`
       SELECT r.id, r.name, r.image, r.is_active, COUNT(o.id) as order_count, COALESCE(SUM(o.total),0) as revenue
       FROM restaurants r
       LEFT JOIN orders o ON o.restaurant_id = r.id AND o.orderstatus_id = 5
       GROUP BY r.id ORDER BY revenue DESC LIMIT 5
     `);
 
-    const [activeDelivery] = await sequelize.query(`
+    const activeDelivery = await qa(`
       SELECT u.id, u.name, u.phone, u.is_active,
         (SELECT COUNT(*) FROM orders WHERE delivery_guy_id = u.id AND orderstatus_id IN (3,4)) as active_orders
       FROM users u
@@ -40,7 +43,7 @@ exports.dashboard = async (req, res) => {
     `);
 
     // Get currency
-    const [settingsRows] = await sequelize.query("SELECT `value` FROM settings WHERE `key` = 'currencySymbol' LIMIT 1");
+    const [settingsRows] = await sequelize.query("SELECT `value` FROM settings WHERE `key` = 'currencySymbol' LIMIT 1").catch(() => [[]]);
     const currency = settingsRows.length ? settingsRows[0].value : '$';
 
     res.render('admin/dashboard', {
@@ -61,8 +64,9 @@ exports.dashboard = async (req, res) => {
       recentOrders: [],
       topStores: [],
       activeDelivery: [],
+      currency: '$',
       success: null,
-      error: 'Error loading dashboard'
+      error: 'Error loading dashboard: ' + err.message
     });
   }
 };
