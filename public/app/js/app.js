@@ -100,10 +100,8 @@ Store.applyTheme();
             }
           }
         });
-        // Set user tags
         if (Store.isLoggedIn) {
-          const role = Store.user.role || 'customer';
-          OneSignal.User.addTags({ user_id: String(Store.user.id), role: role.toLowerCase().replace(' ', '_') });
+          PushNotifications.register(Store.user.id, Store.user.role || 'customer');
         }
         const deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
         if (deliveryUser) {

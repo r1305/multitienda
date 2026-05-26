@@ -59,19 +59,33 @@ async function sendViaOneSignal(title, message, userId, role, data) {
     }
 
     if (userId) {
-      payload.filters = [{ field: 'tag', key: 'user_id', relation: '=', value: String(userId) }];
+      const uid = String(userId);
+      payload.include_aliases = { external_id: [uid] };
+      payload.target_channel = 'push';
     } else if (role) {
       payload.filters = [{ field: 'tag', key: 'role', relation: '=', value: role }];
     } else {
       payload.included_segments = ['All'];
     }
 
-    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+    let response = await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + config.onesignalRestApiKey },
       body: JSON.stringify(payload),
     });
-    const result = await response.json();
+    let result = await response.json();
+    if (result.errors && userId && payload.include_aliases) {
+      const tagPayload = { ...payload };
+      delete tagPayload.include_aliases;
+      delete tagPayload.target_channel;
+      tagPayload.filters = [{ field: 'tag', key: 'user_id', relation: '=', value: String(userId) }];
+      response = await fetch('https://onesignal.com/api/v1/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + config.onesignalRestApiKey },
+        body: JSON.stringify(tagPayload),
+      });
+      result = await response.json();
+    }
     if (result.errors) console.error('OneSignal error:', result.errors);
     return result;
   } catch (e) {

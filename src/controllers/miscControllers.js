@@ -673,19 +673,39 @@ exports.deliveryCustomerChat = async (req, res) => {
 exports.sendChatMessage = async (req, res) => {
   try {
     const { order_id, message } = req.body;
-    await sequelize.query('INSERT INTO chats (order_id, sender_id, message, created_at) VALUES (?, ?, ?, NOW())', { replacements: [order_id, req.user.id, message] });
+    const senderId = Number(req.user.id);
+    await sequelize.query('INSERT INTO chats (order_id, sender_id, message, created_at) VALUES (?, ?, ?, NOW())', { replacements: [order_id, senderId, message] });
 
-    // Send push notification to the other party
     const order = await Order.findByPk(order_id);
     if (order) {
-      const { sendPushNotification } = require('../helpers/notifications');
+      const impl = require('../helpers/notifications.impl');
       const accept = await AcceptDelivery.findOne({ where: { order_id } });
-      if (req.user.id === order.user_id && accept) {
-        // Customer sent message -> notify delivery guy
-        await sendPushNotification('Nuevo mensaje', message, accept.user_id, null, { order_id, unique_order_id: order.unique_order_id, type: 'chat' });
-      } else if (accept && req.user.id === accept.user_id) {
-        // Delivery sent message -> notify customer
-        await sendPushNotification('Mensaje del repartidor', message, order.user_id, null, { order_id, unique_order_id: order.unique_order_id, type: 'chat' });
+      const customerId = Number(order.user_id);
+      const deliveryId = accept ? Number(accept.user_id) : null;
+      const chatData = { order_id: Number(order_id), unique_order_id: order.unique_order_id, type: 'chat' };
+
+      let recipientId = null;
+      let title = null;
+      if (senderId === customerId && deliveryId) {
+        recipientId = deliveryId;
+        title = 'Nuevo mensaje';
+      } else if (deliveryId && senderId === deliveryId) {
+        recipientId = customerId;
+        title = 'Mensaje del repartidor';
+      } else if (senderId !== customerId && customerId) {
+        const [dg] = await sequelize.query(
+          'SELECT id FROM delivery_guy_details WHERE user_id = ? LIMIT 1',
+          { replacements: [senderId] }
+        );
+        if (dg.length) {
+          recipientId = customerId;
+          title = 'Mensaje del repartidor';
+        }
+      }
+
+      if (recipientId && title) {
+        await impl.saveNotification(recipientId, title, message, chatData);
+        await impl.sendPushNotification(title, message, recipientId, null, chatData);
       }
     }
 

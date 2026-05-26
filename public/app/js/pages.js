@@ -418,16 +418,8 @@ const LoginPage = {
       try {
         const res = await API.login(this.email, this.password);
         if (res.success) {
-          API.setToken(res.data.auth_token); Store.setUser(res.data); 
-          // Set OneSignal tags and request permission
-          if (window.OneSignalDeferred) {
-            window.OneSignalDeferred.push(async function(OneSignal) {
-              const permission = await OneSignal.Notifications.permission;
-              if (!permission) await OneSignal.Notifications.requestPermission();
-              const role = res.data.role || 'customer';
-              OneSignal.User.addTags({ user_id: String(res.data.id), role: role.toLowerCase().replace(' ', '_') });
-            });
-          }
+          API.setToken(res.data.auth_token); Store.setUser(res.data);
+          PushNotifications.register(res.data.id, res.data.role || 'customer');
           this.$router.push('/account');
         }
         else this.error = 'Credenciales incorrectas';
@@ -461,7 +453,11 @@ const RegisterPage = {
       this.error = ''; this.loading = true;
       try {
         const res = await API.register(this.name, this.email, this.phone, this.password);
-        if (res.success) { API.setToken(res.data.auth_token); Store.setUser(res.data); this.$router.push('/'); }
+        if (res.success) {
+          API.setToken(res.data.auth_token); Store.setUser(res.data);
+          PushNotifications.register(res.data.id, res.data.role || 'customer');
+          this.$router.push('/');
+        }
         else this.error = res.message || 'Error al registrar';
       } catch(e) { this.error = 'Error de conexión'; }
       this.loading = false;
@@ -836,7 +832,16 @@ const OrderDetailPage = {
     canCancel() { return this.order && [1,10].includes(this.order.orderstatus_id); },
     canRate() { return this.order && this.order.orderstatus_id === 5; }
   },
-  async mounted() { await this.loadOrder(); this.loadGoogleMaps(); if (this.isRunning) { this.refreshInterval = setInterval(() => this.loadOrder(), 20000); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); } },
+  async mounted() {
+    await this.loadOrder();
+    this.loadGoogleMaps();
+    if (Store.isLoggedIn) PushNotifications.register(Store.user.id, Store.user.role || 'customer');
+    if (this.isRunning) {
+      this.refreshInterval = setInterval(() => this.loadOrder(), 20000);
+      this.loadMessages();
+      this.chatInterval = setInterval(() => this.loadMessages(), 20000);
+    }
+  },
   beforeUnmount() { if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); },
   methods: {
     async loadOrder() {

@@ -3,19 +3,23 @@ const API = {
   token: localStorage.getItem('appToken') || null,
   async post(path, data = {}) {
     const headers = { 'Content-Type': 'application/json' };
-    // Use delivery token for delivery/conversation routes, store owner token for store-owner routes, otherwise client token
     const deliveryToken = localStorage.getItem('deliveryToken');
     const storeOwnerToken = localStorage.getItem('storeOwnerToken');
-    if ((path.startsWith('/delivery/') || path.startsWith('/conversation/')) && deliveryToken) {
-      headers['Authorization'] = 'Bearer ' + deliveryToken;
+    let authToken = null;
+    // Chat: always use the token sent in the body (client vs delivery), not a stale deliveryToken in storage
+    if (path.startsWith('/conversation/') && data.token) {
+      authToken = data.token;
+    } else if (path.startsWith('/delivery/') && deliveryToken) {
+      authToken = deliveryToken;
       data.token = deliveryToken;
     } else if (path.startsWith('/store-owner/') && storeOwnerToken) {
-      headers['Authorization'] = 'Bearer ' + storeOwnerToken;
+      authToken = storeOwnerToken;
       data.token = storeOwnerToken;
     } else if (this.token) {
-      headers['Authorization'] = 'Bearer ' + this.token;
+      authToken = this.token;
       data.token = this.token;
     }
+    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
     const res = await fetch(this.base + path, { method: 'POST', headers, body: JSON.stringify(data) });
     return res.json();
   },

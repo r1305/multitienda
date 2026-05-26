@@ -46,14 +46,7 @@ const DeliveryLoginPage = {
         if (res.success) {
           localStorage.setItem('deliveryUser', JSON.stringify(res.data));
           localStorage.setItem('deliveryToken', res.data.auth_token);
-          // Set OneSignal tags for delivery and request permission
-          if (window.OneSignalDeferred) {
-            window.OneSignalDeferred.push(async function(OneSignal) {
-              const permission = await OneSignal.Notifications.permission;
-              if (!permission) await OneSignal.Notifications.requestPermission();
-              OneSignal.User.addTags({ user_id: String(res.data.id), role: 'delivery' });
-            });
-          }
+          PushNotifications.register(res.data.id, 'delivery');
           this.$router.push('/delivery/orders');
         } else this.error = res.data === 'DONOTMATCH' ? 'Credenciales incorrectas' : (res.message || 'Error al iniciar sesión');
       } catch(e) { this.error = 'Error de conexión'; }
@@ -131,25 +124,8 @@ const DeliveryOrdersPage = {
   beforeUnmount() { if (this.interval) clearInterval(this.interval); },
   methods: {
     requestNotifications() {
-      if (window.OneSignalDeferred) {
-        const user = JSON.parse(localStorage.getItem('deliveryUser') || '{}');
-        window.OneSignalDeferred.push(async function(OneSignal) {
-          // Request permission if not granted
-          const permission = await OneSignal.Notifications.permission;
-          if (!permission) {
-            await OneSignal.Notifications.requestPermission();
-          }
-          // Ensure opted in
-          const optedIn = await OneSignal.User.PushSubscription.optedIn;
-          if (!optedIn) {
-            await OneSignal.User.PushSubscription.optIn();
-          }
-          // Set tags for targeting
-          if (user.id) {
-            OneSignal.User.addTags({ user_id: String(user.id), role: 'delivery' });
-          }
-        });
-      }
+      const user = JSON.parse(localStorage.getItem('deliveryUser') || '{}');
+      if (user.id) PushNotifications.register(user.id, 'delivery');
     },
     getLocation() { if (!navigator.geolocation) { this.gpsReady = true; this.refresh(); return; } navigator.geolocation.getCurrentPosition((pos) => { this.lat = pos.coords.latitude; this.lng = pos.coords.longitude; this.gpsReady = true; this.refresh(); }, () => { this.gpsReady = true; this.refresh(); }, { timeout: 10000 }); },
     async refresh() {
