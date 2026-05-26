@@ -183,9 +183,9 @@ const StoreDetailPage = {
                   <div v-if="getQty(item.id)" class="qty-control">
                     <button type="button" class="qty-btn" aria-label="Quitar" @click="removeFromCart(item)"><i class="fas fa-minus"></i></button>
                     <span class="qty-val">{{getQty(item.id)}}</span>
-                    <button type="button" class="qty-btn" aria-label="Anadir" @click="addToCart(item)"><i class="fas fa-plus"></i></button>
+                    <button type="button" class="qty-btn" aria-label="+" @click="addToCart(item)"><i class="fas fa-plus"></i></button>
                   </div>
-                  <button v-else type="button" class="btn-add-no-img" @click="addToCart(item)">Anadir</button>
+                  <button v-else type="button" class="btn-add-no-img" aria-label="+" @click="addToCart(item)"><i class="fas fa-plus"></i></button>
                 </div>
               </div>
               <div v-if="item.image" class="item-card-img">
@@ -193,9 +193,9 @@ const StoreDetailPage = {
                 <div v-if="getQty(item.id)" class="qty-control" style="position:absolute;bottom:-10px;left:50%;transform:translateX(-50%)">
                   <button type="button" class="qty-btn" aria-label="Quitar" @click="removeFromCart(item)"><i class="fas fa-minus"></i></button>
                   <span class="qty-val">{{getQty(item.id)}}</span>
-                  <button type="button" class="qty-btn" aria-label="Anadir" @click="addToCart(item)"><i class="fas fa-plus"></i></button>
+                  <button type="button" class="qty-btn" aria-label="+" @click="addToCart(item)"><i class="fas fa-plus"></i></button>
                 </div>
-                <button v-else type="button" class="btn-add" @click="addToCart(item)">Anadir</button>
+                <button v-else type="button" class="btn-add" aria-label="+" @click="addToCart(item)"><i class="fas fa-plus"></i></button>
               </div>
             </div>
           </div>
@@ -291,7 +291,7 @@ const CartPage = {
                 <i :class="item.quantity === 1 ? 'fas fa-trash' : 'fas fa-minus'"></i>
               </button>
               <span class="qty-val">{{item.quantity}}</span>
-              <button type="button" class="qty-btn" aria-label="Anadir" @click="add(item)"><i class="fas fa-plus"></i></button>
+              <button type="button" class="qty-btn" aria-label="+" @click="add(item)"><i class="fas fa-plus"></i></button>
             </div>
           </div>
         </div>
