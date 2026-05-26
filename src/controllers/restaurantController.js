@@ -13,6 +13,7 @@ exports.getDeliveryRestaurants = async (req, res) => {
     });
     res.json(list);
   } catch (err) {
+    console.error('[getDeliveryRestaurants]', err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -136,18 +137,15 @@ exports.getRestaurantItems = async (req, res) => {
 exports.searchRestaurants = async (req, res) => {
   try {
     const { q, latitude, longitude } = req.body;
-    const [rows] = await sequelize.query(
-      `SELECT r.id, r.name, r.description, r.image, r.latitude, r.longitude, r.delivery_radius,
-        r.delivery_time, r.price_range, r.slug, r.is_featured, r.is_active, r.is_accepted,
-        r.custom_featured_name, r.custom_message_on_list,
-        (SELECT ROUND(AVG(rating_store), 1) FROM ratings WHERE restaurant_id = r.id) AS avgRating
-       FROM restaurants r
-       WHERE r.name LIKE ? AND r.is_accepted = 1
-       LIMIT 20`,
-      { replacements: [`%${q}%`] }
-    );
+    const rows = await Restaurant.findAll({
+      where: { name: { [Op.like]: `%${q}%` }, is_accepted: 1 },
+      limit: 20,
+      raw: true,
+    });
+    const avgMap = await rq.loadAvgRatings(rows.map((r) => r.id));
+    const withAvg = rows.map((r) => ({ ...r, avgRating: avgMap[r.id] ?? r.rating }));
 
-    const nearRestaurants = rows
+    const nearRestaurants = withAvg
       .filter((r) => r.is_accepted && rq.checkOperation(latitude, longitude, r))
       .map((r) => rq.mapRow(r, latitude, longitude));
 
@@ -184,22 +182,23 @@ exports.getFilteredRestaurants = async (req, res) => {
     const { latitude, longitude, category_ids } = req.body;
     if (!category_ids?.length) return res.json([]);
 
-    const placeholders = category_ids.map(() => '?').join(',');
-    const [rows] = await sequelize.query(
-      `SELECT DISTINCT
-        r.id, r.name, r.description, r.image, r.latitude, r.longitude,
-        r.delivery_radius, r.delivery_time, r.price_range, r.slug, r.is_featured, r.is_active,
-        r.custom_featured_name, r.custom_message_on_list, r.order_column,
-        (SELECT ROUND(AVG(rating_store), 1) FROM ratings WHERE restaurant_id = r.id) AS avgRating
-       FROM restaurants r
-       INNER JOIN restaurant_category_restaurant rcr ON rcr.restaurant_id = r.id
-       WHERE r.is_accepted = 1 AND rcr.restaurant_category_id IN (${placeholders})
-       ORDER BY r.order_column ASC`,
-      { replacements: category_ids }
-    );
+    const rows = await Restaurant.findAll({
+      where: { is_accepted: 1 },
+      include: [{
+        model: RestaurantCategory,
+        as: 'restaurant_categories',
+        where: { id: { [Op.in]: category_ids } },
+        required: true,
+        attributes: [],
+      }],
+      order: [['order_column', 'ASC']],
+      raw: true,
+    });
+    const avgMap = await rq.loadAvgRatings(rows.map((r) => r.id));
+    const withAvg = rows.map((r) => ({ ...r, avgRating: avgMap[r.id] ?? r.rating }));
 
-    const active = rows.filter((r) => r.is_active).filter((r) => rq.checkOperation(latitude, longitude, r)).map((r) => rq.mapRow(r, latitude, longitude));
-    const inactive = rows.filter((r) => !r.is_active).filter((r) => rq.checkOperation(latitude, longitude, r)).map((r) => rq.mapRow(r, latitude, longitude));
+    const active = withAvg.filter((r) => r.is_active).filter((r) => rq.checkOperation(latitude, longitude, r)).map((r) => rq.mapRow(r, latitude, longitude));
+    const inactive = withAvg.filter((r) => !r.is_active).filter((r) => rq.checkOperation(latitude, longitude, r)).map((r) => rq.mapRow(r, latitude, longitude));
     res.json([...active, ...inactive]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -250,17 +249,11 @@ exports.getFavoriteStores = async (req, res) => {
     const ids = favs.map((f) => f.favoriteable_id);
     if (!ids.length) return res.json([]);
 
-    const placeholders = ids.map(() => '?').join(',');
-    const [rows] = await sequelize.query(
-      `SELECT r.id, r.name, r.description, r.image, r.latitude, r.longitude,
-        r.delivery_radius, r.delivery_time, r.price_range, r.slug, r.is_featured, r.is_active,
-        r.custom_featured_name, r.custom_message_on_list,
-        (SELECT ROUND(AVG(rating_store), 1) FROM ratings WHERE restaurant_id = r.id) AS avgRating
-       FROM restaurants r WHERE r.id IN (${placeholders})`,
-      { replacements: ids }
-    );
+    const rows = await Restaurant.findAll({ where: { id: { [Op.in]: ids } }, raw: true });
+    const avgMap = await rq.loadAvgRatings(ids);
+    const withAvg = rows.map((r) => ({ ...r, avgRating: avgMap[r.id] ?? r.rating }));
 
-    const result = rows
+    const result = withAvg
       .filter((r) => rq.checkOperation(latitude, longitude, r))
       .map((r) => rq.mapRow(r, latitude, longitude));
     res.json(result);
