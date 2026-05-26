@@ -1,5 +1,7 @@
 <% var active = 'dashboard'; var pageTitle = 'Dashboard'; %>
 <%
+var currency = typeof settings !== 'undefined' && settings && settings.currencySymbol ? settings.currencySymbol : '$';
+
 var scripts = `
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
@@ -7,15 +9,13 @@ let earningsChart = null;
 
 function loadChart(filter) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  if (filter !== 'custom') {
-    document.querySelector('[data-filter="'+filter+'"]').classList.add('active');
-    document.getElementById('customRange').style.display = 'none';
-  } else {
-    document.querySelector('[data-filter="custom"]').classList.add('active');
-    document.getElementById('customRange').style.display = 'flex';
+  document.querySelector('[data-filter="'+filter+'"]').classList.add('active');
+  const customEl = document.getElementById('customRange');
+  if (filter === 'custom') {
+    customEl.style.display = 'flex';
     if (!document.getElementById('dateFrom').value) document.getElementById('dateFrom').value = new Date().toISOString().split('T')[0];
     if (!document.getElementById('dateTo').value) document.getElementById('dateTo').value = new Date().toISOString().split('T')[0];
-  }
+  } else { customEl.style.display = 'none'; }
 
   let url = '/admin/api/earnings-chart?filter=' + filter;
   if (filter === 'custom') {
@@ -28,6 +28,9 @@ function loadChart(filter) {
   fetch(url).then(r => r.json()).then(data => {
     const ctx = document.getElementById('earningsChart').getContext('2d');
     if (earningsChart) earningsChart.destroy();
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)';
+    const textColor = isDark ? '#aaa' : '#666';
     earningsChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -38,88 +41,293 @@ function loadChart(filter) {
           borderColor: '#007bff',
           backgroundColor: 'rgba(0,123,255,.08)',
           fill: true,
-          tension: 0.3,
-          pointRadius: 4,
-          pointBackgroundColor: '#007bff'
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#007bff',
+          borderWidth: 2
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 600 },
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { callback: v => '${typeof currency !== "undefined" ? currency : "$"}' + v } },
-          x: { grid: { display: false } }
+          y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, callback: v => '${currency}' + v } },
+          x: { grid: { display: false }, ticks: { color: textColor } }
         }
       }
     });
-    document.getElementById('totalEarnings').textContent = '${typeof currency !== "undefined" ? currency : "$"}' + data.total.toFixed(2);
+    document.getElementById('totalEarnings').textContent = '${currency}' + data.total.toFixed(2);
   });
 }
 
 document.addEventListener('DOMContentLoaded', function() { loadChart('week'); });
-</script>`;
+
+function statusBadge(id) {
+  const map = {1:'info',2:'warning',3:'warning',4:'warning',5:'success',6:'danger',7:'success',8:'secondary',9:'danger',10:'purple',11:'info'};
+  return map[id] || 'secondary';
+}
+function statusText(id) {
+  const map = {1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pend.',9:'Pago fallido',10:'Programado',11:'Confirmado'};
+  return map[id] || '-';
+}
+</script>
+<style>
+.stat-card { border-left: 4px solid; transition: transform .15s; }
+.stat-card:hover { transform: translateY(-2px); }
+.stat-card.blue { border-left-color: #007bff; }
+.stat-card.green { border-left-color: #28a745; }
+.stat-card.orange { border-left-color: #fd7e14; }
+.stat-card.red { border-left-color: #dc3545; }
+.stat-card.purple { border-left-color: #6f42c1; }
+.stat-card.teal { border-left-color: #20c997; }
+.stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.stat-icon.blue { background: rgba(0,123,255,.1); color: #007bff; }
+.stat-icon.green { background: rgba(40,167,69,.1); color: #28a745; }
+.stat-icon.orange { background: rgba(253,126,20,.1); color: #fd7e14; }
+.stat-icon.red { background: rgba(220,53,69,.1); color: #dc3545; }
+.stat-icon.purple { background: rgba(111,66,193,.1); color: #6f42c1; }
+.stat-icon.teal { background: rgba(32,201,151,.1); color: #20c997; }
+.quick-link { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border-radius: 10px; text-decoration: none; color: inherit; transition: background .15s; font-size: 12px; font-weight: 500; text-align: center; }
+.quick-link:hover { background: rgba(0,123,255,.06); text-decoration: none; color: inherit; }
+.quick-link i { font-size: 22px; color: var(--primary); }
+[data-theme="dark"] .quick-link:hover { background: rgba(255,255,255,.05); }
+[data-theme="dark"] .stat-icon.blue { background: rgba(0,123,255,.15); }
+[data-theme="dark"] .stat-icon.green { background: rgba(40,167,69,.15); }
+[data-theme="dark"] .stat-icon.orange { background: rgba(253,126,20,.15); }
+[data-theme="dark"] .stat-icon.red { background: rgba(220,53,69,.15); }
+[data-theme="dark"] .stat-icon.purple { background: rgba(111,66,193,.15); }
+[data-theme="dark"] .stat-icon.teal { background: rgba(32,201,151,.15); }
+.badge-purple { background: #6f42c1; color: #fff; }
+</style>`;
 
 var body = `
-<div class="row">
-    <div class="col-6 col-md-3">
-        <div class="card">
-            <div class="card-body text-center py-3">
-                <h3 class="text-primary mb-1" style="font-size:22px">${typeof stats !== 'undefined' ? stats.totalOrders : 0}</h3>
-                <p class="text-muted mb-0" style="font-size:12px">Pedidos</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card">
-            <div class="card-body text-center py-3">
-                <h3 class="text-success mb-1" style="font-size:22px">${typeof stats !== 'undefined' ? stats.completedOrders : 0}</h3>
-                <p class="text-muted mb-0" style="font-size:12px">Completados</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card">
-            <div class="card-body text-center py-3">
-                <h3 class="text-info mb-1" style="font-size:22px">${typeof stats !== 'undefined' ? stats.totalUsers : 0}</h3>
-                <p class="text-muted mb-0" style="font-size:12px">Usuarios</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card">
-            <div class="card-body text-center py-3">
-                <h3 class="text-warning mb-1" style="font-size:22px">${typeof stats !== 'undefined' ? stats.totalStores : 0}</h3>
-                <p class="text-muted mb-0" style="font-size:12px">Tiendas</p>
-            </div>
-        </div>
-    </div>
+<!-- Welcome & Today Summary -->
+<div class="row align-items-center mb-3">
+  <div class="col">
+    <h4 style="font-weight:700;margin:0">Bienvenido, ${typeof user !== 'undefined' && user ? user.name : 'Admin'}</h4>
+    <p class="text-muted mb-0" style="font-size:13px">Resumen general de tu plataforma</p>
+  </div>
+  <div class="col-auto">
+    <span class="badge badge-light" style="font-size:12px;padding:8px 12px"><i class="fas fa-calendar-day mr-1"></i> ${new Date().toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' })}</span>
+  </div>
 </div>
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px">
-        <div>
-            <span style="font-size:15px;font-weight:600">Ganancias</span>
-            <span id="totalEarnings" class="ml-2 badge badge-primary" style="font-size:13px">${typeof currency !== 'undefined' ? currency : '$'}0.00</span>
-        </div>
-        <div class="d-flex flex-wrap" style="gap:6px">
-            <button class="btn btn-sm btn-outline-primary filter-btn active" data-filter="week" onclick="loadChart('week')">7 d&iacute;as</button>
-            <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="month" onclick="loadChart('month')">30 d&iacute;as</button>
-            <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="custom" onclick="loadChart('custom')">Rango</button>
-        </div>
+<!-- Today Highlight -->
+<div class="row mb-3">
+  <div class="col-md-4">
+    <div class="card stat-card blue">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon blue"><i class="fas fa-shopping-bag"></i></div>
+        <div><h4 class="mb-0" style="font-size:20px;font-weight:700">${typeof stats !== 'undefined' ? stats.todayOrders : 0}</h4><small class="text-muted">Pedidos hoy</small></div>
+      </div>
     </div>
-    <div class="card-body">
-        <div id="customRange" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-            <input type="date" id="dateFrom" class="form-control form-control-sm" style="width:auto">
-            <span style="color:#888">a</span>
-            <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto">
-            <button class="btn btn-sm btn-primary" onclick="loadChart('custom')"><i class="fas fa-search"></i> Buscar</button>
-        </div>
-        <div style="position:relative;height:280px">
-            <canvas id="earningsChart"></canvas>
-        </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card green">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon green"><i class="fas fa-dollar-sign"></i></div>
+        <div><h4 class="mb-0" style="font-size:20px;font-weight:700">${currency}${typeof stats !== 'undefined' ? parseFloat(stats.todayRevenue).toFixed(2) : '0.00'}</h4><small class="text-muted">Ingresos hoy</small></div>
+      </div>
     </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card purple">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon purple"><i class="fas fa-coins"></i></div>
+        <div><h4 class="mb-0" style="font-size:20px;font-weight:700">${currency}${typeof stats !== 'undefined' ? parseFloat(stats.totalRevenue).toFixed(2) : '0.00'}</h4><small class="text-muted">Ingresos totales</small></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="row mb-3">
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card blue">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon blue"><i class="fas fa-receipt"></i></div>
+        <div><h5 class="mb-0" style="font-weight:700">${typeof stats !== 'undefined' ? stats.totalOrders : 0}</h5><small class="text-muted">Total pedidos</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card orange">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+        <div><h5 class="mb-0" style="font-weight:700">${typeof stats !== 'undefined' ? stats.pendingOrders : 0}</h5><small class="text-muted">Pendientes</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card green">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div><h5 class="mb-0" style="font-weight:700">${typeof stats !== 'undefined' ? stats.completedOrders : 0}</h5><small class="text-muted">Completados</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card red">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+        <div><h5 class="mb-0" style="font-weight:700">${typeof stats !== 'undefined' ? stats.cancelledOrders : 0}</h5><small class="text-muted">Cancelados</small></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Platform Stats -->
+<div class="row mb-3">
+  <div class="col-4">
+    <div class="card stat-card teal">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon teal"><i class="fas fa-users"></i></div>
+        <div><h5 class="mb-0" style="font-weight:700">${typeof stats !== 'undefined' ? stats.totalUsers : 0}</h5><small class="text-muted">Usuarios</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card stat-card orange">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon orange"><i class="fas fa-store"></i></div>
+        <div><h5 class="mb-0" style="font-weight:700">${typeof stats !== 'undefined' ? stats.totalStores : 0}</h5><small class="text-muted">Tiendas</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card stat-card blue">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="stat-icon blue"><i class="fas fa-motorcycle"></i></div>
+        <div><h5 class="mb-0" style="font-weight:700">${typeof stats !== 'undefined' ? stats.totalDelivery : 0}</h5><small class="text-muted">Repartidores</small></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Earnings Chart -->
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px">
+    <div>
+      <i class="fas fa-chart-line text-primary mr-1"></i>
+      <span style="font-weight:600">Ganancias</span>
+      <span id="totalEarnings" class="ml-2 badge badge-primary" style="font-size:12px">${currency}0.00</span>
+    </div>
+    <div class="d-flex flex-wrap" style="gap:6px">
+      <button class="btn btn-sm btn-outline-primary filter-btn active" data-filter="week" onclick="loadChart('week')">7d</button>
+      <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="month" onclick="loadChart('month')">30d</button>
+      <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="custom" onclick="loadChart('custom')">Rango</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div id="customRange" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <input type="date" id="dateFrom" class="form-control form-control-sm" style="width:auto">
+      <span class="text-muted">a</span>
+      <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto">
+      <button class="btn btn-sm btn-primary" onclick="loadChart('custom')"><i class="fas fa-search"></i></button>
+    </div>
+    <div style="position:relative;height:260px">
+      <canvas id="earningsChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Links -->
+<div class="card mb-3">
+  <div class="card-header"><i class="fas fa-bolt mr-1" style="color:#fd7e14"></i> Accesos rápidos</div>
+  <div class="card-body" style="padding:12px">
+    <div class="row">
+      <div class="col-4 col-md-2"><a href="/admin/orders" class="quick-link"><i class="fas fa-receipt"></i>Pedidos</a></div>
+      <div class="col-4 col-md-2"><a href="/admin/stores" class="quick-link"><i class="fas fa-store"></i>Tiendas</a></div>
+      <div class="col-4 col-md-2"><a href="/admin/items" class="quick-link"><i class="fas fa-utensils"></i>Items</a></div>
+      <div class="col-4 col-md-2"><a href="/admin/delivery-guys" class="quick-link"><i class="fas fa-motorcycle"></i>Delivery</a></div>
+      <div class="col-4 col-md-2"><a href="/admin/coupons" class="quick-link"><i class="fas fa-ticket-alt"></i>Cupones</a></div>
+      <div class="col-4 col-md-2"><a href="/admin/settings" class="quick-link"><i class="fas fa-cog"></i>Settings</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Recent Orders -->
+  <div class="col-lg-7 mb-3">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-receipt mr-1 text-primary"></i> Últimos pedidos</span>
+        <a href="/admin/orders" class="btn btn-sm btn-outline-primary">Ver todos</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>#</th><th>Cliente</th><th>Tienda</th><th>Total</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <tbody>
+              ${(typeof recentOrders !== 'undefined' ? recentOrders : []).map(o => `
+              <tr style="cursor:pointer" onclick="location.href='/admin/order/${o.id}'">
+                <td><strong>${o.unique_order_id || o.id}</strong></td>
+                <td>${o.user_name || '-'}</td>
+                <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.restaurant_name || '-'}</td>
+                <td><strong>${currency}${parseFloat(o.total||0).toFixed(2)}</strong></td>
+                <td><span class="badge badge-${({1:'info',2:'warning',3:'warning',4:'warning',5:'success',6:'danger',7:'success',8:'secondary',10:'purple',11:'info'})[o.orderstatus_id]||'secondary'}">${({1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pend.',10:'Programado',11:'Confirmado'})[o.orderstatus_id]||'-'}</span></td>
+                <td style="font-size:11px;color:#888">${new Date(o.created_at).toLocaleDateString('es',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+              </tr>`).join('')}
+              ${(typeof recentOrders === 'undefined' || !recentOrders.length) ? '<tr><td colspan="6" class="text-center text-muted py-4">Sin pedidos</td></tr>' : ''}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column -->
+  <div class="col-lg-5 mb-3">
+    <!-- Top Stores -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-trophy mr-1" style="color:#fd7e14"></i> Top tiendas</span>
+        <a href="/admin/stores" class="btn btn-sm btn-outline-secondary">Ver</a>
+      </div>
+      <div class="card-body p-0">
+        <div style="padding:0">
+          ${(typeof topStores !== 'undefined' ? topStores : []).map((s, i) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,.04)">
+            <span style="font-size:12px;font-weight:700;color:#888;width:18px">${i+1}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+              <div style="font-size:11px;color:#888">${s.order_count} pedidos</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:600;color:#28a745">${currency}${parseFloat(s.revenue||0).toFixed(0)}</div>
+              <span class="badge badge-${s.is_active ? 'success' : 'danger'}" style="font-size:9px">${s.is_active ? 'Abierto' : 'Cerrado'}</span>
+            </div>
+          </div>`).join('')}
+          ${(typeof topStores === 'undefined' || !topStores.length) ? '<div class="text-center text-muted py-3" style="font-size:13px">Sin tiendas</div>' : ''}
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Delivery -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-motorcycle mr-1 text-primary"></i> Repartidores activos</span>
+        <a href="/admin/delivery-guys" class="btn btn-sm btn-outline-secondary">Ver</a>
+      </div>
+      <div class="card-body p-0">
+        ${(typeof activeDelivery !== 'undefined' ? activeDelivery : []).map(d => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,.04)">
+          <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,123,255,.1);display:flex;align-items:center;justify-content:center"><i class="fas fa-user" style="font-size:12px;color:#007bff"></i></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500">${d.name}</div>
+            <div style="font-size:11px;color:#888">${d.phone || ''}</div>
+          </div>
+          <div>
+            ${d.active_orders > 0 ? '<span class="badge badge-warning">'+d.active_orders+' en ruta</span>' : '<span class="badge badge-success">Disponible</span>'}
+          </div>
+        </div>`).join('')}
+        ${(typeof activeDelivery === 'undefined' || !activeDelivery.length) ? '<div class="text-center text-muted py-3" style="font-size:13px">Sin repartidores activos</div>' : ''}
+      </div>
+    </div>
+  </div>
 </div>
 `;
 %>
-<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts, settings: typeof settings !== 'undefined' ? settings : {} }) %>

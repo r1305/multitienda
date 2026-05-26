@@ -4,30 +4,52 @@ exports.dashboard = async (req, res) => {
   try {
     const [[{ totalOrders }]] = await sequelize.query('SELECT COUNT(*) as totalOrders FROM orders');
     const [[{ completedOrders }]] = await sequelize.query("SELECT COUNT(*) as completedOrders FROM orders WHERE orderstatus_id = 5");
+    const [[{ pendingOrders }]] = await sequelize.query("SELECT COUNT(*) as pendingOrders FROM orders WHERE orderstatus_id IN (1,2,3,4,7,10,11)");
+    const [[{ cancelledOrders }]] = await sequelize.query("SELECT COUNT(*) as cancelledOrders FROM orders WHERE orderstatus_id = 6");
     const [[{ totalUsers }]] = await sequelize.query('SELECT COUNT(*) as totalUsers FROM users');
     const [[{ totalStores }]] = await sequelize.query('SELECT COUNT(*) as totalStores FROM restaurants');
+    const [[{ totalDelivery }]] = await sequelize.query("SELECT COUNT(*) as totalDelivery FROM users u INNER JOIN model_has_roles mr ON u.id = mr.model_id INNER JOIN roles r ON mr.role_id = r.id WHERE r.name = 'Delivery Guy'");
+    const [[{ todayOrders }]] = await sequelize.query("SELECT COUNT(*) as todayOrders FROM orders WHERE DATE(created_at) = CURDATE()");
+    const [[{ todayRevenue }]] = await sequelize.query("SELECT COALESCE(SUM(total),0) as todayRevenue FROM orders WHERE orderstatus_id = 5 AND DATE(created_at) = CURDATE()");
+    const [[{ totalRevenue }]] = await sequelize.query("SELECT COALESCE(SUM(total),0) as totalRevenue FROM orders WHERE orderstatus_id = 5");
 
-    const [orders] = await sequelize.query(`
-      SELECT o.*, u.name as user_name, r.name as restaurant_name, os.name as status_name
+    const [recentOrders] = await sequelize.query(`
+      SELECT o.id, o.unique_order_id, o.total, o.orderstatus_id, o.payment_mode, o.created_at,
+        u.name as user_name, r.name as restaurant_name
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       LEFT JOIN restaurants r ON o.restaurant_id = r.id
-      LEFT JOIN orderstatuses os ON o.orderstatus_id = os.id
-      ORDER BY o.id DESC LIMIT 10
+      ORDER BY o.id DESC LIMIT 8
     `);
 
-    const [users] = await sequelize.query(`
-      SELECT u.name, r.name as role_name FROM users u
-      LEFT JOIN model_has_roles mr ON u.id = mr.model_id
-      LEFT JOIN roles r ON mr.role_id = r.id
-      ORDER BY u.id DESC LIMIT 10
+    const [topStores] = await sequelize.query(`
+      SELECT r.id, r.name, r.image, r.is_active, COUNT(o.id) as order_count, COALESCE(SUM(o.total),0) as revenue
+      FROM restaurants r
+      LEFT JOIN orders o ON o.restaurant_id = r.id AND o.orderstatus_id = 5
+      GROUP BY r.id ORDER BY revenue DESC LIMIT 5
     `);
+
+    const [activeDelivery] = await sequelize.query(`
+      SELECT u.id, u.name, u.phone, u.is_active,
+        (SELECT COUNT(*) FROM orders WHERE delivery_guy_id = u.id AND orderstatus_id IN (3,4)) as active_orders
+      FROM users u
+      INNER JOIN model_has_roles mr ON u.id = mr.model_id
+      INNER JOIN roles r ON mr.role_id = r.id
+      WHERE r.name = 'Delivery Guy' AND u.is_active = 1
+      ORDER BY active_orders DESC LIMIT 5
+    `);
+
+    // Get currency
+    const [settingsRows] = await sequelize.query("SELECT `value` FROM settings WHERE `key` = 'currencySymbol' LIMIT 1");
+    const currency = settingsRows.length ? settingsRows[0].value : '$';
 
     res.render('admin/dashboard', {
       user: req.session.user,
-      stats: { totalOrders, completedOrders, totalUsers, totalStores },
-      orders,
-      users,
+      stats: { totalOrders, completedOrders, pendingOrders, cancelledOrders, totalUsers, totalStores, totalDelivery, todayOrders, todayRevenue, totalRevenue },
+      recentOrders,
+      topStores,
+      activeDelivery,
+      currency,
       success: req.flash('success')[0],
       error: req.flash('error')[0]
     });
@@ -35,9 +57,10 @@ exports.dashboard = async (req, res) => {
     console.error('Dashboard error:', err);
     res.render('admin/dashboard', {
       user: req.session.user,
-      stats: { totalOrders: 0, completedOrders: 0, totalUsers: 0, totalStores: 0 },
-      orders: [],
-      users: [],
+      stats: { totalOrders: 0, completedOrders: 0, pendingOrders: 0, cancelledOrders: 0, totalUsers: 0, totalStores: 0, totalDelivery: 0, todayOrders: 0, todayRevenue: 0, totalRevenue: 0 },
+      recentOrders: [],
+      topStores: [],
+      activeDelivery: [],
       success: null,
       error: 'Error loading dashboard'
     });
