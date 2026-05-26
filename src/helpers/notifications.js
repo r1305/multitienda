@@ -46,7 +46,7 @@ async function sendViaOneSignal(title, message, userId, role, data) {
       firefox_icon: '/assets/img/favicons/favicon-96x96.png',
     };
 
-    if (data.unique_order_id) {
+    if (data.unique_order_id && !role) {
       payload.url = (process.env.APP_URL || '') + '/order/' + data.unique_order_id;
       payload.web_url = payload.url;
     }

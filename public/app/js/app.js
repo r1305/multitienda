@@ -88,8 +88,16 @@ Store.applyTheme();
         // Handle notification click
         OneSignal.Notifications.addEventListener('click', (e) => {
           const data = e.notification?.additionalData || e.notification?.data || e.data || {};
-          if (data.unique_order_id) {
-            router.push('/order/' + data.unique_order_id);
+          if (data.unique_order_id || data.order_id) {
+            const deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
+            const storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null');
+            if (deliveryUser) {
+              router.push('/delivery/order/' + (data.order_id || data.unique_order_id));
+            } else if (storeOwnerUser) {
+              router.push('/store-owner/order/' + (data.order_id || data.unique_order_id));
+            } else if (data.unique_order_id) {
+              router.push('/order/' + data.unique_order_id);
+            }
           }
         });
         // Set user tags
