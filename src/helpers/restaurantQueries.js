@@ -108,12 +108,13 @@ async function getRestaurantsForLocation({ deliveryTypes, latitude, longitude, c
     queryRestaurants(deliveryTypes, false),
   ]);
 
-  const process = (rows) => rows
+  const mapForLocation = (rows) => rows
     .filter((r) => checkOperation(latitude, longitude, r))
     .map((r) => mapRow(r, latitude, longitude));
 
-  const result = [...process(activeRows), ...process(inactiveRows)];
-  await cache.set(cacheKey, result, parseInt(process.env.CACHE_RESTAURANTS_TTL || '120', 10));
+  const ttl = parseInt(process.env.CACHE_RESTAURANTS_TTL || '120', 10);
+  const result = [...mapForLocation(activeRows), ...mapForLocation(inactiveRows)];
+  await cache.set(cacheKey, result, ttl);
   return result;
 }
 
