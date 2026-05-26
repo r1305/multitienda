@@ -74,13 +74,19 @@ Store.applyTheme();
     if (Store.settings.onesignalAppId) {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: Store.settings.onesignalAppId,
-          allowLocalhostAsSecureOrigin: true,
-          notifyButton: { enable: false },
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-          serviceWorkerParam: { scope: '/' },
-        });
+        const serviceWorkerUrl = new URL('/OneSignalSDKWorker.js', window.location.origin).href;
+        try {
+          await OneSignal.init({
+            appId: Store.settings.onesignalAppId,
+            allowLocalhostAsSecureOrigin: true,
+            notifyButton: { enable: false },
+            serviceWorkerPath: serviceWorkerUrl,
+            serviceWorkerParam: { scope: '/' },
+          });
+        } catch (swErr) {
+          console.warn('OneSignal init failed:', swErr.message);
+          return;
+        }
         OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
           event.notification.display();
         });
