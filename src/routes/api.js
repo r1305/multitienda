@@ -66,6 +66,7 @@ router.post('/rate-order', misc.rateOrder);
 router.post('/get-restaurant-info-with-favourite/:slug', restaurant.getRestaurantInfoWithFavourite);
 router.post('/apply-coupon', optionalAuth, misc.applyCoupon);
 router.post('/save-notification-token', misc.saveToken);
+router.post('/save-fcm-token', misc.saveFCMToken);
 router.post('/update-app-token-for-user', misc.updateAppTokenForUser);
 router.post('/get-payment-gateways', misc.getPaymentGateways);
 router.post('/get-addresses', misc.getAddresses);

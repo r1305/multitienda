@@ -145,6 +145,16 @@ exports.saveTokenNoUser = async (req, res) => {
   }
 };
 
+exports.saveFCMToken = async (req, res) => {
+  try {
+    const { saveFCMToken } = require('../helpers/notifications');
+    await saveFCMToken(req.user.id, req.body.token, req.body.platform || 'android');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+};
+
 exports.updateAppTokenForUser = async (req, res) => {
   try {
     await PushToken.upsert({ user_id: req.user.id, token: req.body.token, device_type: req.body.device_type });
