@@ -72,7 +72,13 @@ Store.applyTheme();
       window.OneSignalDeferred.push(async function(OneSignal) {
         await OneSignal.init({
           appId: Store.settings.onesignalAppId,
-          allowLocalhostAsSecureOrigin: true
+          allowLocalhostAsSecureOrigin: true,
+          notifyButton: { enable: false },
+          serviceWorkerParam: { scope: '/' },
+        });
+        // Show notifications even when page is in foreground
+        OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
+          event.notification.display();
         });
         // Request permission explicitly
         const permission = await OneSignal.Notifications.permission;

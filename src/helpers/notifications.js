@@ -39,6 +39,11 @@ async function sendViaOneSignal(title, message, userId, role, data) {
       headings: { en: title },
       contents: { en: message },
       data: { ...data, title, message },
+      // Force visible push notification (not silent)
+      priority: 10,
+      chrome_web_badge: '/assets/img/favicons/favicon-96x96.png',
+      chrome_web_icon: '/assets/img/favicons/favicon-96x96.png',
+      firefox_icon: '/assets/img/favicons/favicon-96x96.png',
     };
 
     if (data.unique_order_id) {

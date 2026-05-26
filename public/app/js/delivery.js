@@ -134,9 +134,20 @@ const DeliveryOrdersPage = {
       if (window.OneSignalDeferred) {
         const user = JSON.parse(localStorage.getItem('deliveryUser') || '{}');
         window.OneSignalDeferred.push(async function(OneSignal) {
+          // Request permission if not granted
           const permission = await OneSignal.Notifications.permission;
-          if (!permission) await OneSignal.Notifications.requestPermission();
-          if (user.id) OneSignal.User.addTags({ user_id: String(user.id), role: 'delivery' });
+          if (!permission) {
+            await OneSignal.Notifications.requestPermission();
+          }
+          // Ensure opted in
+          const optedIn = await OneSignal.User.PushSubscription.optedIn;
+          if (!optedIn) {
+            await OneSignal.User.PushSubscription.optIn();
+          }
+          // Set tags for targeting
+          if (user.id) {
+            OneSignal.User.addTags({ user_id: String(user.id), role: 'delivery' });
+          }
         });
       }
     },
