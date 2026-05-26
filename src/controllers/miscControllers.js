@@ -679,18 +679,28 @@ exports.sendChatMessage = async (req, res) => {
     const order = await Order.findByPk(order_id);
     if (order) {
       const impl = require('../helpers/notifications.impl');
-      const accept = await AcceptDelivery.findOne({ where: { order_id } });
+      const orderIdNum = Number(order_id);
+      const accept = await AcceptDelivery.findOne({ where: { order_id: orderIdNum } });
       const customerId = Number(order.user_id);
-      const deliveryId = accept ? Number(accept.user_id) : null;
-      const chatData = { order_id: Number(order_id), unique_order_id: order.unique_order_id, type: 'chat' };
+      let deliveryId = accept ? Number(accept.user_id) : null;
+      if (!deliveryId) {
+        const [rows] = await sequelize.query(
+          'SELECT user_id FROM accept_deliveries WHERE order_id = ? LIMIT 1',
+          { replacements: [orderIdNum] }
+        );
+        if (rows[0]) deliveryId = Number(rows[0].user_id);
+      }
 
       let recipientId = null;
       let title = null;
+      let recipientRole = null;
       if (senderId === customerId && deliveryId) {
         recipientId = deliveryId;
-        title = 'Nuevo mensaje';
+        recipientRole = 'delivery';
+        title = 'Nuevo mensaje del cliente';
       } else if (deliveryId && senderId === deliveryId) {
         recipientId = customerId;
+        recipientRole = 'customer';
         title = 'Mensaje del repartidor';
       } else if (senderId !== customerId && customerId) {
         const [dg] = await sequelize.query(
@@ -699,11 +709,18 @@ exports.sendChatMessage = async (req, res) => {
         );
         if (dg.length) {
           recipientId = customerId;
+          recipientRole = 'customer';
           title = 'Mensaje del repartidor';
         }
       }
 
       if (recipientId && title) {
+        const chatData = {
+          order_id: orderIdNum,
+          unique_order_id: order.unique_order_id,
+          type: 'chat',
+          recipient_role: recipientRole,
+        };
         await impl.saveNotification(recipientId, title, message, chatData);
         await impl.sendPushNotification(title, message, recipientId, null, chatData);
       }

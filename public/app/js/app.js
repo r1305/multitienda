@@ -43,6 +43,10 @@ const router = createRouter({
   scrollBehavior() { return { top: 0 }; }
 });
 
+router.afterEach(() => {
+  if (window.PushNotifications) PushNotifications.registerForContext();
+});
+
 const app = createApp({
   computed: {
     showTabBar() {
@@ -100,13 +104,7 @@ Store.applyTheme();
             }
           }
         });
-        if (Store.isLoggedIn) {
-          PushNotifications.register(Store.user.id, Store.user.role || 'customer');
-        }
-        const deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
-        if (deliveryUser) {
-          OneSignal.User.addTags({ user_id: String(deliveryUser.id), role: 'delivery' });
-        }
+        PushNotifications.registerForContext();
       });
     }
     // Set dynamic favicon

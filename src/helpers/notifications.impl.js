@@ -53,15 +53,22 @@ async function sendViaOneSignal(title, message, userId, role, data) {
       firefox_icon: '/assets/img/favicons/favicon-96x96.png',
     };
 
-    if (data.unique_order_id && !role) {
-      payload.url = (process.env.APP_URL || '') + '/order/' + data.unique_order_id;
+    const baseUrl = process.env.APP_URL || '';
+    if (data.type === 'chat' && data.order_id) {
+      if (data.recipient_role === 'delivery') {
+        payload.url = baseUrl + '/delivery/order/' + data.order_id;
+      } else if (data.unique_order_id) {
+        payload.url = baseUrl + '/order/' + data.unique_order_id;
+      }
+      payload.web_url = payload.url;
+    } else if (data.unique_order_id && !role) {
+      payload.url = baseUrl + '/order/' + data.unique_order_id;
       payload.web_url = payload.url;
     }
 
     if (userId) {
       const uid = String(userId);
-      payload.include_aliases = { external_id: [uid] };
-      payload.target_channel = 'push';
+      payload.filters = [{ field: 'tag', key: 'user_id', relation: '=', value: uid }];
     } else if (role) {
       payload.filters = [{ field: 'tag', key: 'role', relation: '=', value: role }];
     } else {
@@ -74,15 +81,16 @@ async function sendViaOneSignal(title, message, userId, role, data) {
       body: JSON.stringify(payload),
     });
     let result = await response.json();
-    if (result.errors && userId && payload.include_aliases) {
-      const tagPayload = { ...payload };
-      delete tagPayload.include_aliases;
-      delete tagPayload.target_channel;
-      tagPayload.filters = [{ field: 'tag', key: 'user_id', relation: '=', value: String(userId) }];
+    const noRecipients = userId && (result.errors || result.recipients === 0);
+    if (noRecipients) {
+      const aliasPayload = { ...payload };
+      delete aliasPayload.filters;
+      aliasPayload.include_aliases = { external_id: [String(userId)] };
+      aliasPayload.target_channel = 'push';
       response = await fetch('https://onesignal.com/api/v1/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + config.onesignalRestApiKey },
-        body: JSON.stringify(tagPayload),
+        body: JSON.stringify(aliasPayload),
       });
       result = await response.json();
     }

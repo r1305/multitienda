@@ -1,4 +1,4 @@
-/** Register web push (OneSignal) for a logged-in user — tags + external_id for server targeting */
+/** Register web push (OneSignal) — tags + external_id for server targeting */
 const PushNotifications = {
   register(userId, role = 'customer') {
     if (!userId || !window.OneSignalDeferred) return;
@@ -16,5 +16,23 @@ const PushNotifications = {
         console.warn('Push registration failed', e);
       }
     });
+  },
+
+  /** Pick customer vs delivery vs store-owner from current route (avoids wrong OneSignal user) */
+  registerForContext() {
+    const path = window.location.pathname || '';
+    let deliveryUser = null;
+    let storeOwnerUser = null;
+    try { deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null'); } catch (_) { /* ignore */ }
+    try { storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null'); } catch (_) { /* ignore */ }
+    if (path.startsWith('/delivery') && deliveryUser?.id) {
+      return this.register(deliveryUser.id, 'delivery');
+    }
+    if (path.startsWith('/store-owner') && storeOwnerUser?.id) {
+      return this.register(storeOwnerUser.id, 'store_owner');
+    }
+    if (typeof Store !== 'undefined' && Store.isLoggedIn) {
+      return this.register(Store.user.id, Store.user.role || 'customer');
+    }
   },
 };

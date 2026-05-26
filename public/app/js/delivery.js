@@ -46,7 +46,6 @@ const DeliveryLoginPage = {
         if (res.success) {
           localStorage.setItem('deliveryUser', JSON.stringify(res.data));
           localStorage.setItem('deliveryToken', res.data.auth_token);
-          PushNotifications.register(res.data.id, 'delivery');
           this.$router.push('/delivery/orders');
         } else this.error = res.data === 'DONOTMATCH' ? 'Credenciales incorrectas' : (res.message || 'Error al iniciar sesión');
       } catch(e) { this.error = 'Error de conexión'; }
@@ -120,13 +119,9 @@ const DeliveryOrdersPage = {
     },
     emptyMsg() { return { available: 'No hay pedidos disponibles en tu zona', active: 'No tienes pedidos activos', completed: 'Sin entregas completadas' }[this.activeTab]; }
   },
-  mounted() { if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; } this.getLocation(); this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000); this.requestNotifications(); },
+  mounted() { if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; } PushNotifications.registerForContext(); this.getLocation(); this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000); },
   beforeUnmount() { if (this.interval) clearInterval(this.interval); },
   methods: {
-    requestNotifications() {
-      const user = JSON.parse(localStorage.getItem('deliveryUser') || '{}');
-      if (user.id) PushNotifications.register(user.id, 'delivery');
-    },
     getLocation() { if (!navigator.geolocation) { this.gpsReady = true; this.refresh(); return; } navigator.geolocation.getCurrentPosition((pos) => { this.lat = pos.coords.latitude; this.lng = pos.coords.longitude; this.gpsReady = true; this.refresh(); }, () => { this.gpsReady = true; this.refresh(); }, { timeout: 10000 }); },
     async refresh() {
       this.loading = !this.allOrders.length && !this.myOrders.length;
@@ -222,6 +217,7 @@ const DeliveryOrderDetailPage = {
   },
   async mounted() {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
+    PushNotifications.registerForContext();
     await this.loadOrder();
     if (this.order && [3,4].includes(this.order.orderstatus_id)) { this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); }
   },
