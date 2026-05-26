@@ -44,5 +44,20 @@ const Store = Vue.reactive({
   clearCart() { this.cart = []; this.appliedCoupon = null; this.saveCart(); },
   getItemQty(itemId) { const item = this.cart.find(i => i.id === itemId); return item ? item.quantity : 0; },
   saveCart() { localStorage.setItem('appCart', JSON.stringify(this.cart)); localStorage.setItem('appCoupon', JSON.stringify(this.appliedCoupon)); },
-  formatPrice(val) { const n = parseFloat(val || 0).toFixed(2); return this.currencyAlign === 'left' ? this.currency + n : n + this.currency; }
+  formatPrice(val) { const n = parseFloat(val || 0).toFixed(2); return this.currencyAlign === 'left' ? this.currency + n : n + this.currency; },
+
+  /** Normalize image paths from API (Laravel /uploads /storage / absolute URL) */
+  imageUrl(path) {
+    const placeholder = "data:image/svg+xml," + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect fill="#eee" width="80" height="80" rx="8"/><text x="50%" y="54%" text-anchor="middle" fill="#bbb" font-size="11" font-family="sans-serif">Sin foto</text></svg>'
+    );
+    if (!path || path === 'null' || path === 'undefined') return placeholder;
+    let url = String(path).trim();
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('//')) return 'https:' + url;
+    if (url.startsWith('storage/')) url = '/uploads/' + url.slice(8);
+    else if (url.startsWith('/storage/')) url = '/uploads/' + url.slice(9);
+    if (!url.startsWith('/')) url = '/' + url;
+    return url;
+  },
 });

@@ -21,7 +21,7 @@ const HomePage = {
           <div style="padding:0 16px">
             <div v-for="s in sortedStores" :key="s.id" class="store-card" :class="{'store-closed':!s.is_active}">
               <div style="flex:1;display:flex;gap:12px" @click="$router.push('/store/'+s.slug)">
-                <img :src="s.image || '/assets/img/various/store-placeholder.png'" class="store-card-img">
+                <img :src="Store.imageUrl(s.image)" class="store-card-img" alt="">
                 <div class="store-card-info">
                   <div class="store-card-name">{{s.name}}</div>
                   <div class="store-card-desc">{{s.description}}</div>
@@ -154,7 +154,7 @@ const StoreDetailPage = {
       <template v-else-if="restaurant">
         <div class="store-hero">
           <app-header :title="restaurant.name" :back="true"></app-header>
-          <img v-if="restaurant.image" :src="restaurant.image" class="store-hero-img">
+          <img :src="Store.imageUrl(restaurant.image)" class="store-hero-img" alt="">
           <div class="store-hero-info">
             <div class="store-hero-name">{{restaurant.name}}</div>
             <div class="store-hero-desc">{{restaurant.description}}</div>
@@ -181,21 +181,21 @@ const StoreDetailPage = {
                 </div>
                 <div v-if="!item.image" style="margin-top:8px">
                   <div v-if="getQty(item.id)" class="qty-control">
-                    <button class="qty-btn" @click="removeFromCart(item)">��</button>
+                    <button type="button" class="qty-btn" aria-label="Quitar" @click="removeFromCart(item)"><i class="fas fa-minus"></i></button>
                     <span class="qty-val">{{getQty(item.id)}}</span>
-                    <button class="qty-btn" @click="addToCart(item)">+</button>
+                    <button type="button" class="qty-btn" aria-label="Anadir" @click="addToCart(item)"><i class="fas fa-plus"></i></button>
                   </div>
-                  <button v-else class="btn-add-no-img" @click="addToCart(item)">ADD</button>
+                  <button v-else type="button" class="btn-add-no-img" @click="addToCart(item)">Anadir</button>
                 </div>
               </div>
               <div v-if="item.image" class="item-card-img">
-                <img :src="item.image" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+                <img :src="Store.imageUrl(item.image)" style="width:100%;height:100%;object-fit:cover;border-radius:10px" alt="">
                 <div v-if="getQty(item.id)" class="qty-control" style="position:absolute;bottom:-10px;left:50%;transform:translateX(-50%)">
-                  <button class="qty-btn" @click="removeFromCart(item)">��</button>
+                  <button type="button" class="qty-btn" aria-label="Quitar" @click="removeFromCart(item)"><i class="fas fa-minus"></i></button>
                   <span class="qty-val">{{getQty(item.id)}}</span>
-                  <button class="qty-btn" @click="addToCart(item)">+</button>
+                  <button type="button" class="qty-btn" aria-label="Anadir" @click="addToCart(item)"><i class="fas fa-plus"></i></button>
                 </div>
-                <button v-else class="btn-add" @click="addToCart(item)">ADD</button>
+                <button v-else type="button" class="btn-add" @click="addToCart(item)">Anadir</button>
               </div>
             </div>
           </div>
@@ -280,15 +280,18 @@ const CartPage = {
       <template v-else>
         <div style="padding:0 16px">
           <div v-for="(item, idx) in cart" :key="idx" class="cart-item">
+            <img :src="Store.imageUrl(item.image)" class="cart-item-img" alt="">
             <div class="cart-item-info">
               <div class="cart-item-name">{{item.name}}</div>
               <div v-if="item.selectedaddons && item.selectedaddons.length" style="font-size:11px;color:var(--muted);margin-top:2px">{{item.selectedaddons.map(a => a.name).join(', ')}}</div>
               <div class="cart-item-price">{{Store.formatPrice(item.addonTotal || item.price)}}</div>
             </div>
             <div class="qty-control">
-              <button class="qty-btn" @click="remove(item, idx)">{{item.quantity === 1 ? '�x' : '��'}}</button>
+              <button type="button" class="qty-btn" :aria-label="item.quantity === 1 ? 'Eliminar' : 'Quitar uno'" @click="remove(item, idx)">
+                <i :class="item.quantity === 1 ? 'fas fa-trash' : 'fas fa-minus'"></i>
+              </button>
               <span class="qty-val">{{item.quantity}}</span>
-              <button class="qty-btn" @click="add(item)">+</button>
+              <button type="button" class="qty-btn" aria-label="Anadir" @click="add(item)"><i class="fas fa-plus"></i></button>
             </div>
           </div>
         </div>
@@ -353,7 +356,7 @@ const ExplorePage = {
           <div class="section-title">Restaurantes</div>
           <div style="padding:0 16px">
             <div v-for="r in results.restaurants" :key="r.id" class="store-card" @click="$router.push('/store/'+r.slug)">
-              <img :src="r.image || '/assets/img/various/store-placeholder.png'" class="store-card-img">
+              <img :src="Store.imageUrl(r.image)" class="store-card-img" alt="">
               <div class="store-card-info"><div class="store-card-name">{{r.name}}</div><div class="store-card-desc">{{r.description}}</div></div>
             </div>
           </div>
@@ -363,7 +366,7 @@ const ExplorePage = {
           <div style="padding:0 16px">
             <div v-for="item in results.items" :key="item.id" class="item-card" @click="$router.push('/store/'+item.restaurant.slug)">
               <div class="item-card-info"><div class="item-card-name">{{item.name}}</div><div class="item-card-desc">{{item.restaurant.name}}</div><div class="item-card-price">{{Store.formatPrice(item.price)}}</div></div>
-              <div v-if="item.image" class="item-card-img"><img :src="item.image" style="width:100%;height:100%;object-fit:cover;border-radius:10px"></div>
+              <div v-if="item.image" class="item-card-img"><img :src="Store.imageUrl(item.image)" style="width:100%;height:100%;object-fit:cover;border-radius:10px" alt=""></div>
             </div>
           </div>
         </div>
@@ -864,8 +867,8 @@ const OrderDetailPage = {
       try { loc = this.order.location ? JSON.parse(this.order.location) : null; } catch(e) {}
       const center = rest ? { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) } : (loc ? { lat: loc.lat, lng: loc.lng } : { lat: 0, lng: 0 });
       this.map = new google.maps.Map(mapEl, { zoom: 14, center, disableDefaultUI: true, zoomControl: true });
-      if (rest) new google.maps.Marker({ position: { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) }, map: this.map, title: rest.name, icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#4caf50"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">�x��</text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
-      if (loc) new google.maps.Marker({ position: { lat: loc.lat, lng: loc.lng }, map: this.map, title: 'Tu ubicacion', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#2196f3"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">�x��</text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
+      if (rest) new google.maps.Marker({ position: { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) }, map: this.map, title: rest.name, icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#4caf50"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">R</text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
+      if (loc) new google.maps.Marker({ position: { lat: loc.lat, lng: loc.lng }, map: this.map, title: 'Tu ubicacion', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#2196f3"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">R</text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
       // Fit bounds
       if (rest && loc) {
         const bounds = new google.maps.LatLngBounds();
@@ -883,7 +886,7 @@ const OrderDetailPage = {
           if (gps && gps.delivery_lat && gps.delivery_long) {
             const pos = { lat: parseFloat(gps.delivery_lat), lng: parseFloat(gps.delivery_long) };
             if (this.deliveryMarker) { this.deliveryMarker.setPosition(pos); }
-            else { this.deliveryMarker = new google.maps.Marker({ position: pos, map: this.map, title: 'Repartidor', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#ff5722"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">�x��</text></svg>'), scaledSize: new google.maps.Size(40, 40) } }); }
+            else { this.deliveryMarker = new google.maps.Marker({ position: pos, map: this.map, title: 'Repartidor', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#ff5722"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">R</text></svg>'), scaledSize: new google.maps.Size(40, 40) } }); }
             // Draw route when picked up (status 4)
             if (this.order.orderstatus_id === 4) {
               let loc = null;
