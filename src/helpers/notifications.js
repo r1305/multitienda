@@ -40,6 +40,8 @@ async function sendPushNotification(title, message, userId = null, role = null, 
       payload.filters = [{ field: 'tag', key: 'role', relation: '=', value: 'admin' }];
     } else if (role === 'delivery') {
       payload.filters = [{ field: 'tag', key: 'role', relation: '=', value: 'delivery' }];
+    } else if (role === 'customer') {
+      payload.filters = [{ field: 'tag', key: 'role', relation: '=', value: 'customer' }];
     } else if (role === 'store_owner') {
       payload.filters = [{ field: 'tag', key: 'role', relation: '=', value: 'store_owner' }];
     } else {

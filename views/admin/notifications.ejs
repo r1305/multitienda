@@ -1,35 +1,63 @@
-<% var active = 'notifications'; var pageTitle = 'Send Notifications'; %>
+<% var active = 'notifications'; var pageTitle = 'Notificaciones Push'; %>
 <% var scripts = ''; %>
 <%
 var body = `
 <div class="row">
-    <div class="col-md-6">
+    <div class="col-md-7">
         <div class="card">
-            <div class="card-header">Send Push Notification to All</div>
+            <div class="card-header"><i class="fas fa-paper-plane mr-1"></i> Enviar Notificación</div>
             <div class="card-body">
                 <form method="POST" action="/admin/notifications/send">
-                    <div class="form-group"><label>Title *</label><input type="text" name="title" class="form-control" required></div>
-                    <div class="form-group"><label>Message *</label><textarea name="message" class="form-control" rows="4" required></textarea></div>
-                    <div class="form-group"><label>Image URL (optional)</label><input type="text" name="image" class="form-control"></div>
-                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-paper-plane"></i> Send to All Users</button>
+                    <div class="form-group">
+                        <label>Título *</label>
+                        <input type="text" name="title" class="form-control" required placeholder="Ej: Promoción especial">
+                    </div>
+                    <div class="form-group">
+                        <label>Mensaje *</label>
+                        <textarea name="message" class="form-control" rows="3" required placeholder="Escribe el contenido de la notificación..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Enviar a</label>
+                        <select name="target" class="form-control" id="targetSelect" onchange="toggleTarget()">
+                            <option value="all">Todos los usuarios</option>
+                            <option value="customers">Solo Clientes</option>
+                            <option value="delivery">Solo Repartidores</option>
+                            <option value="store_owners">Solo Dueños de Tienda</option>
+                            <option value="specific">Usuarios específicos (IDs)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="specificIds" style="display:none">
+                        <label>User IDs (separados por coma)</label>
+                        <input type="text" name="user_ids" class="form-control" placeholder="1,2,3">
+                    </div>
+                    <div class="form-group">
+                        <label>Imagen URL (opcional)</label>
+                        <input type="text" name="image" class="form-control" placeholder="https://...">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-paper-plane mr-1"></i> Enviar Notificación</button>
                 </form>
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-5">
         <div class="card">
-            <div class="card-header">Send to Specific Users</div>
-            <div class="card-body">
-                <form method="POST" action="/admin/notifications/send">
-                    <input type="hidden" name="type" value="specific">
-                    <div class="form-group"><label>Title *</label><input type="text" name="title" class="form-control" required></div>
-                    <div class="form-group"><label>Message *</label><textarea name="message" class="form-control" rows="3" required></textarea></div>
-                    <div class="form-group"><label>User IDs (comma separated)</label><input type="text" name="user_ids" class="form-control" placeholder="1,2,3"></div>
-                    <button type="submit" class="btn btn-info btn-block"><i class="fas fa-paper-plane"></i> Send to Selected</button>
-                </form>
+            <div class="card-header"><i class="fas fa-info-circle mr-1"></i> Información</div>
+            <div class="card-body" style="font-size:13px">
+                <p><strong>Todos los usuarios:</strong> Envía a todos los dispositivos registrados.</p>
+                <p><strong>Solo Clientes:</strong> Usuarios que usan la app para pedir.</p>
+                <p><strong>Solo Repartidores:</strong> Usuarios con rol de delivery.</p>
+                <p><strong>Solo Dueños de Tienda:</strong> Usuarios que administran tiendas.</p>
+                <p><strong>Usuarios específicos:</strong> Ingresa los IDs separados por coma.</p>
+                <hr>
+                <p class="text-muted mb-0"><i class="fas fa-bell"></i> Las notificaciones se envían via OneSignal y se guardan en la app.</p>
             </div>
         </div>
     </div>
-</div>`;
+</div>
+<script>
+function toggleTarget() {
+  document.getElementById('specificIds').style.display = document.getElementById('targetSelect').value === 'specific' ? 'block' : 'none';
+}
+</script>`;
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

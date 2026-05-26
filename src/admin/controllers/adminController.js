@@ -914,15 +914,21 @@ exports.notifications = (req, res) => {
 
 exports.sendNotification = async (req, res) => {
   try {
-    const { title, message, image, type, user_ids } = req.body;
+    const { title, message, image, target, user_ids } = req.body;
     const { sendPushNotification, saveNotification } = require('../../helpers/notifications');
 
-    if (type === 'specific' && user_ids) {
+    if (target === 'specific' && user_ids) {
       const ids = user_ids.split(',').map(id => id.trim()).filter(Boolean);
       for (const uid of ids) {
         await sendPushNotification(title, message, uid);
         await saveNotification(uid, title, message);
       }
+    } else if (target === 'customers') {
+      await sendPushNotification(title, message, null, 'customer', image ? { image } : {});
+    } else if (target === 'delivery') {
+      await sendPushNotification(title, message, null, 'delivery', image ? { image } : {});
+    } else if (target === 'store_owners') {
+      await sendPushNotification(title, message, null, 'store_owner', image ? { image } : {});
     } else {
       await sendPushNotification(title, message, null, null, image ? { image } : {});
     }
