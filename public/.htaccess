@@ -1,0 +1,13 @@
+# OneSignal service worker — must return JavaScript, not SPA index.html
+<IfModule mod_headers.c>
+  <FilesMatch "(?i)^OneSignalSDKWorker\.js$">
+    Header set Content-Type "application/javascript; charset=utf-8"
+    Header set Service-Worker-Allowed "/"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^OneSignalSDKWorker\.js$ - [L,NC]
+  RewriteRule ^app/OneSignalSDKWorker\.js$ - [L,NC]
+</IfModule>

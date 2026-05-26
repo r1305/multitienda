@@ -74,7 +74,7 @@ Store.applyTheme();
     if (Store.settings.onesignalAppId) {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {
-        const serviceWorkerUrl = new URL('/OneSignalSDKWorker.js', window.location.origin).href;
+        const serviceWorkerUrl = new URL('/app/OneSignalSDKWorker.js', window.location.origin).href;
         try {
           await OneSignal.init({
             appId: Store.settings.onesignalAppId,

@@ -12,6 +12,19 @@ async function createApp() {
 
   const app = express();
   const isProd = process.env.NODE_ENV === 'production';
+  const oneSignalWorkerPath = path.join(__dirname, '../public/OneSignalSDKWorker.js');
+
+  const serveOneSignalWorker = (req, res) => {
+    res.type('application/javascript');
+    res.set({
+      'Service-Worker-Allowed': '/',
+      'Cache-Control': 'public, max-age=86400',
+    });
+    res.sendFile(oneSignalWorkerPath);
+  };
+
+  // Before SPA catch-all / proxies — SW must not receive index.html (text/html)
+  app.get(/^\/(app\/)?OneSignalSDKWorker\.js$/i, serveOneSignalWorker);
 
   app.set('trust proxy', 1);
 
@@ -43,17 +56,6 @@ async function createApp() {
     app.use('/uploads', express.static(path.join(__dirname, '../public/uploads'), { maxAge: '7d', etag: true }));
     app.use('/assets', express.static(path.join(__dirname, '../public/assets'), { maxAge: '30d', etag: true, immutable: true }));
     app.use('/app', express.static(path.join(__dirname, '../public/app'), isProd ? { maxAge: '1h', etag: true } : {}));
-    const oneSignalWorker = path.join(__dirname, '../public/OneSignalSDKWorker.js');
-    const serveOneSignalWorker = (req, res) => {
-      res.set({
-        'Content-Type': 'application/javascript; charset=utf-8',
-        'Service-Worker-Allowed': '/',
-        'Cache-Control': 'public, max-age=86400',
-      });
-      res.sendFile(oneSignalWorker);
-    };
-    app.get('/OneSignalSDKWorker.js', serveOneSignalWorker);
-    app.get('/onesignalsdkworker.js', serveOneSignalWorker);
   }
 
   app.use('/', require('./routes/install'));
