@@ -1,13 +1,18 @@
 {
   "name": "multitienda-node",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Multitienda backend - Node.js",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "start:worker": "node workers/notificationWorker.js",
     "start:pm2": "pm2 start ecosystem.config.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "install:cpanel": "npm install --ignore-scripts --omit=optional",
+    "install:full": "npm install"
   },
   "dependencies": {
     "axios": "^1.6.2",
@@ -16,13 +21,12 @@
     "compression": "^1.8.1",
     "connect-flash": "^0.1.1",
     "connect-redis": "^7.1.1",
-    "connect-session-sequelize": "^8.0.6",
+    "connect-session-sequelize": "7.1.7",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "ejs": "^5.0.2",
     "express": "^4.18.2",
     "express-session": "^1.19.0",
-    "firebase-admin": "^13.10.0",
     "hashids": "^2.3.0",
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",
@@ -31,6 +35,9 @@
     "nodemailer": "^6.9.7",
     "redis": "^4.7.0",
     "sequelize": "^6.35.0"
+  },
+  "optionalDependencies": {
+    "firebase-admin": "^13.10.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

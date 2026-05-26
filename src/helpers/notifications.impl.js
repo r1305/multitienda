@@ -6,7 +6,13 @@ let firebaseApp = null;
 function getFirebaseApp() {
   if (firebaseApp) return firebaseApp;
   try {
-    const admin = require('firebase-admin');
+    let admin;
+    try {
+      admin = require('firebase-admin');
+    } catch (reqErr) {
+      if (reqErr.code === 'MODULE_NOT_FOUND') return null;
+      throw reqErr;
+    }
     const credPath = process.env.FIREBASE_CREDENTIALS || path.join(__dirname, '../../firebase-credentials.json');
     const fs = require('fs');
     if (!fs.existsSync(credPath)) return null;
@@ -77,7 +83,13 @@ async function sendViaFCM(title, message, userId, role, data) {
   const app = getFirebaseApp();
   if (!app) return null;
 
-  const admin = require('firebase-admin');
+  let admin;
+  try {
+    admin = require('firebase-admin');
+  } catch (reqErr) {
+    if (reqErr.code === 'MODULE_NOT_FOUND') return null;
+    throw reqErr;
+  }
   const messaging = admin.messaging(app);
 
   const notification = { title, body: message };
@@ -174,7 +186,13 @@ async function saveFCMToken(userId, token, platform = 'android') {
 
     const app = getFirebaseApp();
     if (app) {
-      const admin = require('firebase-admin');
+      let admin;
+      try {
+        admin = require('firebase-admin');
+      } catch (reqErr) {
+        if (reqErr.code === 'MODULE_NOT_FOUND') return;
+        throw reqErr;
+      }
       const [roles] = await sequelize.query(
         'SELECT r.name FROM roles r INNER JOIN model_has_roles mr ON r.id = mr.role_id WHERE mr.model_id = ?',
         { replacements: [userId] }
