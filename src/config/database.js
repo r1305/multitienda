@@ -11,11 +11,11 @@ const sequelize = new Sequelize(
     dialect: 'mysql',
     logging: false,
     pool: {
-      max: 5,        // Reduced for shared hosting
+      max: 3,
       min: 0,
-      acquire: 30000,
-      idle: 5000,    // Release idle connections faster
-      evict: 10000   // Check for idle connections every 10s
+      acquire: 20000,
+      idle: 30000,
+      evict: 60000
     },
     define: {
       timestamps: true,
@@ -23,9 +23,11 @@ const sequelize = new Sequelize(
       updatedAt: 'updated_at',
       underscored: false,
     },
-    retry: { max: 3 },
+    retry: { max: 2 },
     dialectOptions: {
-      connectTimeout: 10000
+      connectTimeout: 10000,
+      // Reuse connections efficiently
+      flags: ['-FOUND_ROWS']
     }
   }
 );
