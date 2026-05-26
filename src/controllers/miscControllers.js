@@ -8,10 +8,15 @@ exports.getSettings = async (req, res) => {
     const cache = require('../helpers/cache');
     const cached = await cache.get('settings:all');
     if (cached) return res.json(cached);
-    const settings = await Setting.findAll();
+    const rows = await Setting.findAll();
+    const settings = rows.map((s) => {
+      const j = s.toJSON ? s.toJSON() : s;
+      return { id: j.id, key: j.key, value: j.value };
+    });
     await cache.set('settings:all', settings, parseInt(process.env.CACHE_SETTINGS_TTL || '300', 10));
     res.json(settings);
   } catch (err) {
+    console.error('[getSettings]', err.message);
     res.status(500).json({ error: err.message });
   }
 };

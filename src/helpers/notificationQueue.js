@@ -1,10 +1,10 @@
-const { createRedisClient } = require('../config/redis');
+const { isRedisAvailable } = require('../config/redis');
 
 let queue = null;
 let processorAttached = false;
 
 function getQueue() {
-  if (!process.env.REDIS_URL) return null;
+  if (!process.env.REDIS_URL || !isRedisAvailable()) return null;
   if (!queue) {
     const Queue = require('bull');
     queue = new Queue('notifications', process.env.REDIS_URL, {

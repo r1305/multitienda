@@ -27,7 +27,10 @@ function rateLimitMiddleware(req, res, next) {
       if (!ok) return res.status(429).json({ error: 'Too many requests' });
       next();
     })
-    .catch(next);
+    .catch((err) => {
+      console.error('[rateLimit]', err.message);
+      next();
+    });
 }
 
 module.exports = { rateLimitMiddleware, checkRate, RATE_MAX, RATE_WINDOW_MS };

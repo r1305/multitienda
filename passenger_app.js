@@ -11,7 +11,7 @@ const ready = createApp()
     return app;
   }))
   .catch((err) => {
-    console.error('Startup failed:', err.message);
+    console.error('Startup failed:', err.message, err.stack);
     process.exit(1);
   });
 

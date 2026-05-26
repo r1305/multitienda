@@ -16,8 +16,15 @@ function checkOperation(lat, lon, restaurant) {
   return distance <= radius;
 }
 
+function formatAvgRating(value) {
+  if (value == null || value === '') return '0';
+  const n = parseFloat(value);
+  if (!Number.isFinite(n)) return '0';
+  return String(n.toFixed(1)).replace('.0', '');
+}
+
 function mapRow(r, latitude, longitude) {
-  const avg = r.avgRating != null ? String(parseFloat(r.avgRating).toFixed(1)).replace('.0', '') : '0';
+  const avg = formatAvgRating(r.avgRating);
   const distance = latitude && longitude
     ? getDistance(latitude, longitude, r.latitude, r.longitude)
     : null;
@@ -76,12 +83,11 @@ async function getRestaurantsForLocation({ deliveryTypes, latitude, longitude, c
 }
 
 async function getAvgRatingForRestaurant(restaurantId) {
-  const [[row]] = await sequelize.query(
+  const [rows] = await sequelize.query(
     'SELECT ROUND(AVG(rating_store), 1) AS avgRating FROM ratings WHERE restaurant_id = ?',
     { replacements: [restaurantId] }
   );
-  if (!row || row.avgRating == null) return '0';
-  return String(parseFloat(row.avgRating).toFixed(1)).replace('.0', '');
+  return formatAvgRating(rows && rows[0] ? rows[0].avgRating : null);
 }
 
 module.exports = {

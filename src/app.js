@@ -60,17 +60,22 @@ async function createApp() {
   app.use('/public/api', apiRoutes);
   app.use('/', require('./admin/routes/admin'));
 
+  app.use((err, req, res, next) => {
+    if (!isProd) console.error(`[ERROR] ${req.method} ${req.path} ->`, err.message);
+    if (res.headersSent) return next(err);
+    const wantsJson = req.path.startsWith('/api') || req.path.startsWith('/public/api');
+    if (wantsJson) {
+      return res.status(500).json({ error: isProd ? 'Internal server error' : err.message });
+    }
+    res.status(500).send(isProd ? 'Internal server error' : err.message);
+  });
+
   const spaFile = path.join(__dirname, '../public/app/index.html');
   app.get('*', (req, res) => {
     if (req.path.startsWith('/admin') || req.path.startsWith('/auth')) {
       return res.status(404).send('Route not found');
     }
     res.sendFile(spaFile);
-  });
-
-  app.use((err, req, res, next) => {
-    if (!isProd) console.error(`[ERROR] ${req.method} ${req.path} ->`, err.message);
-    res.status(500).json({ error: isProd ? 'Internal server error' : err.message });
   });
 
   if (process.env.ENABLE_NOTIFICATION_WORKER !== 'false') {
