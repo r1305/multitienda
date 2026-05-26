@@ -213,7 +213,7 @@
       window.OneSignalDeferred.push(async function(OneSignal) {
         const appId = '<%= typeof settings !== "undefined" && settings.onesignalAppId ? settings.onesignalAppId : "" %>';
         if (appId) {
-          await OneSignal.init({ appId: appId, serviceWorkerPath: '/OneSignalSDKWorker.js' });
+          await OneSignal.init({ appId: appId, serviceWorkerPath: new URL('/app/OneSignalSDKWorker.js', window.location.origin).href, serviceWorkerParam: { scope: '/' } });
           OneSignal.User.addTags({ user_id: '<%= typeof user !== "undefined" && user ? user.id : "1" %>', role: 'admin' });
         }
       });
