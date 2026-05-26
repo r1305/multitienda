@@ -18,15 +18,25 @@ const auth = (req, res, next) => {
   res.redirect('/auth/login');
 };
 
-// Inject settings for admin views
+// Inject settings for admin views (cached)
 const injectSettings = async (req, res, next) => {
   try {
-    const { sequelize } = require('../../models');
-    const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('onesignalAppId','currencySymbol','currencyFormat')");
+    const cache = require('../../helpers/cache');
+    const cacheKey = 'admin:settings:inject';
+    let settings = await cache.get(cacheKey);
+    if (!settings) {
+      const { sequelize } = require('../../models');
+      const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('onesignalAppId','currencySymbol','currencyFormat')");
+      settings = {};
+      rows.forEach((r) => { settings[r.key] = r.value; });
+      await cache.set(cacheKey, settings, parseInt(process.env.CACHE_ADMIN_SETTINGS_TTL || '300', 10));
+    }
+    res.locals.settings = settings;
+    res.locals.currency = settings.currencySymbol || settings.currencyFormat || '$';
+  } catch (e) {
+    res.locals.currency = '$';
     res.locals.settings = {};
-    rows.forEach(r => { res.locals.settings[r.key] = r.value; });
-    res.locals.currency = res.locals.settings.currencySymbol || res.locals.settings.currencyFormat || '$';
-  } catch(e) { res.locals.currency = '$'; }
+  }
   next();
 };
 

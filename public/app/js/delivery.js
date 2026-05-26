@@ -127,7 +127,7 @@ const DeliveryOrdersPage = {
     },
     emptyMsg() { return { available: 'No hay pedidos disponibles en tu zona', active: 'No tienes pedidos activos', completed: 'Sin entregas completadas' }[this.activeTab]; }
   },
-  mounted() { if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; } this.getLocation(); this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 30000); this.requestNotifications(); },
+  mounted() { if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; } this.getLocation(); this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000); this.requestNotifications(); },
   beforeUnmount() { if (this.interval) clearInterval(this.interval); },
   methods: {
     requestNotifications() {
@@ -247,15 +247,15 @@ const DeliveryOrderDetailPage = {
   async mounted() {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
     await this.loadOrder();
-    if (this.order && [3,4].includes(this.order.orderstatus_id)) { this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 10000); }
+    if (this.order && [3,4].includes(this.order.orderstatus_id)) { this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); }
   },
   beforeUnmount() { this.stopGpsTracking(); if (this.chatInterval) clearInterval(this.chatInterval); },
   methods: {
     async loadOrder() { try { const token = localStorage.getItem('deliveryToken'); const res = await API.post('/delivery/get-single-delivery-order', { token, order_id: this.$route.params.id }); this.order = res; } catch(e) {} this.loading = false; },
-    async acceptOrder() { this.actionLoading = true; try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/accept-to-deliver', { token, order_id: this.order.id }); this.order.orderstatus_id = 3; this.successMsg = 'Pedido aceptado!'; this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 10000); } catch(e) {} this.actionLoading = false; },
+    async acceptOrder() { this.actionLoading = true; try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/accept-to-deliver', { token, order_id: this.order.id }); this.order.orderstatus_id = 3; this.successMsg = 'Pedido aceptado!'; this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); } catch(e) {} this.actionLoading = false; },
     async pickupOrder() { this.actionLoading = true; try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/pickedup-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 4; this.successMsg = 'Pedido recogido!'; } catch(e) {} this.actionLoading = false; },
     async deliverOrder() { this.actionLoading = true; try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/deliver-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 5; this.successMsg = 'Pedido entregado!'; this.stopGpsTracking(); if (this.chatInterval) clearInterval(this.chatInterval); } catch(e) {} this.actionLoading = false; },
-    startGpsTracking() { if (this.gpsInterval) return; this.sendGps(); this.gpsInterval = setInterval(() => this.sendGps(), 10000); },
+    startGpsTracking() { if (this.gpsInterval) return; this.sendGps(); this.gpsInterval = setInterval(() => this.sendGps(), 30000); },
     stopGpsTracking() { if (this.gpsInterval) { clearInterval(this.gpsInterval); this.gpsInterval = null; } },
     sendGps() { if (!navigator.geolocation) return; navigator.geolocation.getCurrentPosition(async (pos) => { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/set-delivery-guy-gps-location', { token, latitude: pos.coords.latitude, longitude: pos.coords.longitude, heading: pos.coords.heading || 0 }); }, () => {}, { enableHighAccuracy: true, timeout: 8000 }); },
     async loadMessages() { try { const token = localStorage.getItem('deliveryToken'); const res = await API.post('/conversation/chat', { token, order_id: this.order.id }); this.messages = Array.isArray(res) ? res : []; this.$nextTick(() => { if (this.$refs.chatBox) this.$refs.chatBox.scrollTop = this.$refs.chatBox.scrollHeight; }); } catch(e) {} },

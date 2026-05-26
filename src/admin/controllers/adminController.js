@@ -5,34 +5,47 @@ exports.dashboard = async (req, res) => {
     const q = async (sql, def = 0) => { try { const [[r]] = await sequelize.query(sql); return Object.values(r)[0]; } catch(e) { return def; } };
     const qa = async (sql) => { try { const [r] = await sequelize.query(sql); return r; } catch(e) { return []; } };
 
-    const totalOrders = await q('SELECT COUNT(*) as v FROM orders');
-    const completedOrders = await q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id = 5");
-    const pendingOrders = await q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id IN (1,2,3,4,7,10,11)");
-    const cancelledOrders = await q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id = 6");
-    const totalUsers = await q('SELECT COUNT(*) as v FROM users');
-    const totalStores = await q('SELECT COUNT(*) as v FROM restaurants');
-    const totalDelivery = await q("SELECT COUNT(*) as v FROM users u INNER JOIN model_has_roles mr ON u.id = mr.model_id INNER JOIN roles r ON mr.role_id = r.id WHERE r.name = 'Delivery Guy'");
-    const todayOrders = await q("SELECT COUNT(*) as v FROM orders WHERE DATE(created_at) = CURDATE()");
-    const todayRevenue = await q("SELECT COALESCE(SUM(total),0) as v FROM orders WHERE orderstatus_id = 5 AND DATE(created_at) = CURDATE()");
-    const totalRevenue = await q("SELECT COALESCE(SUM(total),0) as v FROM orders WHERE orderstatus_id = 5");
-
-    const recentOrders = await qa(`
+    const [
+      totalOrders,
+      completedOrders,
+      pendingOrders,
+      cancelledOrders,
+      totalUsers,
+      totalStores,
+      totalDelivery,
+      todayOrders,
+      todayRevenue,
+      totalRevenue,
+      recentOrders,
+      topStores,
+      activeDelivery,
+      settingsRows,
+    ] = await Promise.all([
+      q('SELECT COUNT(*) as v FROM orders'),
+      q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id = 5"),
+      q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id IN (1,2,3,4,7,10,11)"),
+      q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id = 6"),
+      q('SELECT COUNT(*) as v FROM users'),
+      q('SELECT COUNT(*) as v FROM restaurants'),
+      q("SELECT COUNT(*) as v FROM users u INNER JOIN model_has_roles mr ON u.id = mr.model_id INNER JOIN roles r ON mr.role_id = r.id WHERE r.name = 'Delivery Guy'"),
+      q("SELECT COUNT(*) as v FROM orders WHERE DATE(created_at) = CURDATE()"),
+      q("SELECT COALESCE(SUM(total),0) as v FROM orders WHERE orderstatus_id = 5 AND DATE(created_at) = CURDATE()"),
+      q("SELECT COALESCE(SUM(total),0) as v FROM orders WHERE orderstatus_id = 5"),
+      qa(`
       SELECT o.id, o.unique_order_id, o.total, o.orderstatus_id, o.payment_mode, o.created_at,
         u.name as user_name, r.name as restaurant_name
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       LEFT JOIN restaurants r ON o.restaurant_id = r.id
       ORDER BY o.id DESC LIMIT 8
-    `);
-
-    const topStores = await qa(`
+    `),
+      qa(`
       SELECT r.id, r.name, r.image, r.is_active, COUNT(o.id) as order_count, COALESCE(SUM(o.total),0) as revenue
       FROM restaurants r
       LEFT JOIN orders o ON o.restaurant_id = r.id AND o.orderstatus_id = 5
       GROUP BY r.id ORDER BY revenue DESC LIMIT 5
-    `);
-
-    const activeDelivery = await qa(`
+    `),
+      qa(`
       SELECT u.id, u.name, u.phone, u.is_active,
         (SELECT COUNT(*) FROM orders WHERE delivery_guy_id = u.id AND orderstatus_id IN (3,4)) as active_orders
       FROM users u
@@ -40,11 +53,11 @@ exports.dashboard = async (req, res) => {
       INNER JOIN roles r ON mr.role_id = r.id
       WHERE r.name = 'Delivery Guy' AND u.is_active = 1
       ORDER BY active_orders DESC LIMIT 5
-    `);
+    `),
+      sequelize.query("SELECT `value` FROM settings WHERE `key` = 'currencySymbol' LIMIT 1").catch(() => [[]]),
+    ]);
 
-    // Get currency
-    const [settingsRows] = await sequelize.query("SELECT `value` FROM settings WHERE `key` = 'currencySymbol' LIMIT 1").catch(() => [[]]);
-    const currency = settingsRows.length ? settingsRows[0].value : '$';
+    const currency = settingsRows[0]?.length ? settingsRows[0][0].value : '$';
 
     res.render('admin/dashboard', {
       user: req.session.user,
@@ -1039,6 +1052,11 @@ exports.uploadFavicon = async (req, res) => {
     } else {
       await sequelize.query("INSERT INTO settings (`key`, `value`) VALUES ('faviconUrl', ?)", { replacements: [faviconUrl] });
     }
+    const cache = require('../../helpers/cache');
+    await cache.del('settings:all');
+    await cache.del('admin:settings:inject');
+    await cache.del('settings:onesignal');
+    await cache.invalidate('restaurants:');
     req.flash('success', 'Favicon actualizado');
   } catch (err) { req.flash('error', 'Error uploading favicon'); }
   res.redirect('/admin/settings');
@@ -1061,6 +1079,13 @@ exports.saveSettings = async (req, res) => {
       if (ex.length) await sequelize.query("UPDATE settings SET `value` = ? WHERE `key` = 'currencyFormat'", { replacements: [fields.currencySymbol] });
       else await sequelize.query("INSERT INTO settings (`key`, `value`) VALUES ('currencyFormat', ?)", { replacements: [fields.currencySymbol] });
     }
+    const cache = require('../../helpers/cache');
+    await cache.del('settings:all');
+    await cache.del('settings:map');
+    await cache.del('admin:settings:inject');
+    await cache.del('settings:onesignal');
+    await cache.del('settings:deliveryRadius');
+    await cache.invalidate('restaurants:');
     req.flash('success', 'Settings saved');
   } catch (err) { console.error(err); req.flash('error', 'Error saving settings'); }
   res.redirect('/admin/settings');

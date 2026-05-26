@@ -833,7 +833,7 @@ const OrderDetailPage = {
     canCancel() { return this.order && [1,10].includes(this.order.orderstatus_id); },
     canRate() { return this.order && this.order.orderstatus_id === 5; }
   },
-  async mounted() { await this.loadOrder(); this.loadGoogleMaps(); if (this.isRunning) { this.refreshInterval = setInterval(() => this.loadOrder(), 15000); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 10000); } },
+  async mounted() { await this.loadOrder(); this.loadGoogleMaps(); if (this.isRunning) { this.refreshInterval = setInterval(() => this.loadOrder(), 20000); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); } },
   beforeUnmount() { if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); },
   methods: {
     async loadOrder() {

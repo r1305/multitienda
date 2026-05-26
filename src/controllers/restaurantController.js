@@ -1,37 +1,17 @@
 const { Op } = require('sequelize');
 const { Restaurant, Item, ItemCategory, AddonCategory, Addon, RestaurantCategory, sequelize } = require('../models');
-const { getDistance, storeAvgRating } = require('../helpers/utils');
-
-function checkOperation(lat, lon, restaurant) {
-  if (!lat || !lon) return true;
-  const distance = getDistance(lat, lon, restaurant.latitude, restaurant.longitude);
-  const radius = parseFloat(restaurant.delivery_radius) || 50;
-  return distance <= radius;
-}
-
-function mapRestaurant(r) {
-  const obj = r.toJSON ? r.toJSON() : r;
-  return {
-    id: obj.id, name: obj.name, description: obj.description, image: obj.image,
-    rating: obj.rating, avgRating: obj.avgRating, delivery_time: obj.delivery_time,
-    price_range: obj.price_range, slug: obj.slug, is_featured: obj.is_featured,
-    is_active: obj.is_active, distance: obj.distance,
-    custom_featured_name: obj.custom_featured_name,
-    custom_message_on_list: obj.custom_message_on_list,
-  };
-}
+const rq = require('../helpers/restaurantQueries');
 
 exports.getDeliveryRestaurants = async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
-    const active = await Restaurant.findAll({ where: { is_accepted: 1, is_active: 1, delivery_type: [1, 3] }, include: [{ association: 'ratings' }], order: [['order_column', 'ASC']] });
-    const inactive = await Restaurant.findAll({ where: { is_accepted: 1, is_active: 0, delivery_type: [1, 3] }, include: [{ association: 'ratings' }], order: [['order_column', 'ASC']] });
-
-    const process = (list) => list
-      .filter(r => checkOperation(latitude, longitude, r))
-      .map(r => { r.distance = getDistance(latitude, longitude, r.latitude, r.longitude); r.avgRating = storeAvgRating(r.ratings); return mapRestaurant(r); });
-
-    res.json([...process(active), ...process(inactive)]);
+    const list = await rq.getRestaurantsForLocation({
+      deliveryTypes: [1, 3],
+      latitude,
+      longitude,
+      cachePrefix: 'restaurants:delivery',
+    });
+    res.json(list);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -40,27 +20,33 @@ exports.getDeliveryRestaurants = async (req, res) => {
 exports.getSelfPickupRestaurants = async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
-    const active = await Restaurant.findAll({ where: { is_accepted: 1, is_active: 1, delivery_type: [2, 3] }, include: [{ association: 'ratings' }], order: [['order_column', 'ASC']] });
-    const inactive = await Restaurant.findAll({ where: { is_accepted: 1, is_active: 0, delivery_type: [2, 3] }, include: [{ association: 'ratings' }], order: [['order_column', 'ASC']] });
-
-    const process = (list) => list
-      .filter(r => checkOperation(latitude, longitude, r))
-      .map(r => { r.distance = getDistance(latitude, longitude, r.latitude, r.longitude); r.avgRating = storeAvgRating(r.ratings); return mapRestaurant(r); });
-
-    res.json([...process(active), ...process(inactive)]);
+    const list = await rq.getRestaurantsForLocation({
+      deliveryTypes: [2, 3],
+      latitude,
+      longitude,
+      cachePrefix: 'restaurants:pickup',
+    });
+    res.json(list);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+async function loadRestaurantBySlug(slug) {
+  const r = await Restaurant.findOne({ where: { slug } });
+  if (!r) return null;
+  r.avgRating = await rq.getAvgRatingForRestaurant(r.id);
+  if (!r.is_accepted) r.is_active = false;
+  return r;
+}
+
 exports.getRestaurantInfo = async (req, res) => {
   try {
-    const r = await Restaurant.findOne({ where: { slug: req.params.slug }, include: [{ association: 'ratings' }] });
+    const r = await loadRestaurantBySlug(req.params.slug);
     if (!r) return res.status(404).json({ error: 'Not found' });
-    r.avgRating = storeAvgRating(r.ratings);
-    if (!r.is_accepted) r.is_active = false;
     const data = r.toJSON();
-    delete data.delivery_areas; delete data.ratings; delete data.commission_rate;
+    delete data.delivery_areas;
+    delete data.commission_rate;
     data.is_favorited = false;
     res.json(data);
   } catch (err) {
@@ -70,12 +56,11 @@ exports.getRestaurantInfo = async (req, res) => {
 
 exports.getRestaurantInfoWithFavourite = async (req, res) => {
   try {
-    const r = await Restaurant.findOne({ where: { slug: req.params.slug }, include: [{ association: 'ratings' }] });
+    const r = await loadRestaurantBySlug(req.params.slug);
     if (!r) return res.status(404).json({ error: 'Not found' });
-    r.avgRating = storeAvgRating(r.ratings);
-    if (!r.is_accepted) r.is_active = false;
     const data = r.toJSON();
-    delete data.delivery_areas; delete data.ratings; delete data.commission_rate;
+    delete data.delivery_areas;
+    delete data.commission_rate;
 
     const [fav] = await sequelize.query(
       'SELECT id FROM favorites WHERE user_id = ? AND favoriteable_id = ? AND favoriteable_type = ?',
@@ -90,12 +75,13 @@ exports.getRestaurantInfoWithFavourite = async (req, res) => {
 
 exports.getRestaurantInfoById = async (req, res) => {
   try {
-    const r = await Restaurant.findByPk(req.params.id, { include: [{ association: 'ratings' }] });
+    const r = await Restaurant.findByPk(req.params.id);
     if (!r) return res.status(404).json({ error: 'Not found' });
-    r.avgRating = storeAvgRating(r.ratings);
+    r.avgRating = await rq.getAvgRatingForRestaurant(r.id);
     if (!r.is_accepted) r.is_active = false;
     const data = r.toJSON();
-    delete data.delivery_areas; delete data.ratings; delete data.commission_rate;
+    delete data.delivery_areas;
+    delete data.commission_rate;
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -134,7 +120,12 @@ exports.getRestaurantItems = async (req, res) => {
       grouped[catName].push(itemJson);
     }
 
-    const rec = recommended.map(r => { const j = r.toJSON(); j.price = parseFloat(j.price); j.old_price = parseFloat(j.old_price || 0); return j; });
+    const rec = recommended.map((r) => {
+      const j = r.toJSON();
+      j.price = parseFloat(j.price);
+      j.old_price = parseFloat(j.old_price || 0);
+      return j;
+    });
 
     res.json({ recommended: rec, items: grouped });
   } catch (err) {
@@ -145,23 +136,30 @@ exports.getRestaurantItems = async (req, res) => {
 exports.searchRestaurants = async (req, res) => {
   try {
     const { q, latitude, longitude } = req.body;
-    const restaurants = await Restaurant.findAll({
-      where: { name: { [Op.like]: `%${q}%` }, is_accepted: 1 },
-      include: [{ association: 'ratings' }],
-      limit: 20,
-    });
+    const [rows] = await sequelize.query(
+      `SELECT r.id, r.name, r.description, r.image, r.latitude, r.longitude, r.delivery_radius,
+        r.delivery_time, r.price_range, r.slug, r.is_featured, r.is_active, r.is_accepted,
+        r.custom_featured_name, r.custom_message_on_list,
+        (SELECT ROUND(AVG(rating_store), 1) FROM ratings WHERE restaurant_id = r.id) AS avgRating
+       FROM restaurants r
+       WHERE r.name LIKE ? AND r.is_accepted = 1
+       LIMIT 20`,
+      { replacements: [`%${q}%`] }
+    );
 
-    const nearRestaurants = restaurants.filter(r => checkOperation(latitude, longitude, r)).map(r => {
-      r.avgRating = storeAvgRating(r.ratings);
-      return r;
-    });
+    const nearRestaurants = rows
+      .filter((r) => r.is_accepted && rq.checkOperation(latitude, longitude, r))
+      .map((r) => rq.mapRow(r, latitude, longitude));
 
     const items = await Item.findAll({
       where: { is_active: 1, name: { [Op.like]: `%${q}%` } },
       include: [{ association: 'restaurant' }],
+      limit: 40,
     });
 
-    const nearItems = items.filter(i => i.restaurant?.is_active && i.restaurant?.is_accepted && checkOperation(latitude, longitude, i.restaurant)).slice(0, 20);
+    const nearItems = items
+      .filter((i) => i.restaurant?.is_active && i.restaurant?.is_accepted && rq.checkOperation(latitude, longitude, i.restaurant))
+      .slice(0, 20);
 
     res.json({ restaurants: nearRestaurants, items: nearItems });
   } catch (err) {
@@ -184,19 +182,25 @@ exports.getSingleItem = async (req, res) => {
 exports.getFilteredRestaurants = async (req, res) => {
   try {
     const { latitude, longitude, category_ids } = req.body;
+    if (!category_ids?.length) return res.json([]);
 
-    const process = async (is_active) => {
-      const list = await Restaurant.findAll({
-        where: { is_accepted: 1, is_active },
-        include: [{ model: RestaurantCategory, as: 'restaurant_categories', where: { id: { [Op.in]: category_ids } }, required: true }, { association: 'ratings' }],
-      });
-      return list.filter(r => checkOperation(latitude, longitude, r)).map(r => {
-        r.avgRating = storeAvgRating(r.ratings);
-        return mapRestaurant(r);
-      });
-    };
+    const placeholders = category_ids.map(() => '?').join(',');
+    const [rows] = await sequelize.query(
+      `SELECT DISTINCT
+        r.id, r.name, r.description, r.image, r.latitude, r.longitude,
+        r.delivery_radius, r.delivery_time, r.price_range, r.slug, r.is_featured, r.is_active,
+        r.custom_featured_name, r.custom_message_on_list, r.order_column,
+        (SELECT ROUND(AVG(rating_store), 1) FROM ratings WHERE restaurant_id = r.id) AS avgRating
+       FROM restaurants r
+       INNER JOIN restaurant_category_restaurant rcr ON rcr.restaurant_id = r.id
+       WHERE r.is_accepted = 1 AND rcr.restaurant_category_id IN (${placeholders})
+       ORDER BY r.order_column ASC`,
+      { replacements: category_ids }
+    );
 
-    res.json([...await process(1), ...await process(0)]);
+    const active = rows.filter((r) => r.is_active).filter((r) => rq.checkOperation(latitude, longitude, r)).map((r) => rq.mapRow(r, latitude, longitude));
+    const inactive = rows.filter((r) => !r.is_active).filter((r) => rq.checkOperation(latitude, longitude, r)).map((r) => rq.mapRow(r, latitude, longitude));
+    res.json([...active, ...inactive]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -204,9 +208,9 @@ exports.getFilteredRestaurants = async (req, res) => {
 
 exports.checkCartItemsAvailability = async (req, res) => {
   try {
-    const ids = req.body.items.map(i => i.id);
-    const items = await Item.findAll({ where: { id: { [Op.in]: ids } } });
-    res.json(items.map(i => ({ id: i.id, price: i.price, is_active: i.is_active })));
+    const ids = req.body.items.map((i) => i.id);
+    const items = await Item.findAll({ where: { id: { [Op.in]: ids } }, attributes: ['id', 'price', 'is_active'] });
+    res.json(items.map((i) => ({ id: i.id, price: i.price, is_active: i.is_active })));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -214,9 +218,9 @@ exports.checkCartItemsAvailability = async (req, res) => {
 
 exports.checkRestaurantOperationService = async (req, res) => {
   try {
-    const r = await Restaurant.findByPk(req.body.restaurant_id);
+    const r = await Restaurant.findByPk(req.body.restaurant_id, { attributes: ['id', 'latitude', 'longitude', 'delivery_radius'] });
     if (!r) return res.json(false);
-    res.json(checkOperation(req.body.latitude, req.body.longitude, r));
+    res.json(rq.checkOperation(req.body.latitude, req.body.longitude, r));
   } catch (err) {
     res.status(500).json(false);
   }
@@ -224,12 +228,12 @@ exports.checkRestaurantOperationService = async (req, res) => {
 
 exports.getRestaurantInfoAndOperationalStatus = async (req, res) => {
   try {
-    const r = await Restaurant.findByPk(req.body.id, { include: [{ association: 'ratings' }] });
+    const r = await Restaurant.findByPk(req.body.id);
     if (!r) return res.status(400).json({ error: 'Restaurant not found' });
-    r.avgRating = storeAvgRating(r.ratings);
+    r.avgRating = await rq.getAvgRatingForRestaurant(r.id);
     const data = r.toJSON();
     delete data.delivery_areas;
-    data.is_operational = checkOperation(req.body.latitude, req.body.longitude, r);
+    data.is_operational = rq.checkOperation(req.body.latitude, req.body.longitude, r);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -243,14 +247,22 @@ exports.getFavoriteStores = async (req, res) => {
       'SELECT favoriteable_id FROM favorites WHERE user_id = ? AND favoriteable_type = ?',
       { replacements: [req.user.id, 'App\\Restaurant'], type: sequelize.QueryTypes.SELECT }
     );
-    const ids = favs.map(f => f.favoriteable_id);
+    const ids = favs.map((f) => f.favoriteable_id);
     if (!ids.length) return res.json([]);
 
-    const restaurants = await Restaurant.findAll({ where: { id: { [Op.in]: ids } }, include: [{ association: 'ratings' }] });
-    const result = restaurants.filter(r => checkOperation(latitude, longitude, r)).map(r => {
-      r.avgRating = storeAvgRating(r.ratings);
-      return mapRestaurant(r);
-    });
+    const placeholders = ids.map(() => '?').join(',');
+    const [rows] = await sequelize.query(
+      `SELECT r.id, r.name, r.description, r.image, r.latitude, r.longitude,
+        r.delivery_radius, r.delivery_time, r.price_range, r.slug, r.is_featured, r.is_active,
+        r.custom_featured_name, r.custom_message_on_list,
+        (SELECT ROUND(AVG(rating_store), 1) FROM ratings WHERE restaurant_id = r.id) AS avgRating
+       FROM restaurants r WHERE r.id IN (${placeholders})`,
+      { replacements: ids }
+    );
+
+    const result = rows
+      .filter((r) => rq.checkOperation(latitude, longitude, r))
+      .map((r) => rq.mapRow(r, latitude, longitude));
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

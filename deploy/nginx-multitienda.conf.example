@@ -1,0 +1,61 @@
+# Example Nginx reverse proxy — replace paths and domain
+upstream multitienda_node {
+    least_conn;
+    server 127.0.0.1:3000;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name tudominio.com;
+
+    client_max_body_size 2m;
+
+    # Static files (bypass Node — lower CPU)
+    location ~ ^/(assets|uploads|app)/ {
+        alias /ruta/a/multitienda-node/public$request_uri;
+        # Or: root /ruta/a/multitienda-node/public;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location /OneSignalSDKWorker.js {
+        alias /ruta/a/multitienda-node/public/OneSignalSDKWorker.js;
+        expires 1d;
+    }
+
+    # Rate limit at edge (optional)
+    limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
+
+    location /api {
+        limit_req zone=api burst=60 nodelay;
+        proxy_pass http://multitienda_node;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /public/api {
+        limit_req zone=api burst=60 nodelay;
+        proxy_pass http://multitienda_node;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://multitienda_node;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

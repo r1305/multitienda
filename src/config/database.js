@@ -1,6 +1,9 @@
 require('dotenv').config();
 const { Sequelize } = require('sequelize');
 
+const poolMax = parseInt(process.env.DB_POOL_MAX || '5', 10);
+const poolMin = parseInt(process.env.DB_POOL_MIN || '0', 10);
+
 const sequelize = new Sequelize(
   process.env.DB_DATABASE,
   process.env.DB_USERNAME,
@@ -9,13 +12,13 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql',
-    logging: false,
+    logging: process.env.DB_LOGGING === 'true' ? console.log : false,
     pool: {
-      max: 3,
-      min: 0,
-      acquire: 20000,
-      idle: 30000,
-      evict: 60000
+      max: poolMax,
+      min: poolMin,
+      acquire: parseInt(process.env.DB_POOL_ACQUIRE || '20000', 10),
+      idle: parseInt(process.env.DB_POOL_IDLE || '30000', 10),
+      evict: parseInt(process.env.DB_POOL_EVICT || '60000', 10),
     },
     define: {
       timestamps: true,
@@ -25,10 +28,9 @@ const sequelize = new Sequelize(
     },
     retry: { max: 2 },
     dialectOptions: {
-      connectTimeout: 10000,
-      // Reuse connections efficiently
-      flags: ['-FOUND_ROWS']
-    }
+      connectTimeout: parseInt(process.env.DB_CONNECT_TIMEOUT || '10000', 10),
+      flags: ['-FOUND_ROWS'],
+    },
   }
 );
 

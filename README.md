@@ -67,9 +67,47 @@ src/
 Todas las rutas son idénticas a las del proyecto Laravel original (`/api/*`).
 El frontend React existente funciona sin modificaciones.
 
-## Despliegue en servidor
+## Despliegue en producción (alta demanda)
 
-### Con PM2
+### Requisitos recomendados
+- **Redis** para sesiones, caché, rate limit y cola de notificaciones
+- **MySQL** con índices: `mysql -u USER -p DB < deploy/mysql-indexes.sql`
+- **Nginx** sirviendo `/assets`, `/uploads`, `/app` (ver `deploy/nginx-multitienda.conf.example`)
+
+### Variables `.env` clave
+```env
+NODE_ENV=production
+REDIS_URL=redis://127.0.0.1:6379
+SESSION_STORE=redis
+SESSION_SECRET=...
+ENABLE_NOTIFICATION_WORKER=false
+```
+
+### Con PM2 (cluster + worker de notificaciones)
+```bash
+npm install
+cp .env.example .env
+# editar .env
+npm run start:pm2
+pm2 save
+pm2 startup
+```
+
+Procesos:
+- `multitienda-api` — varios workers Node (`PM2_INSTANCES=max`)
+- `multitienda-notifications` — cola Bull (Firebase/OneSignal)
+
+### cPanel / Passenger
+```bash
+# Startup file: passenger_app.js
+SESSION_STORE=redis
+REDIS_URL=redis://...
+```
+Ver `deploy/.htaccess.example` para servir estáticos con Apache.
+
+## Despliegue básico
+
+### Con PM2 (un solo proceso)
 ```bash
 npm install -g pm2
 pm2 start server.js --name multitienda

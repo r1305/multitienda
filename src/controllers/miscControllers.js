@@ -5,7 +5,11 @@ const bcrypt = require('bcryptjs');
 // ─── Settings ────────────────────────────────────────────────────────────────
 exports.getSettings = async (req, res) => {
   try {
+    const cache = require('../helpers/cache');
+    const cached = await cache.get('settings:all');
+    if (cached) return res.json(cached);
     const settings = await Setting.findAll();
+    await cache.set('settings:all', settings, parseInt(process.env.CACHE_SETTINGS_TTL || '300', 10));
     res.json(settings);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -421,28 +425,41 @@ exports.getDeliveryOrders = async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
     const userId = req.user.id;
+    const cache = require('../helpers/cache');
+    const { getDistance } = require('../helpers/utils');
 
-    // Get delivery radius setting
-    const [radiusSetting] = await sequelize.query("SELECT `value` FROM settings WHERE `key` = 'deliveryRadius' LIMIT 1");
-    const maxRadius = radiusSetting.length ? parseFloat(radiusSetting[0].value) : 10;
+    let maxRadius = 10;
+    const radiusCached = await cache.get('settings:deliveryRadius');
+    if (radiusCached != null) {
+      maxRadius = parseFloat(radiusCached);
+    } else {
+      const [radiusSetting] = await sequelize.query("SELECT `value` FROM settings WHERE `key` = 'deliveryRadius' LIMIT 1");
+      maxRadius = radiusSetting.length ? parseFloat(radiusSetting[0].value) : 10;
+      await cache.set('settings:deliveryRadius', maxRadius, 600);
+    }
 
-    // Get ignored order IDs for this delivery guy
-    const [ignored] = await sequelize.query('SELECT order_id FROM delivery_ignored_orders WHERE user_id = ?', { replacements: [userId] });
-    const ignoredIds = ignored.map(i => i.order_id);
+    const [ignored] = await sequelize.query(
+      'SELECT order_id FROM delivery_ignored_orders WHERE user_id = ?',
+      { replacements: [userId] }
+    );
+    const ignoredIds = new Set(ignored.map((i) => i.order_id));
 
-    // Get orders waiting for delivery assignment
     const orders = await Order.findAll({
       where: { orderstatus_id: 2, delivery_type: 1 },
-      include: [{ association: 'restaurant' }, { association: 'orderitems' }],
+      include: [
+        { association: 'restaurant', attributes: ['id', 'name', 'latitude', 'longitude', 'image', 'address'] },
+        { association: 'orderitems', attributes: ['id', 'order_id', 'item_id', 'name', 'quantity', 'price'] },
+      ],
       order: [['id', 'DESC']],
+      limit: parseInt(process.env.DELIVERY_ORDERS_LIMIT || '50', 10),
     });
 
-    // Filter by distance and ignored
-    const { getDistance } = require('../helpers/utils');
-    const filtered = orders.filter(o => {
-      if (ignoredIds.includes(o.id)) return false;
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    const filtered = orders.filter((o) => {
+      if (ignoredIds.has(o.id)) return false;
       if (!latitude || !longitude || !o.restaurant) return true;
-      const dist = getDistance(parseFloat(latitude), parseFloat(longitude), parseFloat(o.restaurant.latitude), parseFloat(o.restaurant.longitude));
+      const dist = getDistance(lat, lng, parseFloat(o.restaurant.latitude), parseFloat(o.restaurant.longitude));
       return dist <= maxRadius;
     });
 
@@ -474,8 +491,14 @@ exports.getSingleDeliveryOrder = async (req, res) => {
 
 exports.setDeliveryGuyGpsLocation = async (req, res) => {
   try {
-    await DeliveryGuyDetail.update({ latitude: req.body.latitude, longitude: req.body.longitude, heading: req.body.heading }, { where: { user_id: req.user.id } });
-    res.json({ success: true });
+    const gps = require('../helpers/gps');
+    const result = await gps.updateDeliveryGps(
+      req.user.id,
+      req.body.latitude,
+      req.body.longitude,
+      req.body.heading
+    );
+    res.json({ success: true, throttled: result.throttled || false });
   } catch (err) {
     res.status(500).json({ success: false });
   }
@@ -485,12 +508,12 @@ exports.getDeliveryGuyGpsLocation = async (req, res) => {
   try {
     let userId = req.body.delivery_guy_id;
     if (!userId && req.body.order_id) {
-      const accept = await AcceptDelivery.findOne({ where: { order_id: req.body.order_id } });
+      const accept = await AcceptDelivery.findOne({ where: { order_id: req.body.order_id }, attributes: ['user_id'] });
       if (accept) userId = accept.user_id;
     }
     if (!userId) return res.json(null);
-    const detail = await DeliveryGuyDetail.findOne({ where: { user_id: userId } });
-    res.json(detail ? { delivery_lat: detail.latitude, delivery_long: detail.longitude, heading: detail.heading } : null);
+    const gps = require('../helpers/gps');
+    res.json(await gps.getDeliveryGps(userId));
   } catch (err) {
     res.status(500).json(null);
   }

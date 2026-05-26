@@ -4,10 +4,14 @@ const { Order, Orderitem, OrderItemAddon, Item, Addon, Coupon, Restaurant, Walle
 const { getDistance, randomString } = require('../helpers/utils');
 
 async function getSettings() {
+  const cache = require('../helpers/cache');
+  const cached = await cache.get('settings:map');
+  if (cached) return cached;
   const { Setting } = require('../models');
   const settings = await Setting.findAll();
   const map = {};
-  settings.forEach(s => { map[s.key] = s.value; });
+  settings.forEach((s) => { map[s.key] = s.value; });
+  await cache.set('settings:map', map, parseInt(process.env.CACHE_SETTINGS_TTL || '300', 10));
   return map;
 }
 

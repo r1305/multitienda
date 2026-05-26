@@ -1,0 +1,16 @@
+# cPanel / Apache — place in public_html or app root as .htaccess
+# Adjust RewriteBase and paths
+
+PassengerAppRoot /home/USER/multitienda-node
+PassengerAppType node
+PassengerStartupFile passenger_app.js
+PassengerNodejs /opt/alt/alt-nodejs20/root/usr/bin/node
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Serve static assets directly (no Node)
+  RewriteRule ^(assets|uploads|app)/(.*)$ public/$1/$2 [L]
+
+  RewriteRule ^(.*)$ - [L]
+</IfModule>
