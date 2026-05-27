@@ -110,8 +110,11 @@ Store.applyTheme();
             router.push('/order/' + data.unique_order_id);
           }
         });
+        window.__oneSignalReady = true;
         PushNotifications.registerForContext();
       });
+    } else {
+      window.__oneSignalReady = false;
     }
     // Set dynamic favicon
     if (Store.settings.faviconUrl) {

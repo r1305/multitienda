@@ -49,7 +49,12 @@ const DeliveryLoginPage = {
         if (res.success) {
           localStorage.setItem('deliveryUser', JSON.stringify(res.data));
           localStorage.setItem('deliveryToken', res.data.auth_token);
-          if (window.PushNotifications) PushNotifications.registerDelivery(res.data.id);
+          if (
+            window.PushNotifications &&
+            PushNotifications.getBrowserPermission() === 'granted'
+          ) {
+            PushNotifications.registerDelivery(res.data.id);
+          }
           this.$router.push('/delivery/orders');
         } else this.error = res.data === 'DONOTMATCH' ? 'Credenciales incorrectas' : (res.message || 'Error al iniciar sesión');
       } catch(e) { this.error = 'Error de conexión'; }
@@ -85,6 +90,12 @@ const DeliveryOrdersPage = {
       <div style="padding:8px 16px;display:flex;gap:8px;background:var(--white);border-bottom:1px solid var(--border)">
         <button v-for="tab in tabs" :key="tab.id" :style="{padding:'6px 12px',borderRadius:'16px',fontSize:'12px',fontWeight:500,border:'none',background:activeTab===tab.id?'var(--primary)':'var(--bg)',color:activeTab===tab.id?'#fff':'var(--muted)'}" @click="activeTab=tab.id">{{tab.label}} <span v-if="tabCount(tab.id)" style="margin-left:4px">({{tabCount(tab.id)}})</span></button>
       </div>
+      <div v-if="showPushBanner" style="padding:16px;text-align:center;background:#e3f2fd;margin:12px 16px;border-radius:8px">
+        <i class="fas fa-bell" style="font-size:24px;color:#1976d2;margin-bottom:8px"></i>
+        <p v-if="pushState === 'denied'" style="font-size:13px;color:#1565c0;margin-bottom:8px">Las notificaciones están bloqueadas en Edge. Ve a Configuración del sitio → Permisos → Notificaciones y permite este sitio.</p>
+        <p v-else style="font-size:13px;color:#1565c0;margin-bottom:8px">Activa las notificaciones para recibir pedidos asignados al instante.</p>
+        <button v-if="pushState !== 'denied'" style="background:#1976d2;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px" :disabled="pushLoading" @click="enablePush">{{ pushLoading ? 'Espere...' : 'Activar notificaciones' }}</button>
+      </div>
       <div v-if="!gpsReady" style="padding:16px;text-align:center;background:#fff3e0;margin:12px 16px;border-radius:8px">
         <i class="fas fa-location-crosshairs" style="font-size:24px;color:#ff9800;margin-bottom:8px"></i>
         <p style="font-size:13px;color:#e65100;margin-bottom:8px">Necesitamos tu ubicacion para mostrarte pedidos cercanos</p>
@@ -113,8 +124,12 @@ const DeliveryOrdersPage = {
       </template>
     </div>`,
   setup() { return { Store }; },
-  data() { return { allOrders: [], myOrders: [], loading: false, gpsReady: false, lat: null, lng: null, activeTab: 'available', tabs: [{ id: 'available', label: 'Disponibles' }, { id: 'active', label: 'Activos' }, { id: 'completed', label: 'Completados' }] }; },
+  data() { return { allOrders: [], myOrders: [], loading: false, gpsReady: false, lat: null, lng: null, activeTab: 'available', tabs: [{ id: 'available', label: 'Disponibles' }, { id: 'active', label: 'Activos' }, { id: 'completed', label: 'Completados' }], pushState: 'default', pushLoading: false }; },
   computed: {
+    showPushBanner() {
+      if (!window.PushNotifications || !PushNotifications.isConfigured()) return false;
+      return this.pushState !== 'granted' && this.pushState !== 'unsupported';
+    },
     user() { return JSON.parse(localStorage.getItem('deliveryUser') || '{}'); },
     filteredOrders() {
       if (this.activeTab === 'available') return this.allOrders;
@@ -125,12 +140,33 @@ const DeliveryOrdersPage = {
   },
   mounted() {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
-    const u = JSON.parse(localStorage.getItem('deliveryUser') || '{}');
+    this.syncPushState();
+    this._pushPoll = setInterval(() => this.syncPushState(), 3000);
     this.getLocation();
     this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000);
   },
-  beforeUnmount() { if (this.interval) clearInterval(this.interval); },
+  beforeUnmount() {
+    if (this.interval) clearInterval(this.interval);
+    if (this._pushPoll) clearInterval(this._pushPoll);
+  },
   methods: {
+    syncPushState() {
+      if (!window.PushNotifications) return;
+      this.pushState = PushNotifications.getBrowserPermission();
+      if (this.pushState === 'granted' && this.user.id) {
+        PushNotifications.registerDelivery(this.user.id);
+      }
+    },
+    async enablePush() {
+      if (!this.user.id || !window.PushNotifications) return;
+      this.pushLoading = true;
+      const ok = await PushNotifications.enableDeliveryPush(this.user.id);
+      this.pushLoading = false;
+      this.pushState = PushNotifications.getBrowserPermission();
+      if (!ok && this.pushState === 'default') {
+        alert('No se pudo activar. Comprueba que el sitio use HTTPS y que OneSignal esté configurado.');
+      }
+    },
     getLocation() { if (!navigator.geolocation) { this.gpsReady = true; this.refresh(); return; } navigator.geolocation.getCurrentPosition((pos) => { this.lat = pos.coords.latitude; this.lng = pos.coords.longitude; this.gpsReady = true; this.refresh(); }, () => { this.gpsReady = true; this.refresh(); }, { timeout: 10000 }); },
     async refresh() {
       this.loading = !this.allOrders.length && !this.myOrders.length;

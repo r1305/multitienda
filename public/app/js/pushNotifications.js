@@ -68,11 +68,62 @@ const PushNotifications = {
     return this._pushChain;
   },
 
-  async _ensureSubscribed(OneSignal) {
-    const permission = await OneSignal.Notifications.permission;
-    if (!permission) await OneSignal.Notifications.requestPermission();
+  getBrowserPermission() {
+    if (typeof Notification === 'undefined') return 'unsupported';
+    return Notification.permission || 'default';
+  },
+
+  isConfigured() {
+    return !!(typeof Store !== 'undefined' && Store.settings && Store.settings.onesignalAppId);
+  },
+
+  /** Only call requestPermission from a click handler (Edge/Chrome block otherwise). */
+  async _ensureSubscribed(OneSignal, requestPermission = false) {
+    let permission = await OneSignal.Notifications.permission;
+    if (!permission && requestPermission) {
+      await OneSignal.Notifications.requestPermission();
+      permission = await OneSignal.Notifications.permission;
+    }
+    if (!permission) return false;
     const optedIn = await OneSignal.User.PushSubscription.optedIn;
     if (!optedIn) await OneSignal.User.PushSubscription.optIn();
+    return true;
+  },
+
+  /** User tapped "Activar notificaciones" — must run synchronously from click. */
+  enableDeliveryPush(userId) {
+    return new Promise((resolve) => {
+      if (!userId || !window.OneSignalDeferred) return resolve(false);
+      const id = String(userId);
+      const tags = { user_id: id, role: 'delivery' };
+      this._lastIdentityKey = null;
+
+      this._enqueue(async (OneSignal) => {
+        try {
+          const ok = await this._ensureSubscribed(OneSignal, true);
+          if (!ok) return resolve(false);
+
+          const stored = this._readStoredIdentity();
+          if (stored.role && stored.role !== 'delivery') {
+            await this._switchExternalId(OneSignal, id);
+          } else if (stored.external !== id) {
+            if (stored.external && typeof OneSignal.logout === 'function') {
+              await OneSignal.logout();
+              await new Promise((r) => setTimeout(r, 300));
+            }
+            await this._safeLogin(OneSignal, id);
+          }
+
+          await OneSignal.User.addTags(tags);
+          this._writeStoredIdentity('delivery', id);
+          this._lastIdentityKey = this._storageKey('delivery', id, {});
+          resolve(true);
+        } catch (e) {
+          console.warn('enableDeliveryPush failed', e);
+          resolve(false);
+        }
+      });
+    });
   },
 
   async _safeLogin(OneSignal, id) {
@@ -128,7 +179,8 @@ const PushNotifications = {
     const tags = { user_id: id, role: roleTag, ...extraTags };
 
     this._enqueue(async (OneSignal) => {
-      await this._ensureSubscribed(OneSignal);
+      const ok = await this._ensureSubscribed(OneSignal, false);
+      if (!ok) return;
       await this._switchExternalId(OneSignal, id);
       await OneSignal.User.addTags(tags);
       this._writeStoredIdentity(roleTag, id);
@@ -137,6 +189,7 @@ const PushNotifications = {
 
   registerDelivery(userId) {
     if (!userId) return;
+    if (this.getBrowserPermission() !== 'granted') return;
     const stored = this._readStoredIdentity();
     if (stored.role && stored.role !== 'delivery') {
       return this.registerWithRoleSwitch(userId, 'delivery');
@@ -168,7 +221,8 @@ const PushNotifications = {
     const needsLogin = stored.external !== id;
 
     this._enqueue(async (OneSignal) => {
-      await this._ensureSubscribed(OneSignal);
+      const ok = await this._ensureSubscribed(OneSignal, false);
+      if (!ok) return;
       if (needsLogin) {
         if (stored.external && typeof OneSignal.logout === 'function') {
           await OneSignal.logout();
@@ -198,8 +252,10 @@ const PushNotifications = {
     } catch (_) { /* ignore */ }
 
     if (path.startsWith('/delivery')) {
-      if (deliveryUser?.id) return this.registerDelivery(deliveryUser.id);
-      this.logout();
+      if (deliveryUser?.id && this.getBrowserPermission() === 'granted') {
+        return this.registerDelivery(deliveryUser.id);
+      }
+      if (!deliveryUser?.id) this.logout();
       return;
     }
     if (path.startsWith('/store-owner')) {
