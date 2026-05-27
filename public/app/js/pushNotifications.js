@@ -68,7 +68,9 @@ const PushNotifications = {
             try {
               await fn(OneSignal);
             } catch (e) {
-              console.warn('OneSignal op failed', e);
+              if (!PushNotifications._isBenignOneSignalError(e)) {
+                console.warn('OneSignal op failed', e);
+              }
             } finally {
               resolve();
             }
@@ -108,6 +110,45 @@ const PushNotifications = {
     const name = e?.name || '';
     const msg = String(e?.message || e || '');
     return name === 'AbortError' || msg.includes('AbortError') || msg.includes('connection was closed');
+  },
+
+  _isBenignOneSignalError(e) {
+    if (this._isAbortError(e)) return true;
+    const msg = String(e?.message || e || '').toLowerCase();
+    return (
+      msg.includes('no subscription') ||
+      msg.includes('subscription not found') ||
+      msg.includes('no identity') ||
+      msg.includes('not subscribed')
+    );
+  },
+
+  async _waitForPushToken(OneSignal, maxMs = 15000) {
+    const sub = OneSignal.User.PushSubscription;
+    if (sub.token) return sub.token;
+
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (token) => {
+        if (done) return;
+        done = true;
+        try { sub.removeEventListener('change', onChange); } catch (_) { /* ignore */ }
+        resolve(token || null);
+      };
+      const onChange = (event) => {
+        const token = event?.current?.token || sub.token;
+        if (token) finish(token);
+      };
+      sub.addEventListener('change', onChange);
+
+      const started = Date.now();
+      const tick = () => {
+        if (sub.token) return finish(sub.token);
+        if (Date.now() - started >= maxMs) return finish(null);
+        setTimeout(tick, 250);
+      };
+      tick();
+    });
   },
 
   /** Request browser permission — must run at the start of a click handler. */
@@ -195,7 +236,7 @@ const PushNotifications = {
     }
   },
 
-  /** Only call requestPermission from a click handler (Edge/Chrome block otherwise). */
+  /** Ensure push permission + valid subscription token before login/tags. */
   async _ensureSubscribed(OneSignal, requestPermission = false) {
     let permission = await OneSignal.Notifications.permission;
     if (!permission && requestPermission) {
@@ -206,9 +247,45 @@ const PushNotifications = {
         permission = await OneSignal.Notifications.permission;
       }
     }
+    if (!permission && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      permission = true;
+    }
     if (!permission) return false;
+
     const optedIn = await OneSignal.User.PushSubscription.optedIn;
-    if (!optedIn) await OneSignal.User.PushSubscription.optIn();
+    let token = OneSignal.User.PushSubscription.token;
+    if (!optedIn || !token) {
+      await OneSignal.User.PushSubscription.optIn();
+      token = await this._waitForPushToken(OneSignal, 15000);
+    }
+    return !!token;
+  },
+
+  /** Associate external user id + tags once subscription token exists. */
+  async _bindUserIdentity(OneSignal, userId, role, extraTags = {}) {
+    const id = String(userId);
+    const roleTag = String(role || 'customer').toLowerCase().replace(/\s+/g, '_');
+    const tags = { user_id: id, role: roleTag, ...extraTags };
+    const identityKey = this._storageKey(roleTag, id, extraTags);
+    const stored = this._readStoredIdentity();
+
+    if (
+      this._lastIdentityKey === identityKey &&
+      stored.external === id &&
+      stored.role === roleTag
+    ) {
+      return true;
+    }
+
+    const token = await this._waitForPushToken(OneSignal, 8000);
+    if (!token) return false;
+
+    if (stored.external !== id) {
+      await this._safeLogin(OneSignal, id);
+    }
+    await OneSignal.User.addTags(tags);
+    this._writeStoredIdentity(roleTag, id);
+    this._lastIdentityKey = identityKey;
     return true;
   },
 
@@ -232,36 +309,18 @@ const PushNotifications = {
     if (!inited) return { ok: false, reason: 'init_failed' };
 
     const id = String(userId);
-    const tags = { user_id: id, role: 'delivery' };
     this._lastIdentityKey = null;
 
     return new Promise((resolve) => {
       this._enqueue(async (OneSignal) => {
         try {
-          const ok = await this._ensureSubscribed(OneSignal, false);
+          const ok = await this._ensureSubscribed(OneSignal, true);
           if (!ok) return resolve({ ok: false, reason: 'subscribe_failed' });
 
-          const stored = this._readStoredIdentity();
-          if (stored.role && stored.role !== 'delivery') {
-            await this._switchExternalId(OneSignal, id);
-          } else if (stored.external !== id) {
-            if (stored.external && typeof OneSignal.logout === 'function') {
-              try {
-                await OneSignal.logout();
-              } catch (e) {
-                if (!this._isAbortError(e)) throw e;
-              }
-              await new Promise((r) => setTimeout(r, 300));
-            }
-            await this._safeLogin(OneSignal, id);
-          }
-
-          await OneSignal.User.addTags(tags);
-          this._writeStoredIdentity('delivery', id);
-          this._lastIdentityKey = this._storageKey('delivery', id, {});
-          resolve({ ok: true, reason: 'granted' });
+          const bound = await this._bindUserIdentity(OneSignal, id, 'delivery');
+          resolve(bound ? { ok: true, reason: 'granted' } : { ok: false, reason: 'error' });
         } catch (e) {
-          if (!this._isAbortError(e)) console.warn('enableDeliveryPush failed', e);
+          if (!this._isBenignOneSignalError(e)) console.warn('enableDeliveryPush failed', e);
           resolve({ ok: false, reason: 'error' });
         }
       });
@@ -273,83 +332,49 @@ const PushNotifications = {
     try {
       await OneSignal.login(id);
     } catch (e) {
-      if (this._isAbortError(e)) return;
+      if (this._isBenignOneSignalError(e)) return;
       const status = e?.status || e?.statusCode;
       const msg = String(e?.message || e || '');
       if (status === 409 || msg.includes('409')) {
-        if (typeof OneSignal.logout === 'function') {
-          try {
-            await OneSignal.logout();
-          } catch (logoutErr) {
-            if (!this._isAbortError(logoutErr)) throw logoutErr;
-          }
-          await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 400));
+        try {
+          await OneSignal.login(id);
+        } catch (retryErr) {
+          if (!this._isBenignOneSignalError(retryErr)) throw retryErr;
         }
-        await OneSignal.login(id);
       } else {
         throw e;
       }
     }
   },
 
-  async _switchExternalId(OneSignal, id) {
-    if (typeof OneSignal.logout === 'function') {
-      try {
-        await OneSignal.logout();
-      } catch (e) {
-        if (!this._isAbortError(e)) throw e;
-      }
-      await new Promise((r) => setTimeout(r, 400));
-    }
-    await this._safeLogin(OneSignal, id);
-  },
-
   logout() {
-    if (!window.OneSignalDeferred || !this.isReady()) {
-      this._clearStoredIdentity();
-      return;
-    }
     this._clearStoredIdentity();
+    if (!window.OneSignalDeferred || !this.isReady()) return;
     this._enqueue(async (OneSignal) => {
       try {
-        if (typeof OneSignal.logout === 'function') await OneSignal.logout();
+        const token = OneSignal.User.PushSubscription.token;
+        if (!token) return;
+        await OneSignal.User.removeTags(['user_id', 'role', 'restaurant_id']);
       } catch (e) {
-        if (!this._isAbortError(e)) console.warn('OneSignal logout failed', e);
+        if (!this._isBenignOneSignalError(e)) console.warn('OneSignal logout failed', e);
       }
     });
   },
 
   logoutWhenReady() {
-    if (this.isReady()) return this.logout();
-    this.waitForReady(8000).then((ok) => {
-      if (ok) this.logout();
-      else this._clearStoredIdentity();
-    });
+    this._clearStoredIdentity();
   },
 
-  /** Role or user change — logout then login once */
+  /** Role or user change — login + tags (no logout; avoids stale subscription PATCH). */
   registerWithRoleSwitch(userId, role, extraTags = {}) {
-    if (!userId || !window.OneSignalDeferred) return;
-    const id = String(userId);
+    if (!userId || !window.OneSignalDeferred || !this.isReady()) return;
     const roleTag = String(role || 'customer').toLowerCase().replace(/\s+/g, '_');
-    const identityKey = this._storageKey(roleTag, id, extraTags);
-    const stored = this._readStoredIdentity();
-    if (
-      this._lastIdentityKey === identityKey &&
-      stored.external === id &&
-      stored.role === roleTag
-    ) {
-      return;
-    }
-    this._lastIdentityKey = identityKey;
-    const tags = { user_id: id, role: roleTag, ...extraTags };
 
     this._enqueue(async (OneSignal) => {
       const ok = await this._ensureSubscribed(OneSignal, false);
       if (!ok) return;
-      await this._switchExternalId(OneSignal, id);
-      await OneSignal.User.addTags(tags);
-      this._writeStoredIdentity(roleTag, id);
+      await this._bindUserIdentity(OneSignal, userId, roleTag, extraTags);
     });
   },
 
@@ -364,40 +389,12 @@ const PushNotifications = {
   },
 
   register(userId, role = 'customer', extraTags = {}) {
-    if (!userId || !window.OneSignalDeferred) return;
-    const id = String(userId);
-    const roleTag = String(role || 'customer').toLowerCase().replace(/\s+/g, '_');
-    const identityKey = this._storageKey(roleTag, id, extraTags);
-    const stored = this._readStoredIdentity();
-
-    if (stored.role && stored.role !== roleTag) {
-      return this.registerWithRoleSwitch(userId, role, extraTags);
-    }
-
-    if (
-      this._lastIdentityKey === identityKey &&
-      stored.external === id &&
-      stored.role === roleTag
-    ) {
-      return;
-    }
-
-    this._lastIdentityKey = identityKey;
-    const tags = { user_id: id, role: roleTag, ...extraTags };
-    const needsLogin = stored.external !== id;
+    if (!userId || !window.OneSignalDeferred || !this.isReady()) return;
 
     this._enqueue(async (OneSignal) => {
       const ok = await this._ensureSubscribed(OneSignal, false);
       if (!ok) return;
-      if (needsLogin) {
-        if (stored.external && typeof OneSignal.logout === 'function') {
-          await OneSignal.logout();
-          await new Promise((r) => setTimeout(r, 300));
-        }
-        await this._safeLogin(OneSignal, id);
-      }
-      await OneSignal.User.addTags(tags);
-      this._writeStoredIdentity(roleTag, id);
+      await this._bindUserIdentity(OneSignal, userId, role, extraTags);
     });
   },
 
@@ -422,7 +419,7 @@ const PushNotifications = {
       if (deliveryUser?.id && this.getBrowserPermission() === 'granted') {
         return this.registerDelivery(deliveryUser.id);
       }
-      if (!deliveryUser?.id) this.logout();
+      if (!deliveryUser?.id) this._clearStoredIdentity();
       return;
     }
     if (path.startsWith('/store-owner')) {

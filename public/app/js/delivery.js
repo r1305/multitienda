@@ -125,7 +125,7 @@ const DeliveryOrdersPage = {
       </template>
     </div>`,
   setup() { return { Store }; },
-  data() { return { allOrders: [], myOrders: [], loading: false, gpsReady: false, lat: null, lng: null, activeTab: 'available', tabs: [{ id: 'available', label: 'Disponibles' }, { id: 'active', label: 'Activos' }, { id: 'completed', label: 'Completados' }], pushState: 'default', pushLoading: false, settingsReady: false, pushError: '', pushSuccess: false }; },
+  data() { return { allOrders: [], myOrders: [], loading: false, gpsReady: false, lat: null, lng: null, activeTab: 'available', tabs: [{ id: 'available', label: 'Disponibles' }, { id: 'active', label: 'Activos' }, { id: 'completed', label: 'Completados' }], pushState: 'default', pushLoading: false, settingsReady: false, pushError: '', pushSuccess: false, _pushRegistered: false }; },
   computed: {
     showPushBanner() {
       if (typeof Notification === 'undefined') return false;
@@ -148,20 +148,20 @@ const DeliveryOrdersPage = {
   mounted() {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
     this.syncPushState();
-    this._pushPoll = setInterval(() => this.syncPushState(), 3000);
     this._onPushReady = () => {
       this.settingsReady = true;
       this.syncPushState();
+      this.tryRegisterPush();
     };
     window.addEventListener('app:onesignal-ready', this._onPushReady);
     window.addEventListener('app:settings-ready', this._onPushReady);
     if (Store.settings && Object.keys(Store.settings).length) this.settingsReady = true;
+    this.tryRegisterPush();
     this.getLocation();
     this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000);
   },
   beforeUnmount() {
     if (this.interval) clearInterval(this.interval);
-    if (this._pushPoll) clearInterval(this._pushPoll);
     if (this._onPushReady) {
       window.removeEventListener('app:onesignal-ready', this._onPushReady);
       window.removeEventListener('app:settings-ready', this._onPushReady);
@@ -172,9 +172,12 @@ const DeliveryOrdersPage = {
       if (!PushNotifications) return;
       this.pushState = PushNotifications.getBrowserPermission();
       if (Store.settings && Object.keys(Store.settings).length) this.settingsReady = true;
-      if (this.pushState === 'granted' && this.deliveryUserId && PushNotifications.isReady()) {
-        PushNotifications.registerDelivery(this.deliveryUserId);
-      }
+    },
+    tryRegisterPush() {
+      if (this._pushRegistered) return;
+      if (this.pushState !== 'granted' || !this.deliveryUserId || !PushNotifications.isReady()) return;
+      this._pushRegistered = true;
+      PushNotifications.registerDelivery(this.deliveryUserId);
     },
     async enablePush() {
       if (!PushNotifications) {
@@ -194,6 +197,7 @@ const DeliveryOrdersPage = {
         if (result.ok) {
           this.pushSuccess = true;
           this.pushError = '';
+          this._pushRegistered = true;
         } else if (result.reason === 'denied') {
           this.pushError = 'Permiso bloqueado. En Edge: candado en la barra de direcciones → Notificaciones → Permitir.';
         } else if (result.reason === 'dismissed') {
