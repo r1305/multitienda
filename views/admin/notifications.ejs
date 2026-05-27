@@ -1,5 +1,5 @@
 <% var active = 'notifications'; var pageTitle = 'Notificaciones Push'; %>
-<% var scripts = ''; %>
+<% var scripts = '<script>function toggleTarget(){document.getElementById("specificIds").style.display=document.getElementById("targetSelect").value==="specific"?"block":"none";}function fillDeliveryIds(){var ids=[];document.querySelectorAll(".delivery-push-id").forEach(function(el){ids.push(el.dataset.id);});if(!ids.length){alert("No hay repartidores en la lista");return;}document.getElementById("targetSelect").value="specific";toggleTarget();document.querySelector(\'input[name="user_ids"]\').value=ids.join(",");}</script>'; %>
 <%
 var body = `
 <div class="row">
@@ -40,24 +40,78 @@ var body = `
         </div>
     </div>
     <div class="col-md-5">
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-header"><i class="fas fa-info-circle mr-1"></i> Información</div>
             <div class="card-body" style="font-size:13px">
                 <p><strong>Todos los usuarios:</strong> Envía a todos los dispositivos registrados.</p>
-                <p><strong>Solo Clientes:</strong> Usuarios que usan la app para pedir.</p>
-                <p><strong>Solo Repartidores:</strong> Usuarios con rol de delivery.</p>
-                <p><strong>Solo Dueños de Tienda:</strong> Usuarios que administran tiendas.</p>
-                <p><strong>Usuarios específicos:</strong> Ingresa los IDs separados por coma.</p>
+                <p><strong>Solo Repartidores:</strong> Envía a cada usuario con rol Delivery Guy (aunque no tenga token).</p>
+                <p><strong>Usuarios específicos:</strong> IDs de la tabla de abajo.</p>
                 <hr>
-                <p class="text-muted mb-0"><i class="fas fa-bell"></i> Las notificaciones se envían via OneSignal y se guardan en la app.</p>
+                <p class="text-muted mb-0"><i class="fas fa-bell"></i> Push web: el repartidor debe entrar a <code>/delivery</code>, iniciar sesión y aceptar notificaciones en el navegador.</p>
             </div>
         </div>
     </div>
 </div>
-<script>
-function toggleTarget() {
-  document.getElementById('specificIds').style.display = document.getElementById('targetSelect').value === 'specific' ? 'block' : 'none';
+
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+        <span><i class="fas fa-motorcycle mr-1"></i> Repartidores y estado push</span>
+        <span class="badge badge-primary">${typeof deliveryTotal !== 'undefined' ? deliveryTotal : 0} total</span>
+        <span class="badge badge-success">${typeof pushReadyCount !== 'undefined' ? pushReadyCount : 0} con token en BD</span>
+    </div>
+    <div class="card-body p-0">
+        <p class="px-3 pt-3 mb-2 text-muted" style="font-size:12px">
+            <strong>Con token:</strong> dispositivo registrado en la base de datos (suele ser app móvil).
+            <strong>Sin token:</strong> aún puede recibir push web si usó OneSignal en <code>/delivery</code> — no aparece aquí.
+            Use <em>Solo Repartidores</em> para enviar a todos por rol.
+        </p>
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Cuenta</th>
+                        <th>Disponible</th>
+                        <th>Push</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+if (typeof deliveryPushList !== 'undefined' && deliveryPushList.length) {
+  deliveryPushList.forEach(function(d) {
+    var acct = d.accountActive
+      ? '<span class="badge badge-success">Activa</span>'
+      : '<span class="badge badge-secondary">Inactiva</span>';
+    var avail = d.isAvailable
+      ? '<span class="badge badge-info">Sí</span>'
+      : '<span class="badge badge-light">No</span>';
+    var push = d.hasPushToken
+      ? '<span class="badge badge-success">Token OK</span>'
+      : '<span class="badge badge-warning" title="' + (d.pushLabel || '').replace(/"/g, '&quot;') + '">Sin token</span>';
+    body += `<tr class="delivery-push-id" data-id="${d.id}">
+      <td><strong>${d.id}</strong></td>
+      <td>${d.name || '-'}</td>
+      <td>${d.phone || '-'}</td>
+      <td>${acct}</td>
+      <td>${avail}</td>
+      <td>${push}</td>
+    </tr>`;
+  });
+} else {
+  body += '<tr><td colspan="6" class="text-center text-muted py-4">No hay repartidores con rol Delivery Guy</td></tr>';
 }
-</script>`;
+
+body += `</tbody>
+            </table>
+        </div>
+        <div class="p-3 border-top">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="fillDeliveryIds()">
+                <i class="fas fa-list mr-1"></i> Copiar todos los IDs al envío específico
+            </button>
+        </div>
+    </div>
+</div>`;
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

@@ -351,6 +351,35 @@ const ROLE_TAG_TO_NAME = {
   admin: 'Admin',
 };
 
+async function getDeliveryPushStatus() {
+  const [rows] = await sequelize.query(
+    `SELECT u.id, u.name, u.phone, u.email, u.is_active AS user_active,
+            COALESCE(dgd.is_available, 0) AS is_available,
+            (SELECT COUNT(*) FROM push_tokens pt WHERE pt.user_id = u.id) AS push_token_count
+     FROM users u
+     INNER JOIN model_has_roles mr ON mr.model_id = u.id
+     INNER JOIN roles r ON r.id = mr.role_id AND r.name = 'Delivery Guy'
+     LEFT JOIN delivery_guy_details dgd ON dgd.user_id = u.id
+     ORDER BY u.name ASC`
+  );
+  return rows.map((r) => {
+    const hasToken = Number(r.push_token_count) > 0;
+    return {
+      id: Number(r.id),
+      name: r.name || '',
+      phone: r.phone || '',
+      email: r.email || '',
+      accountActive: Number(r.user_active) !== 0,
+      isAvailable: Number(r.is_available) === 1,
+      hasPushToken: hasToken,
+      pushStatus: hasToken ? 'token' : 'none',
+      pushLabel: hasToken
+        ? 'Token registrado (app móvil o guardado)'
+        : 'Sin token — debe abrir /delivery y aceptar notificaciones',
+    };
+  });
+}
+
 async function getUserIdsByRoleTag(roleTag) {
   const roleName = ROLE_TAG_TO_NAME[roleTag];
   if (!roleName) return [];
@@ -427,6 +456,7 @@ module.exports = {
   saveNotification,
   saveFCMToken,
   getUserIdsByRoleTag,
+  getDeliveryPushStatus,
   broadcastToRole,
   notifyStoreNewOrder,
   notifyDeliveryNewOrder,

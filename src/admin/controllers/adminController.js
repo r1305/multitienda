@@ -921,8 +921,23 @@ exports.deleteSlider = async (req, res) => {
 };
 
 // ==================== 14. NOTIFICATIONS ====================
-exports.notifications = (req, res) => {
-  res.render('admin/notifications', { user: req.session.user, success: req.flash('success')[0], error: req.flash('error')[0] });
+exports.notifications = async (req, res) => {
+  let deliveryPushList = [];
+  try {
+    const { getDeliveryPushStatus } = require('../../helpers/notifications.impl');
+    deliveryPushList = await getDeliveryPushStatus();
+  } catch (err) {
+    console.error('Delivery push status error:', err.message);
+  }
+  const pushReadyCount = deliveryPushList.filter((d) => d.hasPushToken).length;
+  res.render('admin/notifications', {
+    user: req.session.user,
+    success: req.flash('success')[0],
+    error: req.flash('error')[0],
+    deliveryPushList,
+    pushReadyCount,
+    deliveryTotal: deliveryPushList.length,
+  });
 };
 
 exports.sendNotification = async (req, res) => {
