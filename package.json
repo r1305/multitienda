@@ -11,7 +11,7 @@
     "start:worker": "node workers/notificationWorker.js",
     "start:pm2": "pm2 start ecosystem.config.js",
     "dev": "nodemon server.js",
-    "install:cpanel": "npm install --ignore-scripts --omit=optional",
+    "install:cpanel": "npm install --ignore-scripts",
     "install:full": "npm install"
   },
   "dependencies": {

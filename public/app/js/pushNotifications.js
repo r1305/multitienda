@@ -1,83 +1,32 @@
-/** Register web push (OneSignal) — tags + external_id for server targeting */
+/** Web push via Firebase Cloud Messaging (FCM) */
 const PushNotifications = {
-  _lastIdentityKey: null,
-  _pushChain: Promise.resolve(),
-  _registerDebounce: null,
   _initPromise: null,
+  _messaging: null,
+  _serviceWorkerReg: null,
+  _registerDebounce: null,
+  _lastRegisterKey: null,
+  _lastSavedTokenByUser: {},
 
-  serviceWorkerUrl() {
-    const base = (typeof API !== 'undefined' && API._base) ? API._base : '/api';
-    return new URL(`${base}/onesignal-service-worker.js`, window.location.origin).href;
+  _firebaseConfig() {
+    const s = (typeof Store !== 'undefined' && Store.settings) ? Store.settings : {};
+    return {
+      apiKey: s.firebaseApiKey || '',
+      authDomain: s.firebaseAuthDomain || '',
+      projectId: s.firebaseProjectId || '',
+      storageBucket: s.firebaseStorageBucket || '',
+      messagingSenderId: s.firebaseMessagingSenderId || '',
+      appId: s.firebaseAppId || '',
+      measurementId: s.firebaseMeasurementId || '',
+    };
   },
 
-  _serviceWorkerCandidates() {
-    const bases = [];
-    if (typeof API !== 'undefined' && API._base) bases.push(API._base);
-    ['/api', '/public/api'].forEach((b) => { if (!bases.includes(b)) bases.push(b); });
-    return bases.map((b) => new URL(`${b}/onesignal-service-worker.js`, window.location.origin).href);
+  _firebaseVapidKey() {
+    return (Store?.settings?.firebaseVapidKey || '').trim();
   },
 
-  async verifyServiceWorker() {
-    for (const url of this._serviceWorkerCandidates()) {
-      try {
-        const res = await fetch(url, { method: 'GET', cache: 'no-store' });
-        const ct = (res.headers.get('content-type') || '').toLowerCase();
-        if (res.ok && ct.includes('javascript')) return url;
-      } catch (_) { /* try next */ }
-    }
-    return null;
-  },
-
-  _storageKey(roleTag, id, extraTags) {
-    return `${roleTag}:${id}:${extraTags.restaurant_id || ''}`;
-  },
-
-  _readStoredIdentity() {
-    try {
-      return {
-        role: sessionStorage.getItem('push_role'),
-        external: sessionStorage.getItem('push_external_id'),
-      };
-    } catch (_) {
-      return { role: null, external: null };
-    }
-  },
-
-  _writeStoredIdentity(roleTag, id) {
-    try {
-      sessionStorage.setItem('push_role', roleTag);
-      sessionStorage.setItem('push_external_id', id);
-    } catch (_) { /* ignore */ }
-  },
-
-  _clearStoredIdentity() {
-    this._lastIdentityKey = null;
-    try {
-      sessionStorage.removeItem('push_role');
-      sessionStorage.removeItem('push_external_id');
-    } catch (_) { /* ignore */ }
-  },
-
-  /** Run OneSignal ops one at a time to avoid 409 identity conflicts */
-  _enqueue(fn) {
-    if (!window.OneSignalDeferred) return this._pushChain;
-    this._pushChain = this._pushChain.then(
-      () =>
-        new Promise((resolve) => {
-          window.OneSignalDeferred.push(async function (OneSignal) {
-            try {
-              await fn(OneSignal);
-            } catch (e) {
-              if (!PushNotifications._isBenignOneSignalError(e)) {
-                console.warn('OneSignal op failed', e);
-              }
-            } finally {
-              resolve();
-            }
-          });
-        })
-    );
-    return this._pushChain;
+  isConfigured() {
+    const cfg = this._firebaseConfig();
+    return !!(cfg.apiKey && cfg.projectId && cfg.messagingSenderId && cfg.appId);
   },
 
   getBrowserPermission() {
@@ -85,220 +34,138 @@ const PushNotifications = {
     return Notification.permission || 'default';
   },
 
-  isConfigured() {
-    return !!(typeof Store !== 'undefined' && Store.settings && Store.settings.onesignalAppId);
-  },
-
   isReady() {
-    return !!window.__oneSignalReady;
+    return !!window.__fcmReady;
   },
 
-  waitForReady(maxMs = 15000) {
-    if (this.isReady()) return Promise.resolve(true);
-    return new Promise((resolve) => {
-      const started = Date.now();
-      const tick = () => {
-        if (this.isReady()) return resolve(true);
-        if (Date.now() - started >= maxMs) return resolve(false);
-        setTimeout(tick, 200);
-      };
-      tick();
+  serviceWorkerUrl() {
+    const cfg = this._firebaseConfig();
+    const params = new URLSearchParams();
+    Object.entries(cfg).forEach(([k, v]) => {
+      if (v) params.set(k, v);
     });
+    return `/firebase-messaging-sw.js?${params.toString()}`;
   },
 
-  _isAbortError(e) {
-    const name = e?.name || '';
-    const msg = String(e?.message || e || '');
-    return name === 'AbortError' || msg.includes('AbortError') || msg.includes('connection was closed');
-  },
-
-  _isBenignOneSignalError(e) {
-    if (this._isAbortError(e)) return true;
-    const msg = String(e?.message || e || '').toLowerCase();
-    return (
-      msg.includes('no subscription') ||
-      msg.includes('subscription not found') ||
-      msg.includes('no identity') ||
-      msg.includes('not subscribed')
-    );
-  },
-
-  async _waitForPushToken(OneSignal, maxMs = 15000) {
-    const sub = OneSignal.User.PushSubscription;
-    if (sub.token) return sub.token;
-
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = (token) => {
-        if (done) return;
-        done = true;
-        try { sub.removeEventListener('change', onChange); } catch (_) { /* ignore */ }
-        resolve(token || null);
-      };
-      const onChange = (event) => {
-        const token = event?.current?.token || sub.token;
-        if (token) finish(token);
-      };
-      sub.addEventListener('change', onChange);
-
-      const started = Date.now();
-      const tick = () => {
-        if (sub.token) return finish(sub.token);
-        if (Date.now() - started >= maxMs) return finish(null);
-        setTimeout(tick, 250);
-      };
-      tick();
-    });
-  },
-
-  /** Request browser permission — must run at the start of a click handler. */
   async requestBrowserPermission() {
     if (typeof Notification === 'undefined') return 'unsupported';
     const current = Notification.permission;
     if (current === 'granted' || current === 'denied') return current;
     try {
       return await Notification.requestPermission();
-    } catch (e) {
-      console.warn('Notification.requestPermission failed', e);
+    } catch (_) {
       return Notification.permission || 'default';
     }
   },
 
-  /** Initialize OneSignal SDK (idempotent). Returns false if not configured or SW invalid. */
+  async _registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return null;
+    if (this._serviceWorkerReg) return this._serviceWorkerReg;
+    this._serviceWorkerReg = await navigator.serviceWorker.register(this.serviceWorkerUrl(), { scope: '/' });
+    return this._serviceWorkerReg;
+  },
+
   async initSDK() {
     if (this.isReady()) return true;
     if (!this.isConfigured()) return false;
     if (this._initPromise) return this._initPromise;
 
     this._initPromise = (async () => {
-      if (!window.OneSignalDeferred) window.OneSignalDeferred = [];
-
-      const workerUrl = await this.verifyServiceWorker();
-      if (!workerUrl) {
-        console.warn('OneSignal: service worker not available');
+      if (typeof window.firebase === 'undefined') {
+        console.warn('Firebase SDK not loaded');
         return false;
       }
 
-      const initDone = new Promise((resolve) => {
-        window.OneSignalDeferred.push(async function (OneSignal) {
-          try {
-            if (window.__oneSignalReady) return resolve(true);
-            await OneSignal.init({
-              appId: Store.settings.onesignalAppId,
-              allowLocalhostAsSecureOrigin: true,
-              notifyButton: { enable: false },
-              serviceWorkerPath: workerUrl,
-              serviceWorkerParam: { scope: '/' },
-            });
-            if (!window.__oneSignalClickBound) {
-              window.__oneSignalClickBound = true;
-              OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
-                event.notification.display();
-              });
-              OneSignal.Notifications.addEventListener('click', (e) => {
-                const data = e.notification?.additionalData || e.notification?.data || e.data || {};
-                if (!data.order_id && !data.unique_order_id) return;
-                const deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
-                const storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null');
-                if (window.__appRouter) {
-                  const router = window.__appRouter;
-                  if (data.type === 'delivery_assigned' && data.order_id) {
-                    router.push('/delivery/order/' + data.order_id);
-                  } else if (data.type === 'new_order' || data.recipient_role === 'store_owner' || storeOwnerUser) {
-                    router.push('/store-owner/order/' + data.order_id);
-                  } else if (data.recipient_role === 'delivery' || deliveryUser) {
-                    router.push('/delivery/order/' + (data.order_id || data.unique_order_id));
-                  } else if (data.unique_order_id) {
-                    router.push('/order/' + data.unique_order_id);
-                  }
-                }
-              });
-            }
-            window.__oneSignalReady = true;
-            window.dispatchEvent(new CustomEvent('app:onesignal-ready'));
-            resolve(true);
-          } catch (e) {
-            console.warn('OneSignal init failed', e.message || e);
-            resolve(false);
-          }
-        });
-      });
+      const swReg = await this._registerServiceWorker();
+      if (!swReg) return false;
 
-      const timeout = new Promise((resolve) => setTimeout(() => resolve(false), 20000));
-      return Promise.race([initDone, timeout]);
+      const cfg = this._firebaseConfig();
+      if (!window.firebase.apps.length) {
+        window.firebase.initializeApp(cfg);
+      }
+
+      this._messaging = window.firebase.messaging();
+      this._messaging.onMessage((payload) => this._handleForegroundMessage(payload));
+      window.__fcmReady = true;
+      window.dispatchEvent(new CustomEvent('app:push-ready'));
+      return true;
     })();
 
     try {
       return await this._initPromise;
-    } catch (e) {
+    } catch (_) {
       this._initPromise = null;
       return false;
     }
   },
 
-  /** Ensure push permission + valid subscription token before login/tags. */
-  async _ensureSubscribed(OneSignal, requestPermission = false) {
-    let permission = await OneSignal.Notifications.permission;
-    if (!permission && requestPermission) {
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        permission = true;
-      } else {
-        await OneSignal.Notifications.requestPermission();
-        permission = await OneSignal.Notifications.permission;
-      }
-    }
-    if (!permission && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      permission = true;
-    }
-    if (!permission) return false;
-
-    const optedIn = await OneSignal.User.PushSubscription.optedIn;
-    let token = OneSignal.User.PushSubscription.token;
-    if (!optedIn || !token) {
-      await OneSignal.User.PushSubscription.optIn();
-      token = await this._waitForPushToken(OneSignal, 15000);
-    }
-    return !!token;
+  _apiBases() {
+    const list = [];
+    if (typeof API !== 'undefined' && API._base) list.push(API._base);
+    ['/api', '/public/api'].forEach((b) => {
+      if (!list.includes(b)) list.push(b);
+    });
+    return list;
   },
 
-  /** Associate external user id + tags once subscription token exists. */
-  async _bindUserIdentity(OneSignal, userId, role, extraTags = {}) {
-    const id = String(userId);
-    const roleTag = String(role || 'customer').toLowerCase().replace(/\s+/g, '_');
-    const tags = { user_id: id, role: roleTag, ...extraTags };
-    const identityKey = this._storageKey(roleTag, id, extraTags);
-    const stored = this._readStoredIdentity();
+  _currentAuthToken() {
+    const p = window.location.pathname || '';
+    if (p.startsWith('/delivery')) return localStorage.getItem('deliveryToken');
+    if (p.startsWith('/store-owner')) return localStorage.getItem('storeOwnerToken');
+    if (typeof API !== 'undefined' && API.token) return API.token;
+    return localStorage.getItem('appToken');
+  },
 
-    if (
-      this._lastIdentityKey === identityKey &&
-      stored.external === id &&
-      stored.role === roleTag
-    ) {
-      return true;
-    }
+  async _getCurrentToken() {
+    if (!this._messaging) return null;
+    const vapidKey = this._firebaseVapidKey();
+    if (!vapidKey) return null;
+    return this._messaging.getToken({
+      vapidKey,
+      serviceWorkerRegistration: this._serviceWorkerReg || undefined,
+    });
+  },
 
-    const token = await this._waitForPushToken(OneSignal, 8000);
+  async _saveTokenForUser(userId, roleTag) {
+    const authToken = this._currentAuthToken();
+    if (!authToken) return false;
+
+    const token = await this._getCurrentToken();
     if (!token) return false;
 
-    if (stored.external !== id) {
-      await this._safeLogin(OneSignal, id);
+    const userKey = `${roleTag}:${String(userId)}`;
+    if (this._lastSavedTokenByUser[userKey] === token) return true;
+
+    const body = JSON.stringify({ token, platform: 'web' });
+    const headers = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${authToken}`,
+    };
+
+    for (const base of this._apiBases()) {
+      try {
+        const res = await fetch(`${base}/save-fcm-token`, {
+          method: 'POST',
+          headers,
+          body,
+          credentials: 'same-origin',
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          this._lastSavedTokenByUser[userKey] = token;
+          return true;
+        }
+      } catch (_) { /* try next base */ }
     }
-    await OneSignal.User.addTags(tags);
-    this._writeStoredIdentity(roleTag, id);
-    this._lastIdentityKey = identityKey;
-    return true;
+    return false;
   },
 
-  /**
-   * User tapped "Activar notificaciones".
-   * Returns { ok, reason } — permission is requested immediately (user gesture).
-   */
-  async enableDeliveryPush(userId) {
-    if (!userId) return { ok: false, reason: 'no_user' };
-
-    const perm = await this.requestBrowserPermission();
-    if (perm === 'denied') return { ok: false, reason: 'denied' };
-    if (perm === 'default' || perm === 'unsupported') return { ok: false, reason: 'dismissed' };
+  async _ensureReadyAndPermission(requestPermission = false) {
+    const perm = requestPermission
+      ? await this.requestBrowserPermission()
+      : this.getBrowserPermission();
+    if (perm !== 'granted') return { ok: false, reason: perm === 'denied' ? 'denied' : 'dismissed' };
 
     if (!this.isConfigured() && typeof window.loadAppSettings === 'function') {
       try { await window.loadAppSettings(); } catch (_) { /* ignore */ }
@@ -307,95 +174,48 @@ const PushNotifications = {
 
     const inited = await this.initSDK();
     if (!inited) return { ok: false, reason: 'init_failed' };
-
-    const id = String(userId);
-    this._lastIdentityKey = null;
-
-    return new Promise((resolve) => {
-      this._enqueue(async (OneSignal) => {
-        try {
-          const ok = await this._ensureSubscribed(OneSignal, true);
-          if (!ok) return resolve({ ok: false, reason: 'subscribe_failed' });
-
-          const bound = await this._bindUserIdentity(OneSignal, id, 'delivery');
-          resolve(bound ? { ok: true, reason: 'granted' } : { ok: false, reason: 'error' });
-        } catch (e) {
-          if (!this._isBenignOneSignalError(e)) console.warn('enableDeliveryPush failed', e);
-          resolve({ ok: false, reason: 'error' });
-        }
-      });
-    });
+    return { ok: true, reason: 'ready' };
   },
 
-  async _safeLogin(OneSignal, id) {
-    if (typeof OneSignal.login !== 'function') return;
-    try {
-      await OneSignal.login(id);
-    } catch (e) {
-      if (this._isBenignOneSignalError(e)) return;
-      const status = e?.status || e?.statusCode;
-      const msg = String(e?.message || e || '');
-      if (status === 409 || msg.includes('409')) {
-        await new Promise((r) => setTimeout(r, 400));
-        try {
-          await OneSignal.login(id);
-        } catch (retryErr) {
-          if (!this._isBenignOneSignalError(retryErr)) throw retryErr;
-        }
-      } else {
-        throw e;
-      }
-    }
-  },
-
-  logout() {
-    this._clearStoredIdentity();
-    if (!window.OneSignalDeferred || !this.isReady()) return;
-    this._enqueue(async (OneSignal) => {
-      try {
-        const token = OneSignal.User.PushSubscription.token;
-        if (!token) return;
-        await OneSignal.User.removeTags(['user_id', 'role', 'restaurant_id']);
-      } catch (e) {
-        if (!this._isBenignOneSignalError(e)) console.warn('OneSignal logout failed', e);
-      }
-    });
-  },
-
-  logoutWhenReady() {
-    this._clearStoredIdentity();
-  },
-
-  /** Role or user change — login + tags (no logout; avoids stale subscription PATCH). */
-  registerWithRoleSwitch(userId, role, extraTags = {}) {
-    if (!userId || !window.OneSignalDeferred || !this.isReady()) return;
+  async register(userId, role = 'customer', extraTags = {}) {
+    if (!userId) return false;
     const roleTag = String(role || 'customer').toLowerCase().replace(/\s+/g, '_');
+    const key = `${roleTag}:${String(userId)}:${extraTags.restaurant_id || ''}`;
+    if (this._lastRegisterKey === key) return true;
 
-    this._enqueue(async (OneSignal) => {
-      const ok = await this._ensureSubscribed(OneSignal, false);
-      if (!ok) return;
-      await this._bindUserIdentity(OneSignal, userId, roleTag, extraTags);
-    });
+    const ready = await this._ensureReadyAndPermission(false);
+    if (!ready.ok) return false;
+
+    const ok = await this._saveTokenForUser(userId, roleTag);
+    if (ok) this._lastRegisterKey = key;
+    return ok;
   },
 
   registerDelivery(userId) {
-    if (!userId) return;
-    if (this.getBrowserPermission() !== 'granted') return;
-    const stored = this._readStoredIdentity();
-    if (stored.role && stored.role !== 'delivery') {
-      return this.registerWithRoleSwitch(userId, 'delivery');
-    }
     return this.register(userId, 'delivery');
   },
 
-  register(userId, role = 'customer', extraTags = {}) {
-    if (!userId || !window.OneSignalDeferred || !this.isReady()) return;
+  registerStoreOwner(userId, restaurantId) {
+    return this.register(userId, 'store_owner', restaurantId ? { restaurant_id: String(restaurantId) } : {});
+  },
 
-    this._enqueue(async (OneSignal) => {
-      const ok = await this._ensureSubscribed(OneSignal, false);
-      if (!ok) return;
-      await this._bindUserIdentity(OneSignal, userId, role, extraTags);
-    });
+  async enableDeliveryPush(userId) {
+    if (!userId) return { ok: false, reason: 'no_user' };
+    const ready = await this._ensureReadyAndPermission(true);
+    if (!ready.ok) return ready;
+
+    const ok = await this._saveTokenForUser(userId, 'delivery');
+    if (!ok) return { ok: false, reason: 'token_save_failed' };
+    this._lastRegisterKey = `delivery:${String(userId)}:`;
+    return { ok: true, reason: 'granted' };
+  },
+
+  logout() {
+    this._lastRegisterKey = null;
+  },
+
+  logoutWhenReady() {
+    this.logout();
   },
 
   registerForContext() {
@@ -404,55 +224,43 @@ const PushNotifications = {
   },
 
   _registerForContextNow() {
-    if (!this.isReady()) return;
-    const path = window.location.pathname || '';
+    const p = window.location.pathname || '';
     let deliveryUser = null;
     let storeOwnerUser = null;
-    try {
-      deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
-    } catch (_) { /* ignore */ }
-    try {
-      storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null');
-    } catch (_) { /* ignore */ }
+    try { deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null'); } catch (_) { /* ignore */ }
+    try { storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null'); } catch (_) { /* ignore */ }
 
-    if (path.startsWith('/delivery')) {
-      if (deliveryUser?.id && this.getBrowserPermission() === 'granted') {
-        return this.registerDelivery(deliveryUser.id);
-      }
-      if (!deliveryUser?.id) this._clearStoredIdentity();
+    if (p.startsWith('/delivery')) {
+      if (deliveryUser?.id) this.registerDelivery(deliveryUser.id);
       return;
     }
-    if (path.startsWith('/store-owner')) {
+    if (p.startsWith('/store-owner')) {
       if (storeOwnerUser?.id) {
-        const extra = {};
         const rid = storeOwnerUser.restaurant?.id || storeOwnerUser.restaurant_id;
-        if (rid) extra.restaurant_id = String(rid);
-        const stored = this._readStoredIdentity();
-        if (stored.role && stored.role !== 'store_owner') {
-          return this.registerWithRoleSwitch(storeOwnerUser.id, 'store_owner', extra);
-        }
-        return this.register(storeOwnerUser.id, 'store_owner', extra);
+        this.registerStoreOwner(storeOwnerUser.id, rid);
       }
-      this.logout();
       return;
     }
-    if (typeof Store !== 'undefined' && Store.isLoggedIn) {
-      const stored = this._readStoredIdentity();
-      if (stored.role && stored.role !== 'customer' && !stored.role.includes('customer')) {
-        return this.registerWithRoleSwitch(Store.user.id, Store.user.role || 'customer');
-      }
-      return this.register(Store.user.id, Store.user.role || 'customer');
+    if (typeof Store !== 'undefined' && Store.isLoggedIn && Store.user?.id) {
+      this.register(Store.user.id, Store.user.role || 'customer');
     }
-    if (this._lastIdentityKey) this.logout();
   },
 
-  registerStoreOwner(userId, restaurantId) {
-    const extra = restaurantId ? { restaurant_id: String(restaurantId) } : {};
-    const stored = this._readStoredIdentity();
-    if (stored.role && stored.role !== 'store_owner') {
-      return this.registerWithRoleSwitch(userId, 'store_owner', extra);
-    }
-    this.register(userId, 'store_owner', extra);
+  _readPayloadData(payload) {
+    const d = payload?.data || {};
+    const n = payload?.notification || {};
+    return {
+      type: d.type || '',
+      recipient_role: d.recipient_role || '',
+      order_id: d.order_id || d.orderId || '',
+      unique_order_id: d.unique_order_id || d.uniqueOrderId || '',
+      url: d.url || d.web_url || d.link || n.click_action || '',
+    };
+  },
+
+  _handleForegroundMessage(payload) {
+    const data = this._readPayloadData(payload);
+    window.dispatchEvent(new CustomEvent('app:push-foreground', { detail: { payload, data } }));
   },
 };
 

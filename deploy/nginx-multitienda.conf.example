@@ -20,8 +20,8 @@ server {
         try_files $uri =404;
     }
 
-    location ~* ^/(app/)?OneSignalSDKWorker\.js$ {
-        alias /ruta/a/multitienda-node/public/app/OneSignalSDKWorker.js;
+    location = /firebase-messaging-sw.js {
+        alias /ruta/a/multitienda-node/public/firebase-messaging-sw.js;
         default_type application/javascript;
         add_header Service-Worker-Allowed "/";
         expires 1d;

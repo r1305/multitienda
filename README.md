@@ -95,22 +95,22 @@ pm2 startup
 
 Procesos:
 - `multitienda-api` — varios workers Node (`PM2_INSTANCES=max`)
-- `multitienda-notifications` — cola Bull (Firebase/OneSignal)
+- `multitienda-notifications` — cola Bull (Firebase FCM)
 
 ### cPanel / Passenger
 
 **Node.js 20** es compatible. No uses `connect-session-sequelize@8` (pide Node 22).
 
-En cPanel, `npm install` puede fallar con `fork: Resource temporarily unavailable` por el postinstall de Firebase. Usa:
+En cPanel, si el servidor está muy cargado, `npm install` puede fallar con `fork: Resource temporarily unavailable`. Usa:
 
 ```bash
 cd ~/multitienda-node
 npm run install:cpanel
 ```
 
-Equivale a `npm install --ignore-scripts --omit=optional` (sin Firebase nativo; OneSignal sigue funcionando).
+Equivale a `npm install --ignore-scripts`.
 
-Si necesitas Firebase FCM, instala `node_modules` en tu PC con `npm run install:full` y súbelo por FTP, o ejecuta `npm install` cuando el servidor tenga pocos procesos activos.
+Si necesitas Firebase FCM y cPanel falla por recursos, instala `node_modules` en tu PC con `npm run install:full` y súbelo por FTP, o ejecuta `npm install` cuando el servidor tenga pocos procesos activos.
 
 ```env
 # Startup file: passenger_app.js

@@ -1,6 +1,6 @@
-# OneSignal service worker — must return JavaScript, not SPA index.html
+# Firebase Messaging service worker — must return JavaScript, not SPA index.html
 <IfModule mod_headers.c>
-  <FilesMatch "(?i)^OneSignalSDKWorker\.js$">
+  <FilesMatch "(?i)^firebase-messaging-sw\.js$">
     Header set Content-Type "application/javascript; charset=utf-8"
     Header set Service-Worker-Allowed "/"
   </FilesMatch>
@@ -8,6 +8,5 @@
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteRule ^OneSignalSDKWorker\.js$ - [L,NC]
-  RewriteRule ^app/OneSignalSDKWorker\.js$ - [L,NC]
+  RewriteRule ^firebase-messaging-sw\.js$ - [L,NC]
 </IfModule>

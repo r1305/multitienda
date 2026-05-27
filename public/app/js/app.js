@@ -91,7 +91,7 @@ window.loadAppSettings = loadAppSettings;
 (async () => {
   try {
     await loadAppSettings();
-    if (Store.settings.onesignalAppId && window.PushNotifications) {
+    if (window.PushNotifications) {
       await PushNotifications.initSDK();
       PushNotifications.registerForContext();
     }
@@ -105,13 +105,5 @@ window.loadAppSettings = loadAppSettings;
     }
   } catch(e) { console.warn('Failed to load settings after retries:', e.message || e); }
 })();
-
-window.addEventListener('unhandledrejection', (ev) => {
-  const reason = ev.reason;
-  const msg = String(reason?.message || reason || '');
-  if (reason?.name === 'AbortError' || msg.includes('AbortError') || msg.includes('connection was closed')) {
-    ev.preventDefault();
-  }
-});
 
 app.mount('#app');

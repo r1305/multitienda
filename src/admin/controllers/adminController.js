@@ -1327,7 +1327,7 @@ exports.uploadFavicon = async (req, res) => {
     const cache = require('../../helpers/cache');
     await cache.del('settings:all');
     await cache.del('admin:settings:inject');
-    await cache.del('settings:onesignal');
+    await cache.del('settings:appBaseUrl');
     await cache.invalidate('restaurants:');
     req.flash('success', 'Favicon actualizado');
   } catch (err) { req.flash('error', 'Error uploading favicon'); }
@@ -1355,7 +1355,7 @@ exports.saveSettings = async (req, res) => {
     await cache.del('settings:all');
     await cache.del('settings:map');
     await cache.del('admin:settings:inject');
-    await cache.del('settings:onesignal');
+    await cache.del('settings:appBaseUrl');
     await cache.del('settings:deliveryRadius');
     await cache.invalidate('restaurants:');
     req.flash('success', 'Settings saved');

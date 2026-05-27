@@ -47,7 +47,7 @@ var body = `
                 <p><strong>Solo Repartidores:</strong> Envía a cada usuario con rol Delivery Guy (aunque no tenga token).</p>
                 <p><strong>Usuarios específicos:</strong> IDs de la tabla de abajo.</p>
                 <hr>
-                <p class="text-muted mb-0"><i class="fas fa-bell"></i> Push web: el repartidor debe entrar a <code>/delivery</code>, iniciar sesión y aceptar notificaciones en el navegador.</p>
+                <p class="text-muted mb-0"><i class="fas fa-bell"></i> Push web (Firebase): el repartidor debe entrar a <code>/delivery</code>, iniciar sesión y aceptar notificaciones en el navegador.</p>
             </div>
         </div>
     </div>
@@ -61,8 +61,8 @@ var body = `
     </div>
     <div class="card-body p-0">
         <p class="px-3 pt-3 mb-2 text-muted" style="font-size:12px">
-            <strong>Con token:</strong> dispositivo registrado en la base de datos (suele ser app móvil).
-            <strong>Sin token:</strong> aún puede recibir push web si usó OneSignal en <code>/delivery</code> — no aparece aquí.
+            <strong>Con token:</strong> dispositivo registrado en la base de datos (móvil o web Firebase).
+            <strong>Sin token:</strong> no recibirá push hasta abrir <code>/delivery</code> y aceptar notificaciones.
             Use <em>Solo Repartidores</em> para enviar a todos por rol.
         </p>
         <div class="table-responsive">

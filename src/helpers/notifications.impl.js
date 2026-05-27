@@ -26,26 +26,6 @@ function getFirebaseApp() {
   }
 }
 
-async function postOneSignal(apiKey, payload) {
-  const response = await fetch('https://onesignal.com/api/v1/notifications', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + apiKey },
-    body: JSON.stringify(payload),
-  });
-  return response.json();
-}
-
-async function getOneSignalKeys() {
-  const cache = require('./cache');
-  const cached = await cache.get('settings:onesignal');
-  if (cached) return cached;
-  const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('onesignalAppId', 'onesignalRestApiKey')");
-  const config = {};
-  rows.forEach((r) => { config[r.key] = r.value; });
-  await cache.set('settings:onesignal', config, 600);
-  return config;
-}
-
 async function getAppBaseUrl() {
   const cache = require('./cache');
   const cached = await cache.get('settings:appBaseUrl');
@@ -95,85 +75,18 @@ function sanitizeNotificationData(data, title, message, baseUrl) {
   return notifData;
 }
 
-async function sendViaOneSignal(title, message, userId, role, data) {
-  try {
-    const config = await getOneSignalKeys();
-    if (!config.onesignalAppId || !config.onesignalRestApiKey) return;
-
-    const baseUrl = await getAppBaseUrl();
-    const iconUrl = toAbsoluteAssetUrl('/assets/img/favicons/favicon-96x96.png', baseUrl);
-
-    const payload = {
-      app_id: config.onesignalAppId,
-      headings: { en: title },
-      contents: { en: message },
-      data: sanitizeNotificationData(data || {}, title, message, baseUrl),
-      priority: 10,
-    };
-
-    if (iconUrl) {
-      payload.chrome_web_badge = iconUrl;
-      payload.chrome_web_icon = iconUrl;
-      payload.firefox_icon = iconUrl;
-    }
-
-    if (baseUrl) {
-      if (data.type === 'new_order' && data.order_id) {
-        payload.url = `${baseUrl}/store-owner/order/${data.order_id}`;
-        payload.web_url = payload.url;
-      } else if (data.type === 'delivery_assigned' && data.order_id) {
-        payload.url = `${baseUrl}/delivery/order/${data.order_id}`;
-        payload.web_url = payload.url;
-      } else if (data.type === 'chat' && data.order_id) {
-        if (data.recipient_role === 'delivery') {
-          payload.url = `${baseUrl}/delivery/order/${data.order_id}`;
-        } else if (data.unique_order_id) {
-          payload.url = `${baseUrl}/order/${data.unique_order_id}`;
-        }
-        payload.web_url = payload.url;
-      } else if (data.unique_order_id && !role) {
-        payload.url = `${baseUrl}/order/${data.unique_order_id}`;
-        payload.web_url = payload.url;
-      }
-      const bigImage = toAbsoluteAssetUrl(data.image, baseUrl);
-      if (bigImage) payload.chrome_web_image = bigImage;
-    }
-
-    if (!userId && data.restaurant_id && data.recipient_role === 'store_owner') {
-      payload.filters = [
-        { field: 'tag', key: 'restaurant_id', relation: '=', value: String(data.restaurant_id) },
-        { field: 'tag', key: 'role', relation: '=', value: 'store_owner' },
-      ];
-    } else if (userId) {
-      const uid = String(userId);
-      payload.include_aliases = { external_id: [uid] };
-      payload.target_channel = 'push';
-    } else if (role) {
-      payload.filters = [{ field: 'tag', key: 'role', relation: '=', value: role }];
-    } else {
-      payload.included_segments = ['All'];
-    }
-
-    let result = await postOneSignal(config.onesignalRestApiKey, payload);
-
-    if (userId && (result.errors || result.recipients === 0)) {
-      const tagPayload = { ...payload };
-      delete tagPayload.include_aliases;
-      delete tagPayload.target_channel;
-      tagPayload.filters = [{ field: 'tag', key: 'user_id', relation: '=', value: String(userId) }];
-      result = await postOneSignal(config.onesignalRestApiKey, tagPayload);
-    }
-
-    if (result.errors) {
-      console.error('OneSignal error:', JSON.stringify(result.errors));
-    } else if (result.recipients === 0) {
-      if (userId) console.warn('OneSignal: no recipients for user', userId);
-      else if (role) console.warn('OneSignal: no recipients for role tag', role);
-    }
-    return result;
-  } catch (e) {
-    console.error('OneSignal error:', e.message);
+function inferNotificationUrl(data, baseUrl) {
+  if (!baseUrl || !data) return null;
+  if (data.url || data.web_url || data.link) return data.url || data.web_url || data.link;
+  if (data.type === 'new_order' && data.order_id) return `${baseUrl}/store-owner/order/${data.order_id}`;
+  if (data.type === 'delivery_assigned' && data.order_id) return `${baseUrl}/delivery/order/${data.order_id}`;
+  if (data.type === 'delivery_order') return `${baseUrl}/delivery/orders`;
+  if (data.type === 'chat' && data.order_id) {
+    if (data.recipient_role === 'delivery') return `${baseUrl}/delivery/order/${data.order_id}`;
+    if (data.unique_order_id) return `${baseUrl}/order/${data.unique_order_id}`;
   }
+  if (data.unique_order_id) return `${baseUrl}/order/${data.unique_order_id}`;
+  return null;
 }
 
 async function sendViaFCM(title, message, userId, role, data) {
@@ -188,12 +101,35 @@ async function sendViaFCM(title, message, userId, role, data) {
     throw reqErr;
   }
   const messaging = admin.messaging(app);
-
-  const notification = { title, body: message };
+  const baseUrl = await getAppBaseUrl();
+  const notifData = sanitizeNotificationData(data || {}, title, message, baseUrl);
+  const link = inferNotificationUrl(notifData, baseUrl);
+  if (link) {
+    notifData.url = link;
+    notifData.web_url = link;
+    notifData.link = link;
+  }
   const fcmData = {};
-  Object.entries(data).forEach(([k, v]) => { fcmData[k] = String(v); });
+  Object.entries(notifData).forEach(([k, v]) => { fcmData[k] = String(v); });
   fcmData.title = title;
   fcmData.message = message;
+  const iconUrl = toAbsoluteAssetUrl('/assets/img/favicons/favicon-96x96.png', baseUrl);
+  const imageUrl = toAbsoluteAssetUrl(notifData.image, baseUrl);
+
+  const webpush = {
+    headers: { Urgency: 'high' },
+    notification: {
+      title,
+      body: message,
+      icon: iconUrl || undefined,
+      badge: iconUrl || undefined,
+      image: imageUrl || undefined,
+      vibrate: [200, 100, 200],
+    },
+    fcmOptions: link ? { link } : undefined,
+  };
+  const android = { priority: 'high', notification: { sound: 'default', channelId: 'orders' } };
+  const apns = { payload: { aps: { sound: 'default', badge: 1 } } };
 
   try {
     if (userId) {
@@ -207,10 +143,11 @@ async function sendViaFCM(title, message, userId, role, data) {
 
       const result = await messaging.sendEachForMulticast({
         tokens: tokenList,
-        notification,
+        notification: { title, body: message },
         data: fcmData,
-        android: { priority: 'high', notification: { sound: 'default', channelId: 'orders' } },
-        apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+        webpush,
+        android,
+        apns,
       });
 
       if (result.responses) {
@@ -230,18 +167,20 @@ async function sendViaFCM(title, message, userId, role, data) {
       const topic = role.replace(' ', '_').toLowerCase();
       return messaging.send({
         topic,
-        notification,
+        notification: { title, body: message },
         data: fcmData,
-        android: { priority: 'high', notification: { sound: 'default', channelId: 'orders' } },
-        apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+        webpush,
+        android,
+        apns,
       });
     }
     return messaging.send({
       topic: 'all',
-      notification,
+      notification: { title, body: message },
       data: fcmData,
-      android: { priority: 'high', notification: { sound: 'default', channelId: 'orders' } },
-      apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+      webpush,
+      android,
+      apns,
     });
   } catch (e) {
     console.error('FCM error:', e.message);
@@ -250,9 +189,7 @@ async function sendViaFCM(title, message, userId, role, data) {
 }
 
 async function sendPushNotification(title, message, userId = null, role = null, data = {}) {
-  const fcmResult = await sendViaFCM(title, message, userId, role, data);
-  await sendViaOneSignal(title, message, userId, role, data);
-  return fcmResult;
+  return sendViaFCM(title, message, userId, role, data);
 }
 
 async function saveNotification(userId, title, message, extra = {}) {
@@ -327,23 +264,10 @@ async function notifyStoreNewOrder(order, restaurantId) {
 
   for (const userId of ownerIds) {
     await saveNotification(userId, title, message, data);
+    await sendPushNotification(title, message, userId, null, data);
   }
-
-  const restaurantResult = await sendViaOneSignal(title, message, null, null, data);
-  const restaurantPushFailed = !restaurantResult
-    || restaurantResult.errors
-    || (typeof restaurantResult.recipients === 'number' && restaurantResult.recipients === 0);
-
-  if (restaurantPushFailed && ownerIds.length) {
-    for (const userId of ownerIds) {
-      await sendPushNotification(title, message, userId, null, {
-        order_id: data.order_id,
-        unique_order_id: data.unique_order_id,
-        type: 'new_order',
-      });
-    }
-  } else if (restaurantPushFailed) {
-    console.warn('[notifyStoreNewOrder] No push recipients for restaurant', rid, '- assign owner in admin and open /store-owner with notifications enabled');
+  if (!ownerIds.length) {
+    console.warn('[notifyStoreNewOrder] No push recipients for restaurant', rid, '- assign owner in admin and ensure /store-owner accepted notifications');
   }
 }
 
@@ -377,7 +301,7 @@ async function getDeliveryPushStatus() {
       hasPushToken: hasToken,
       pushStatus: hasToken ? 'token' : 'none',
       pushLabel: hasToken
-        ? 'Token registrado (app móvil o guardado)'
+        ? 'Token registrado (Firebase móvil/web)'
         : 'Sin token — debe abrir /delivery y aceptar notificaciones',
     };
   });

@@ -54,10 +54,16 @@ var body = `
                 <div class="tab-pane fade" id="notifications">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group"><label>OneSignal App ID</label><input type="text" name="onesignalAppId" class="form-control" value="${s.onesignalAppId || ''}"></div>
-                            <div class="form-group"><label>OneSignal REST API Key</label><input type="text" name="onesignalRestApiKey" class="form-control" value="${s.onesignalRestApiKey || ''}"></div>
+                            <div class="form-group"><label>Firebase API Key</label><input type="text" name="firebaseApiKey" class="form-control" value="${s.firebaseApiKey || ''}"></div>
+                            <div class="form-group"><label>Firebase Auth Domain</label><input type="text" name="firebaseAuthDomain" class="form-control" value="${s.firebaseAuthDomain || ''}"></div>
+                            <div class="form-group"><label>Firebase Project ID</label><input type="text" name="firebaseProjectId" class="form-control" value="${s.firebaseProjectId || ''}"></div>
+                            <div class="form-group"><label>Firebase Storage Bucket</label><input type="text" name="firebaseStorageBucket" class="form-control" value="${s.firebaseStorageBucket || ''}"></div>
                         </div>
                         <div class="col-md-6">
+                            <div class="form-group"><label>Firebase Messaging Sender ID</label><input type="text" name="firebaseMessagingSenderId" class="form-control" value="${s.firebaseMessagingSenderId || ''}"></div>
+                            <div class="form-group"><label>Firebase App ID</label><input type="text" name="firebaseAppId" class="form-control" value="${s.firebaseAppId || ''}"></div>
+                            <div class="form-group"><label>Firebase Measurement ID (opcional)</label><input type="text" name="firebaseMeasurementId" class="form-control" value="${s.firebaseMeasurementId || ''}"></div>
+                            <div class="form-group"><label>Firebase VAPID Key (Web Push Certificate)</label><input type="text" name="firebaseVapidKey" class="form-control" value="${s.firebaseVapidKey || ''}"></div>
                             <div class="form-group"><label>Enable Push Notifications</label><select name="enablePushNotificationOrders" class="form-control"><option value="true" ${s.enablePushNotificationOrders == 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enablePushNotificationOrders != 'true' ? 'selected' : ''}>No</option></select></div>
                         </div>
                     </div>

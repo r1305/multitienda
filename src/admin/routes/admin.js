@@ -26,7 +26,7 @@ const injectSettings = async (req, res, next) => {
     let settings = await cache.get(cacheKey);
     if (!settings) {
       const { sequelize } = require('../../models');
-      const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('onesignalAppId','currencySymbol','currencyFormat')");
+      const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('currencySymbol','currencyFormat')");
       settings = {};
       rows.forEach((r) => { settings[r.key] = r.value; });
       await cache.set(cacheKey, settings, parseInt(process.env.CACHE_ADMIN_SETTINGS_TTL || '300', 10));

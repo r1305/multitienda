@@ -130,7 +130,7 @@ const DeliveryOrdersPage = {
     showPushBanner() {
       if (typeof Notification === 'undefined') return false;
       if (this.pushState === 'granted' || this.pushState === 'unsupported') return false;
-      if (this.settingsReady && !(Store.settings && Store.settings.onesignalAppId)) return false;
+      if (this.settingsReady && window.PushNotifications && !PushNotifications.isConfigured()) return false;
       return true;
     },
     user() { return JSON.parse(localStorage.getItem('deliveryUser') || '{}'); },
@@ -153,7 +153,7 @@ const DeliveryOrdersPage = {
       this.syncPushState();
       this.tryRegisterPush();
     };
-    window.addEventListener('app:onesignal-ready', this._onPushReady);
+    window.addEventListener('app:push-ready', this._onPushReady);
     window.addEventListener('app:settings-ready', this._onPushReady);
     if (Store.settings && Object.keys(Store.settings).length) this.settingsReady = true;
     this.tryRegisterPush();
@@ -163,7 +163,7 @@ const DeliveryOrdersPage = {
   beforeUnmount() {
     if (this.interval) clearInterval(this.interval);
     if (this._onPushReady) {
-      window.removeEventListener('app:onesignal-ready', this._onPushReady);
+      window.removeEventListener('app:push-ready', this._onPushReady);
       window.removeEventListener('app:settings-ready', this._onPushReady);
     }
   },
@@ -203,7 +203,7 @@ const DeliveryOrdersPage = {
         } else if (result.reason === 'dismissed') {
           this.pushError = 'Debes aceptar el permiso cuando Edge lo solicite.';
         } else if (result.reason === 'not_configured') {
-          this.pushError = 'Push no configurado en el servidor (OneSignal App ID).';
+          this.pushError = 'Push no configurado en el servidor (Firebase).';
         } else if (result.reason === 'init_failed') {
           this.pushError = 'No se pudo iniciar el servicio de notificaciones. Recarga la página e inténtalo de nuevo.';
         } else {

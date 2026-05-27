@@ -186,7 +186,6 @@
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
       function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('open');
@@ -263,14 +262,6 @@
       }
       (function() { var t = localStorage.getItem('adminTheme') || 'light'; document.documentElement.setAttribute('data-theme', t); updateThemeIcon(); })();
 
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async function(OneSignal) {
-        const appId = '<%= typeof settings !== "undefined" && settings.onesignalAppId ? settings.onesignalAppId : "" %>';
-        if (appId) {
-          await OneSignal.init({ appId: appId, serviceWorkerPath: new URL('/public/api/onesignal-service-worker.js', window.location.origin).href, serviceWorkerParam: { scope: '/' } });
-          OneSignal.User.addTags({ user_id: '<%= typeof user !== "undefined" && user ? user.id : "1" %>', role: 'admin' });
-        }
-      });
     </script>
     <% if (typeof scripts !== 'undefined') { %><%- scripts %><% } %>
 </body>
