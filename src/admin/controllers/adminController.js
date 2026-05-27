@@ -72,17 +72,34 @@ exports.dashboard = async (req, res) => {
     `),
       qa(`
       SELECT u.id, u.name, u.phone, u.is_active,
-        (SELECT COUNT(*) FROM orders WHERE delivery_guy_id = u.id AND orderstatus_id IN (3,4)) as active_orders
+        (SELECT COUNT(*) FROM accept_deliveries ad
+          INNER JOIN orders o ON o.id = ad.order_id
+          WHERE ad.user_id = u.id AND o.orderstatus_id IN (3, 4)) as active_orders
       FROM users u
       INNER JOIN model_has_roles mr ON u.id = mr.model_id
       INNER JOIN roles r ON mr.role_id = r.id
       WHERE r.name = 'Delivery Guy' AND u.is_active = 1
-      ORDER BY active_orders DESC LIMIT 5
+      ORDER BY active_orders DESC, u.name ASC LIMIT 5
     `),
       sequelize.query("SELECT `value` FROM settings WHERE `key` = 'currencySymbol' LIMIT 1").catch(() => [[]]),
     ]);
 
     const currency = settingsRows[0]?.length ? settingsRows[0][0].value : '$';
+
+    const ONLINE_GPS_MS = 5 * 60 * 1000;
+    if (activeDelivery.length) {
+      try {
+        const gps = require('../../helpers/gps');
+        const positions = await gps.getDeliveryGpsBatch(activeDelivery.map((d) => d.id));
+        activeDelivery.forEach((d) => {
+          const pos = positions[d.id];
+          const ts = pos?.updated_at;
+          d.is_online = !!(ts && Date.now() - ts < ONLINE_GPS_MS);
+        });
+      } catch (gpsErr) {
+        console.warn('Dashboard delivery GPS:', gpsErr.message);
+      }
+    }
 
     res.render('admin/dashboard', {
       user: req.session.user,
