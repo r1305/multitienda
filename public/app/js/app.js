@@ -60,17 +60,34 @@ app.component('tab-bar', TabBar);
 app.use(router);
 Store.applyTheme();
 
-// Load settings on startup
+// Load settings on startup (retry — first request can fail during cold start / wrong API base)
+async function loadAppSettings() {
+  const delays = [0, 1500, 4000];
+  let lastErr = null;
+  for (let i = 0; i < delays.length; i++) {
+    if (delays[i]) await new Promise((r) => setTimeout(r, delays[i]));
+    try {
+      await API.resolveBase(i > 0);
+      const settings = await API.getSettings();
+      if (Array.isArray(settings)) {
+        settings.forEach((s) => { Store.settings[s.key] = s.value; });
+        if (Store.settings.currencySymbol) Store.currency = Store.settings.currencySymbol;
+        else if (Store.settings.currencyFormat) Store.currency = Store.settings.currencyFormat;
+        if (Store.settings.currencySymbolAlign) Store.currencyAlign = Store.settings.currencySymbolAlign;
+        window.dispatchEvent(new CustomEvent('app:settings-ready'));
+        return settings;
+      }
+    } catch (e) {
+      lastErr = e;
+      console.warn('[settings] attempt', i + 1, 'failed:', e.message || e);
+    }
+  }
+  throw lastErr || new Error('Failed to load settings');
+}
+
 (async () => {
   try {
-    const settings = await API.getSettings();
-    if (Array.isArray(settings)) {
-      settings.forEach(s => { Store.settings[s.key] = s.value; });
-      if (Store.settings.currencySymbol) Store.currency = Store.settings.currencySymbol;
-      else if (Store.settings.currencyFormat) Store.currency = Store.settings.currencyFormat;
-      if (Store.settings.currencySymbolAlign) Store.currencyAlign = Store.settings.currencySymbolAlign;
-      window.dispatchEvent(new CustomEvent('app:settings-ready'));
-    }
+    await loadAppSettings();
     // Initialize OneSignal
     if (Store.settings.onesignalAppId) {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -126,7 +143,7 @@ Store.applyTheme();
       link.href = Store.settings.faviconUrl;
       document.head.appendChild(link);
     }
-  } catch(e) { console.error('Failed to load settings', e); }
+  } catch(e) { console.warn('Failed to load settings after retries:', e.message || e); }
 })();
 
 window.addEventListener('unhandledrejection', (ev) => {

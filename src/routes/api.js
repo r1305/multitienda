@@ -30,6 +30,7 @@ router.get('/onesignal-service-worker.js', (req, res) => {
 router.post('/coordinate-to-address', misc.coordinatesToAddress);
 router.post('/address-to-coordinate', misc.addressToCoordinates);
 router.post('/get-settings', misc.getSettings);
+router.get('/get-settings', misc.getSettings);
 router.get('/get-setting/:key', misc.getSettingByKey);
 router.post('/search-location/:query', misc.searchLocation);
 router.post('/popular-locations', misc.popularLocations);

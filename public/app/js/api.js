@@ -1,31 +1,134 @@
 const API = {
-  base: '/public/api',
-  token: localStorage.getItem('appToken') || null,
-  async post(path, data = {}) {
-    const headers = { 'Content-Type': 'application/json' };
-    const deliveryToken = localStorage.getItem('deliveryToken');
-    const storeOwnerToken = localStorage.getItem('storeOwnerToken');
-    let authToken = null;
-    // Chat: always use the token sent in the body (client vs delivery), not a stale deliveryToken in storage
-    if (path.startsWith('/conversation/') && data.token) {
-      authToken = data.token;
-    } else if (path.startsWith('/delivery/') && deliveryToken) {
-      authToken = deliveryToken;
-      data.token = deliveryToken;
-    } else if (path.startsWith('/store-owner/') && storeOwnerToken) {
-      authToken = storeOwnerToken;
-      data.token = storeOwnerToken;
-    } else if (this.token) {
-      authToken = this.token;
-      data.token = this.token;
-    }
-    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
-    const res = await fetch(this.base + path, { method: 'POST', headers, body: JSON.stringify(data) });
-    return res.json();
+  _base: null,
+  _baseCandidates: ['/api', '/public/api'],
+
+  get token() {
+    return localStorage.getItem('appToken') || null;
   },
-  setToken(t) { this.token = t; localStorage.setItem('appToken', t); },
-  clearToken() { this.token = null; localStorage.removeItem('appToken'); localStorage.removeItem('appUser'); },
-  getSettings() { return this.post('/get-settings'); },
+
+  _apiBaseFromMeta() {
+    const meta = document.querySelector('meta[name="api-base"]');
+    const content = meta && meta.getAttribute('content');
+    if (content && typeof content === 'string') {
+      const trimmed = content.trim().replace(/\/$/, '');
+      if (trimmed) return trimmed;
+    }
+    return null;
+  },
+
+  _candidateBases() {
+    const metaBase = this._apiBaseFromMeta();
+    const list = metaBase
+      ? [metaBase, ...this._baseCandidates.filter((b) => b !== metaBase)]
+      : [...this._baseCandidates];
+    return list;
+  },
+
+  async resolveBase(force) {
+    if (this._base && !force) return this._base;
+    for (const base of this._candidateBases()) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 10000);
+        const res = await fetch(`${base}/get-settings`, {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+          signal: ctrl.signal,
+        });
+        clearTimeout(timer);
+        if (res.ok) {
+          this._base = base;
+          return base;
+        }
+      } catch (_) { /* try next base */ }
+    }
+    this._base = this._candidateBases()[0];
+    return this._base;
+  },
+
+  async request(path, options = {}) {
+    const method = (options.method || 'POST').toUpperCase();
+    const data = options.data || {};
+    const headers = { Accept: 'application/json', ...(options.headers || {}) };
+    let body;
+
+    if (method !== 'GET' && method !== 'HEAD') {
+      headers['Content-Type'] = 'application/json';
+      const deliveryToken = localStorage.getItem('deliveryToken');
+      const storeOwnerToken = localStorage.getItem('storeOwnerToken');
+      let authToken = null;
+      if (path.startsWith('/conversation/') && data.token) {
+        authToken = data.token;
+      } else if (path.startsWith('/delivery/') && deliveryToken) {
+        authToken = deliveryToken;
+        data.token = deliveryToken;
+      } else if (path.startsWith('/store-owner/') && storeOwnerToken) {
+        authToken = storeOwnerToken;
+        data.token = storeOwnerToken;
+      } else if (this.token) {
+        authToken = this.token;
+        data.token = this.token;
+      }
+      if (authToken) headers.Authorization = 'Bearer ' + authToken;
+      body = JSON.stringify(data);
+    }
+
+    const bases = this._base
+      ? [this._base, ...this._candidateBases().filter((b) => b !== this._base)]
+      : this._candidateBases();
+
+    let lastError = null;
+    for (const base of bases) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), options.timeout || 20000);
+        const res = await fetch(base + path, {
+          method,
+          headers,
+          body,
+          credentials: 'same-origin',
+          cache: 'no-store',
+          signal: ctrl.signal,
+        });
+        clearTimeout(timer);
+        if (!res.ok) {
+          lastError = new Error('HTTP ' + res.status);
+          continue;
+        }
+        this._base = base;
+        return await res.json();
+      } catch (err) {
+        lastError = err;
+        if (this._base === base) this._base = null;
+      }
+    }
+    throw lastError || new Error('Network error');
+  },
+
+  async post(path, data = {}) {
+    return this.request(path, { method: 'POST', data });
+  },
+
+  async get(path) {
+    return this.request(path, { method: 'GET' });
+  },
+
+  setToken(t) {
+    localStorage.setItem('appToken', t);
+  },
+
+  clearToken() {
+    localStorage.removeItem('appToken');
+    localStorage.removeItem('appUser');
+  },
+
+  async getSettings() {
+    await this.resolveBase();
+    return this.get('/get-settings');
+  },
+
   getPopularLocations() { return this.post('/popular-geo-locations'); },
   getLanguages() { return this.post('/get-all-languages'); },
   getLanguage(id) { return this.post('/get-single-language', { id }); },
