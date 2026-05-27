@@ -69,6 +69,7 @@ Store.applyTheme();
       if (Store.settings.currencySymbol) Store.currency = Store.settings.currencySymbol;
       else if (Store.settings.currencyFormat) Store.currency = Store.settings.currencyFormat;
       if (Store.settings.currencySymbolAlign) Store.currencyAlign = Store.settings.currencySymbolAlign;
+      window.dispatchEvent(new CustomEvent('app:settings-ready'));
     }
     // Initialize OneSignal
     if (Store.settings.onesignalAppId) {
@@ -111,6 +112,7 @@ Store.applyTheme();
           }
         });
         window.__oneSignalReady = true;
+        window.dispatchEvent(new CustomEvent('app:onesignal-ready'));
         PushNotifications.registerForContext();
       });
     } else {
@@ -126,5 +128,13 @@ Store.applyTheme();
     }
   } catch(e) { console.error('Failed to load settings', e); }
 })();
+
+window.addEventListener('unhandledrejection', (ev) => {
+  const reason = ev.reason;
+  const msg = String(reason?.message || reason || '');
+  if (reason?.name === 'AbortError' || msg.includes('AbortError') || msg.includes('connection was closed')) {
+    ev.preventDefault();
+  }
+});
 
 app.mount('#app');

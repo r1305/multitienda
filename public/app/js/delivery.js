@@ -38,7 +38,7 @@ const DeliveryLoginPage = {
   data() { return { phone: '', password: '', error: '', success: '', loading: false, showRegister: false, regName: '', regEmail: '', regPhone: '', regPassword: '', regVehicle: '' }; },
   mounted() {
     if (this.deliveryUser) this.$router.push('/delivery/orders');
-    else if (window.PushNotifications) PushNotifications.logout();
+    else if (window.PushNotifications) PushNotifications.logoutWhenReady();
   },
   computed: { deliveryUser() { return JSON.parse(localStorage.getItem('deliveryUser') || 'null'); } },
   methods: {
@@ -124,11 +124,13 @@ const DeliveryOrdersPage = {
       </template>
     </div>`,
   setup() { return { Store }; },
-  data() { return { allOrders: [], myOrders: [], loading: false, gpsReady: false, lat: null, lng: null, activeTab: 'available', tabs: [{ id: 'available', label: 'Disponibles' }, { id: 'active', label: 'Activos' }, { id: 'completed', label: 'Completados' }], pushState: 'default', pushLoading: false }; },
+  data() { return { allOrders: [], myOrders: [], loading: false, gpsReady: false, lat: null, lng: null, activeTab: 'available', tabs: [{ id: 'available', label: 'Disponibles' }, { id: 'active', label: 'Activos' }, { id: 'completed', label: 'Completados' }], pushState: 'default', pushLoading: false, settingsReady: false }; },
   computed: {
     showPushBanner() {
-      if (!window.PushNotifications || !PushNotifications.isConfigured()) return false;
-      return this.pushState !== 'granted' && this.pushState !== 'unsupported';
+      if (typeof Notification === 'undefined') return false;
+      if (this.pushState === 'granted' || this.pushState === 'unsupported') return false;
+      if (this.settingsReady && !(Store.settings && Store.settings.onesignalAppId)) return false;
+      return true;
     },
     user() { return JSON.parse(localStorage.getItem('deliveryUser') || '{}'); },
     filteredOrders() {
@@ -142,18 +144,30 @@ const DeliveryOrdersPage = {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
     this.syncPushState();
     this._pushPoll = setInterval(() => this.syncPushState(), 3000);
+    this._onPushReady = () => {
+      this.settingsReady = true;
+      this.syncPushState();
+    };
+    window.addEventListener('app:onesignal-ready', this._onPushReady);
+    window.addEventListener('app:settings-ready', this._onPushReady);
+    if (Store.settings && Object.keys(Store.settings).length) this.settingsReady = true;
     this.getLocation();
     this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000);
   },
   beforeUnmount() {
     if (this.interval) clearInterval(this.interval);
     if (this._pushPoll) clearInterval(this._pushPoll);
+    if (this._onPushReady) {
+      window.removeEventListener('app:onesignal-ready', this._onPushReady);
+      window.removeEventListener('app:settings-ready', this._onPushReady);
+    }
   },
   methods: {
     syncPushState() {
       if (!window.PushNotifications) return;
       this.pushState = PushNotifications.getBrowserPermission();
-      if (this.pushState === 'granted' && this.user.id) {
+      if (Store.settings && Object.keys(Store.settings).length) this.settingsReady = true;
+      if (this.pushState === 'granted' && this.user.id && PushNotifications.isReady()) {
         PushNotifications.registerDelivery(this.user.id);
       }
     },
@@ -162,9 +176,9 @@ const DeliveryOrdersPage = {
       this.pushLoading = true;
       const ok = await PushNotifications.enableDeliveryPush(this.user.id);
       this.pushLoading = false;
-      this.pushState = PushNotifications.getBrowserPermission();
+      this.syncPushState();
       if (!ok && this.pushState === 'default') {
-        alert('No se pudo activar. Comprueba que el sitio use HTTPS y que OneSignal esté configurado.');
+        alert('No se pudo activar. Espera unos segundos e inténtalo de nuevo, o comprueba que el sitio use HTTPS.');
       }
     },
     getLocation() { if (!navigator.geolocation) { this.gpsReady = true; this.refresh(); return; } navigator.geolocation.getCurrentPosition((pos) => { this.lat = pos.coords.latitude; this.lng = pos.coords.longitude; this.gpsReady = true; this.refresh(); }, () => { this.gpsReady = true; this.refresh(); }, { timeout: 10000 }); },

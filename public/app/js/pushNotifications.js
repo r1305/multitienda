@@ -77,6 +77,29 @@ const PushNotifications = {
     return !!(typeof Store !== 'undefined' && Store.settings && Store.settings.onesignalAppId);
   },
 
+  isReady() {
+    return !!window.__oneSignalReady;
+  },
+
+  waitForReady(maxMs = 15000) {
+    if (this.isReady()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      const started = Date.now();
+      const tick = () => {
+        if (this.isReady()) return resolve(true);
+        if (Date.now() - started >= maxMs) return resolve(false);
+        setTimeout(tick, 200);
+      };
+      tick();
+    });
+  },
+
+  _isAbortError(e) {
+    const name = e?.name || '';
+    const msg = String(e?.message || e || '');
+    return name === 'AbortError' || msg.includes('AbortError') || msg.includes('connection was closed');
+  },
+
   /** Only call requestPermission from a click handler (Edge/Chrome block otherwise). */
   async _ensureSubscribed(OneSignal, requestPermission = false) {
     let permission = await OneSignal.Notifications.permission;
@@ -90,14 +113,17 @@ const PushNotifications = {
     return true;
   },
 
-  /** User tapped "Activar notificaciones" — must run synchronously from click. */
-  enableDeliveryPush(userId) {
-    return new Promise((resolve) => {
-      if (!userId || !window.OneSignalDeferred) return resolve(false);
-      const id = String(userId);
-      const tags = { user_id: id, role: 'delivery' };
-      this._lastIdentityKey = null;
+  /** User tapped "Activar notificaciones" — must run from a click handler. */
+  async enableDeliveryPush(userId) {
+    if (!userId || !window.OneSignalDeferred) return false;
+    const ready = await this.waitForReady();
+    if (!ready) return false;
 
+    const id = String(userId);
+    const tags = { user_id: id, role: 'delivery' };
+    this._lastIdentityKey = null;
+
+    return new Promise((resolve) => {
       this._enqueue(async (OneSignal) => {
         try {
           const ok = await this._ensureSubscribed(OneSignal, true);
@@ -108,7 +134,11 @@ const PushNotifications = {
             await this._switchExternalId(OneSignal, id);
           } else if (stored.external !== id) {
             if (stored.external && typeof OneSignal.logout === 'function') {
-              await OneSignal.logout();
+              try {
+                await OneSignal.logout();
+              } catch (e) {
+                if (!this._isAbortError(e)) throw e;
+              }
               await new Promise((r) => setTimeout(r, 300));
             }
             await this._safeLogin(OneSignal, id);
@@ -119,7 +149,7 @@ const PushNotifications = {
           this._lastIdentityKey = this._storageKey('delivery', id, {});
           resolve(true);
         } catch (e) {
-          console.warn('enableDeliveryPush failed', e);
+          if (!this._isAbortError(e)) console.warn('enableDeliveryPush failed', e);
           resolve(false);
         }
       });
@@ -131,11 +161,16 @@ const PushNotifications = {
     try {
       await OneSignal.login(id);
     } catch (e) {
+      if (this._isAbortError(e)) return;
       const status = e?.status || e?.statusCode;
       const msg = String(e?.message || e || '');
       if (status === 409 || msg.includes('409')) {
         if (typeof OneSignal.logout === 'function') {
-          await OneSignal.logout();
+          try {
+            await OneSignal.logout();
+          } catch (logoutErr) {
+            if (!this._isAbortError(logoutErr)) throw logoutErr;
+          }
           await new Promise((r) => setTimeout(r, 500));
         }
         await OneSignal.login(id);
@@ -147,17 +182,36 @@ const PushNotifications = {
 
   async _switchExternalId(OneSignal, id) {
     if (typeof OneSignal.logout === 'function') {
-      await OneSignal.logout();
+      try {
+        await OneSignal.logout();
+      } catch (e) {
+        if (!this._isAbortError(e)) throw e;
+      }
       await new Promise((r) => setTimeout(r, 400));
     }
     await this._safeLogin(OneSignal, id);
   },
 
   logout() {
-    if (!window.OneSignalDeferred) return;
+    if (!window.OneSignalDeferred || !this.isReady()) {
+      this._clearStoredIdentity();
+      return;
+    }
     this._clearStoredIdentity();
     this._enqueue(async (OneSignal) => {
-      if (typeof OneSignal.logout === 'function') await OneSignal.logout();
+      try {
+        if (typeof OneSignal.logout === 'function') await OneSignal.logout();
+      } catch (e) {
+        if (!this._isAbortError(e)) console.warn('OneSignal logout failed', e);
+      }
+    });
+  },
+
+  logoutWhenReady() {
+    if (this.isReady()) return this.logout();
+    this.waitForReady(8000).then((ok) => {
+      if (ok) this.logout();
+      else this._clearStoredIdentity();
     });
   },
 
@@ -241,6 +295,7 @@ const PushNotifications = {
   },
 
   _registerForContextNow() {
+    if (!this.isReady()) return;
     const path = window.location.pathname || '';
     let deliveryUser = null;
     let storeOwnerUser = null;
