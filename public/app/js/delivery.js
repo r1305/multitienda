@@ -36,7 +36,10 @@ const DeliveryLoginPage = {
       </div>
     </div>`,
   data() { return { phone: '', password: '', error: '', success: '', loading: false, showRegister: false, regName: '', regEmail: '', regPhone: '', regPassword: '', regVehicle: '' }; },
-  mounted() { if (this.deliveryUser) this.$router.push('/delivery/orders'); },
+  mounted() {
+    if (this.deliveryUser) this.$router.push('/delivery/orders');
+    else if (window.PushNotifications) PushNotifications.logout();
+  },
   computed: { deliveryUser() { return JSON.parse(localStorage.getItem('deliveryUser') || 'null'); } },
   methods: {
     async doLogin() {
@@ -46,6 +49,7 @@ const DeliveryLoginPage = {
         if (res.success) {
           localStorage.setItem('deliveryUser', JSON.stringify(res.data));
           localStorage.setItem('deliveryToken', res.data.auth_token);
+          if (window.PushNotifications) PushNotifications.registerDelivery(res.data.id);
           this.$router.push('/delivery/orders');
         } else this.error = res.data === 'DONOTMATCH' ? 'Credenciales incorrectas' : (res.message || 'Error al iniciar sesión');
       } catch(e) { this.error = 'Error de conexión'; }
@@ -119,7 +123,13 @@ const DeliveryOrdersPage = {
     },
     emptyMsg() { return { available: 'No hay pedidos disponibles en tu zona', active: 'No tienes pedidos activos', completed: 'Sin entregas completadas' }[this.activeTab]; }
   },
-  mounted() { if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; } PushNotifications.registerForContext(); this.getLocation(); this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000); },
+  mounted() {
+    if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
+    const u = JSON.parse(localStorage.getItem('deliveryUser') || '{}');
+    if (u.id && window.PushNotifications) PushNotifications.registerDelivery(u.id);
+    this.getLocation();
+    this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000);
+  },
   beforeUnmount() { if (this.interval) clearInterval(this.interval); },
   methods: {
     getLocation() { if (!navigator.geolocation) { this.gpsReady = true; this.refresh(); return; } navigator.geolocation.getCurrentPosition((pos) => { this.lat = pos.coords.latitude; this.lng = pos.coords.longitude; this.gpsReady = true; this.refresh(); }, () => { this.gpsReady = true; this.refresh(); }, { timeout: 10000 }); },
