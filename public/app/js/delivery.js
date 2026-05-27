@@ -139,7 +139,12 @@ const DeliveryOrdersPage = {
     tabCount(tab) { if (tab === 'available') return this.allOrders.length; if (tab === 'active') return this.myOrders.filter(o => [3,4].includes(o.orderstatus_id)).length; return this.myOrders.filter(o => [5,6].includes(o.orderstatus_id)).length; },
     statusLabel(id) { return {2:'Disponible',3:'Aceptado',4:'En camino',5:'Entregado',6:'Cancelado'}[id] || ''; },
     statusBg(id) { return {2:'#ff9800',3:'#2196f3',4:'#ff9800',5:'#4caf50',6:'#f44336'}[id] || '#9e9e9e'; },
-    logout() { localStorage.removeItem('deliveryUser'); localStorage.removeItem('deliveryToken'); this.$router.push('/delivery'); }
+    logout() {
+      localStorage.removeItem('deliveryUser');
+      localStorage.removeItem('deliveryToken');
+      if (window.PushNotifications) PushNotifications.logout();
+      this.$router.push('/delivery');
+    }
   }
 };
 

@@ -115,7 +115,12 @@ const StoreOwnerDashboardPage = {
       this.loading = false;
     },
     async toggleStatus() { try { const token = localStorage.getItem('storeOwnerToken'); const res = await API.post('/store-owner/toggle-store-status', { token }); if (res.success) this.store.is_active = res.is_active; } catch(e) {} },
-    logout() { localStorage.removeItem('storeOwnerUser'); localStorage.removeItem('storeOwnerToken'); this.$router.push('/store-owner'); }
+    logout() {
+      localStorage.removeItem('storeOwnerUser');
+      localStorage.removeItem('storeOwnerToken');
+      if (window.PushNotifications) PushNotifications.logout();
+      this.$router.push('/store-owner');
+    }
   }
 };
 
@@ -944,6 +949,11 @@ const StoreOwnerCouponsPage = {
       this.saving = false;
     },
     async deleteCoupon(c) { if (!confirm('Eliminar cupon ' + c.code + '?')) return; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/delete-coupon', { token, coupon_id: c.id }); this.coupons = this.coupons.filter(x => x.id !== c.id); } catch(e) {} },
-    logout() { localStorage.removeItem('storeOwnerUser'); localStorage.removeItem('storeOwnerToken'); this.$router.push('/store-owner'); }
+    logout() {
+      localStorage.removeItem('storeOwnerUser');
+      localStorage.removeItem('storeOwnerToken');
+      if (window.PushNotifications) PushNotifications.logout();
+      this.$router.push('/store-owner');
+    }
   }
 };

@@ -17,7 +17,11 @@ const Store = Vue.reactive({
 
   setLocation(loc) { this.location = loc; localStorage.setItem('appLocation', JSON.stringify(loc)); },
   setUser(u) { this.user = u; localStorage.setItem('appUser', JSON.stringify(u)); },
-  logout() { this.user = null; API.clearToken(); },
+  logout() {
+    this.user = null;
+    API.clearToken();
+    if (window.PushNotifications) PushNotifications.logout();
+  },
 
   addItem(item) {
     if (item.selectedaddons && item.selectedaddons.length) {
