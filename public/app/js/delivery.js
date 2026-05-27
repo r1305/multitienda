@@ -93,8 +93,9 @@ const DeliveryOrdersPage = {
       <div v-if="showPushBanner" style="padding:16px;text-align:center;background:#e3f2fd;margin:12px 16px;border-radius:8px">
         <i class="fas fa-bell" style="font-size:24px;color:#1976d2;margin-bottom:8px"></i>
         <p v-if="pushState === 'denied'" style="font-size:13px;color:#1565c0;margin-bottom:8px">Las notificaciones están bloqueadas en Edge. Ve a Configuración del sitio → Permisos → Notificaciones y permite este sitio.</p>
-        <p v-else style="font-size:13px;color:#1565c0;margin-bottom:8px">Activa las notificaciones para recibir pedidos asignados al instante.</p>
-        <button v-if="pushState !== 'denied'" style="background:#1976d2;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px" :disabled="pushLoading" @click="enablePush">{{ pushLoading ? 'Espere...' : 'Activar notificaciones' }}</button>
+        <p v-else style="font-size:13px;color:#1565c0;margin-bottom:8px">{{ pushError || 'Activa las notificaciones para recibir pedidos asignados al instante.' }}</p>
+        <p v-if="pushSuccess" style="font-size:13px;color:#2e7d32;margin-bottom:8px"><i class="fas fa-check-circle"></i> Notificaciones activadas</p>
+        <button v-if="pushState !== 'denied' && !pushSuccess" type="button" style="background:#1976d2;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;border:none;cursor:pointer" :disabled="pushLoading" @click="enablePush">{{ pushLoading ? 'Activando...' : 'Activar notificaciones' }}</button>
       </div>
       <div v-if="!gpsReady" style="padding:16px;text-align:center;background:#fff3e0;margin:12px 16px;border-radius:8px">
         <i class="fas fa-location-crosshairs" style="font-size:24px;color:#ff9800;margin-bottom:8px"></i>
@@ -124,7 +125,7 @@ const DeliveryOrdersPage = {
       </template>
     </div>`,
   setup() { return { Store }; },
-  data() { return { allOrders: [], myOrders: [], loading: false, gpsReady: false, lat: null, lng: null, activeTab: 'available', tabs: [{ id: 'available', label: 'Disponibles' }, { id: 'active', label: 'Activos' }, { id: 'completed', label: 'Completados' }], pushState: 'default', pushLoading: false, settingsReady: false }; },
+  data() { return { allOrders: [], myOrders: [], loading: false, gpsReady: false, lat: null, lng: null, activeTab: 'available', tabs: [{ id: 'available', label: 'Disponibles' }, { id: 'active', label: 'Activos' }, { id: 'completed', label: 'Completados' }], pushState: 'default', pushLoading: false, settingsReady: false, pushError: '', pushSuccess: false }; },
   computed: {
     showPushBanner() {
       if (typeof Notification === 'undefined') return false;
@@ -172,14 +173,35 @@ const DeliveryOrdersPage = {
       }
     },
     async enablePush() {
-      if (!this.user.id || !window.PushNotifications) return;
-      this.pushLoading = true;
-      const ok = await PushNotifications.enableDeliveryPush(this.user.id);
-      this.pushLoading = false;
-      this.syncPushState();
-      if (!ok && this.pushState === 'default') {
-        alert('No se pudo activar. Espera unos segundos e inténtalo de nuevo, o comprueba que el sitio use HTTPS.');
+      if (!this.user.id || !window.PushNotifications) {
+        this.pushError = 'Sesión no válida. Vuelve a iniciar sesión.';
+        return;
       }
+      this.pushLoading = true;
+      this.pushError = '';
+      this.pushSuccess = false;
+      try {
+        const result = await PushNotifications.enableDeliveryPush(this.user.id);
+        this.syncPushState();
+        if (result.ok) {
+          this.pushSuccess = true;
+          this.pushError = '';
+        } else if (result.reason === 'denied') {
+          this.pushError = 'Permiso bloqueado. En Edge: candado en la barra de direcciones → Notificaciones → Permitir.';
+        } else if (result.reason === 'dismissed') {
+          this.pushError = 'Debes aceptar el permiso cuando Edge lo solicite.';
+        } else if (result.reason === 'not_configured') {
+          this.pushError = 'Push no configurado en el servidor (OneSignal App ID).';
+        } else if (result.reason === 'init_failed') {
+          this.pushError = 'No se pudo iniciar el servicio de notificaciones. Recarga la página e inténtalo de nuevo.';
+        } else {
+          this.pushError = 'No se pudo completar la activación. Inténtalo de nuevo.';
+        }
+      } catch (e) {
+        this.pushError = 'Error al activar notificaciones.';
+        console.warn('enablePush', e);
+      }
+      this.pushLoading = false;
     },
     getLocation() { if (!navigator.geolocation) { this.gpsReady = true; this.refresh(); return; } navigator.geolocation.getCurrentPosition((pos) => { this.lat = pos.coords.latitude; this.lng = pos.coords.longitude; this.gpsReady = true; this.refresh(); }, () => { this.gpsReady = true; this.refresh(); }, { timeout: 10000 }); },
     async refresh() {

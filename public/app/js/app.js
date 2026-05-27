@@ -46,6 +46,7 @@ const router = createRouter({
 router.afterEach(() => {
   if (window.PushNotifications) PushNotifications.registerForContext();
 });
+window.__appRouter = router;
 
 const app = createApp({
   computed: {
@@ -85,55 +86,14 @@ async function loadAppSettings() {
   throw lastErr || new Error('Failed to load settings');
 }
 
+window.loadAppSettings = loadAppSettings;
+
 (async () => {
   try {
     await loadAppSettings();
-    // Initialize OneSignal
-    if (Store.settings.onesignalAppId) {
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async function(OneSignal) {
-        const serviceWorkerUrl = PushNotifications.serviceWorkerUrl();
-        const workerOk = await PushNotifications.verifyServiceWorker();
-        if (!workerOk) {
-          console.warn('OneSignal: service worker URL returned HTML or failed — push disabled. URL:', serviceWorkerUrl);
-          return;
-        }
-        try {
-          await OneSignal.init({
-            appId: Store.settings.onesignalAppId,
-            allowLocalhostAsSecureOrigin: true,
-            notifyButton: { enable: false },
-            serviceWorkerPath: serviceWorkerUrl,
-            serviceWorkerParam: { scope: '/' },
-          });
-        } catch (swErr) {
-          console.warn('OneSignal init failed:', swErr.message);
-          return;
-        }
-        OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
-          event.notification.display();
-        });
-        OneSignal.Notifications.addEventListener('click', (e) => {
-          const data = e.notification?.additionalData || e.notification?.data || e.data || {};
-          if (!data.order_id && !data.unique_order_id) return;
-          const storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null');
-          const deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
-          if (data.type === 'delivery_assigned' && data.order_id) {
-            router.push('/delivery/order/' + data.order_id);
-          } else if (data.type === 'new_order' || data.recipient_role === 'store_owner' || storeOwnerUser) {
-            router.push('/store-owner/order/' + data.order_id);
-          } else if (data.recipient_role === 'delivery' || deliveryUser) {
-            router.push('/delivery/order/' + (data.order_id || data.unique_order_id));
-          } else if (data.unique_order_id) {
-            router.push('/order/' + data.unique_order_id);
-          }
-        });
-        window.__oneSignalReady = true;
-        window.dispatchEvent(new CustomEvent('app:onesignal-ready'));
-        PushNotifications.registerForContext();
-      });
-    } else {
-      window.__oneSignalReady = false;
+    if (Store.settings.onesignalAppId && window.PushNotifications) {
+      await PushNotifications.initSDK();
+      PushNotifications.registerForContext();
     }
     // Set dynamic favicon
     if (Store.settings.faviconUrl) {
