@@ -26,9 +26,18 @@ function refreshOrderElapsedCells() {
     el.textContent = formatOrderElapsed(el.dataset.created, el.dataset.status, el.dataset.updated || '');
   });
 }
+function sortOrdersTableByDate() {
+  var tbody = document.querySelector("#ordersTable tbody");
+  if (!tbody) return;
+  var rows = Array.from(tbody.querySelectorAll("tr[data-sort-date]"));
+  rows.sort(function(a, b) {
+    return (b.getAttribute("data-sort-date") || "").localeCompare(a.getAttribute("data-sort-date") || "");
+  });
+  rows.forEach(function(r) { tbody.appendChild(r); });
+}
 $(function(){
-  initAdminListTable("#ordersTable", { order: [[7, "desc"]] });
-  wireAdminListSearch("#ordersTableSearch", "#ordersTable");
+  wireAdminTableSearchSimple("#ordersTableSearch", "#ordersTable");
+  sortOrdersTableByDate();
   refreshOrderElapsedCells();
   setInterval(refreshOrderElapsedCells, 30000);
 });
@@ -74,7 +83,8 @@ if (typeof orders !== 'undefined' && orders.length) {
     } else if (o.delivery_guy_name) {
       assignHtml = '<small class="text-muted">' + o.delivery_guy_name + '</small>';
     }
-    body += `<tr>
+    var sortDate = o.created_at ? new Date(o.created_at).toISOString() : "";
+    body += `<tr data-sort-date="${sortDate}">
       <td><strong>${o.unique_order_id}</strong></td>
       <td>${o.user_name || '-'}</td>
       <td>${o.restaurant_name || '-'}</td>
