@@ -86,15 +86,19 @@ exports.dashboard = async (req, res) => {
 
     const currency = settingsRows[0]?.length ? settingsRows[0][0].value : '$';
 
-    const ONLINE_GPS_MS = 5 * 60 * 1000;
+    const ONLINE_GPS_MS = 15 * 60 * 1000;
     if (activeDelivery.length) {
       try {
         const gps = require('../../helpers/gps');
         const positions = await gps.getDeliveryGpsBatch(activeDelivery.map((d) => d.id));
         activeDelivery.forEach((d) => {
           const pos = positions[d.id];
+          const lat = pos ? parseFloat(pos.delivery_lat) : NaN;
+          const lng = pos ? parseFloat(pos.delivery_long) : NaN;
+          d.has_location = Number.isFinite(lat) && Number.isFinite(lng);
           const ts = pos?.updated_at;
-          d.is_online = !!(ts && Date.now() - ts < ONLINE_GPS_MS);
+          d.is_live = !!(d.has_location && ts && Date.now() - ts < ONLINE_GPS_MS);
+          d.is_online = d.is_live;
         });
       } catch (gpsErr) {
         console.warn('Dashboard delivery GPS:', gpsErr.message);

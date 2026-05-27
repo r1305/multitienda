@@ -352,7 +352,7 @@ var body = `
             <div style="font-size:11px;color:#888">${d.phone || ''}</div>
           </div>
           <div>
-            ${d.active_orders > 0 ? '<span class="badge badge-warning">'+d.active_orders+' en ruta</span>' : (d.is_online ? '<span class="badge badge-success">En línea</span>' : '<span class="badge badge-secondary">Sin GPS</span>')}
+            ${d.active_orders > 0 ? '<span class="badge badge-warning">'+d.active_orders+' en ruta</span>' : (d.is_live ? '<span class="badge badge-success">En línea</span>' : (d.has_location ? '<span class="badge badge-info">Con ubicación</span>' : '<span class="badge badge-secondary">Sin GPS</span>'))}
           </div>
         </div>`).join('')}
         ${(typeof activeDelivery === 'undefined' || !activeDelivery.length) ? '<div class="text-center text-muted py-3" style="font-size:13px">Sin repartidores activos</div>' : ''}
