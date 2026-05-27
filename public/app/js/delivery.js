@@ -126,7 +126,6 @@ const DeliveryOrdersPage = {
   mounted() {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
     const u = JSON.parse(localStorage.getItem('deliveryUser') || '{}');
-    if (u.id && window.PushNotifications) PushNotifications.registerDelivery(u.id);
     this.getLocation();
     this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000);
   },
@@ -232,7 +231,6 @@ const DeliveryOrderDetailPage = {
   },
   async mounted() {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
-    PushNotifications.registerForContext();
     await this.loadOrder();
     if (this.order && [3,4].includes(this.order.orderstatus_id)) { this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); }
   },

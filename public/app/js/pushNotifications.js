@@ -1,6 +1,8 @@
 /** Register web push (OneSignal) — tags + external_id for server targeting */
 const PushNotifications = {
   _lastIdentityKey: null,
+  _pushChain: Promise.resolve(),
+  _registerDebounce: null,
 
   serviceWorkerUrl() {
     return new URL('/public/api/onesignal-service-worker.js', window.location.origin).href;
@@ -20,6 +22,24 @@ const PushNotifications = {
     return `${roleTag}:${id}:${extraTags.restaurant_id || ''}`;
   },
 
+  _readStoredIdentity() {
+    try {
+      return {
+        role: sessionStorage.getItem('push_role'),
+        external: sessionStorage.getItem('push_external_id'),
+      };
+    } catch (_) {
+      return { role: null, external: null };
+    }
+  },
+
+  _writeStoredIdentity(roleTag, id) {
+    try {
+      sessionStorage.setItem('push_role', roleTag);
+      sessionStorage.setItem('push_external_id', id);
+    } catch (_) { /* ignore */ }
+  },
+
   _clearStoredIdentity() {
     this._lastIdentityKey = null;
     try {
@@ -28,52 +48,100 @@ const PushNotifications = {
     } catch (_) { /* ignore */ }
   },
 
+  /** Run OneSignal ops one at a time to avoid 409 identity conflicts */
+  _enqueue(fn) {
+    if (!window.OneSignalDeferred) return this._pushChain;
+    this._pushChain = this._pushChain.then(
+      () =>
+        new Promise((resolve) => {
+          window.OneSignalDeferred.push(async function (OneSignal) {
+            try {
+              await fn(OneSignal);
+            } catch (e) {
+              console.warn('OneSignal op failed', e);
+            } finally {
+              resolve();
+            }
+          });
+        })
+    );
+    return this._pushChain;
+  },
+
+  async _ensureSubscribed(OneSignal) {
+    const permission = await OneSignal.Notifications.permission;
+    if (!permission) await OneSignal.Notifications.requestPermission();
+    const optedIn = await OneSignal.User.PushSubscription.optedIn;
+    if (!optedIn) await OneSignal.User.PushSubscription.optIn();
+  },
+
+  async _safeLogin(OneSignal, id) {
+    if (typeof OneSignal.login !== 'function') return;
+    try {
+      await OneSignal.login(id);
+    } catch (e) {
+      const status = e?.status || e?.statusCode;
+      const msg = String(e?.message || e || '');
+      if (status === 409 || msg.includes('409')) {
+        if (typeof OneSignal.logout === 'function') {
+          await OneSignal.logout();
+          await new Promise((r) => setTimeout(r, 500));
+        }
+        await OneSignal.login(id);
+      } else {
+        throw e;
+      }
+    }
+  },
+
+  async _switchExternalId(OneSignal, id) {
+    if (typeof OneSignal.logout === 'function') {
+      await OneSignal.logout();
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    await this._safeLogin(OneSignal, id);
+  },
+
   logout() {
     if (!window.OneSignalDeferred) return;
     this._clearStoredIdentity();
-    window.OneSignalDeferred.push(async function (OneSignal) {
-      try {
-        if (typeof OneSignal.logout === 'function') await OneSignal.logout();
-      } catch (e) {
-        console.warn('OneSignal logout failed', e);
-      }
+    this._enqueue(async (OneSignal) => {
+      if (typeof OneSignal.logout === 'function') await OneSignal.logout();
     });
   },
 
-  /** Delivery / store-owner after client app — always logout then login (avoids 409) */
+  /** Role or user change — logout then login once */
   registerWithRoleSwitch(userId, role, extraTags = {}) {
     if (!userId || !window.OneSignalDeferred) return;
     const id = String(userId);
     const roleTag = String(role || 'customer').toLowerCase().replace(/\s+/g, '_');
     const identityKey = this._storageKey(roleTag, id, extraTags);
-    const tags = { user_id: id, role: roleTag, ...extraTags };
+    const stored = this._readStoredIdentity();
+    if (
+      this._lastIdentityKey === identityKey &&
+      stored.external === id &&
+      stored.role === roleTag
+    ) {
+      return;
+    }
     this._lastIdentityKey = identityKey;
+    const tags = { user_id: id, role: roleTag, ...extraTags };
 
-    window.OneSignalDeferred.push(async function (OneSignal) {
-      try {
-        const permission = await OneSignal.Notifications.permission;
-        if (!permission) await OneSignal.Notifications.requestPermission();
-        const optedIn = await OneSignal.User.PushSubscription.optedIn;
-        if (!optedIn) await OneSignal.User.PushSubscription.optIn();
-
-        if (typeof OneSignal.logout === 'function') await OneSignal.logout();
-        await new Promise((r) => setTimeout(r, 300));
-
-        if (typeof OneSignal.login === 'function') await OneSignal.login(id);
-        await OneSignal.User.addTags(tags);
-
-        try {
-          sessionStorage.setItem('push_role', roleTag);
-          sessionStorage.setItem('push_external_id', id);
-        } catch (_) { /* ignore */ }
-      } catch (e) {
-        console.warn('Push registration failed', e);
-      }
+    this._enqueue(async (OneSignal) => {
+      await this._ensureSubscribed(OneSignal);
+      await this._switchExternalId(OneSignal, id);
+      await OneSignal.User.addTags(tags);
+      this._writeStoredIdentity(roleTag, id);
     });
   },
 
   registerDelivery(userId) {
-    this.registerWithRoleSwitch(userId, 'delivery');
+    if (!userId) return;
+    const stored = this._readStoredIdentity();
+    if (stored.role && stored.role !== 'delivery') {
+      return this.registerWithRoleSwitch(userId, 'delivery');
+    }
+    return this.register(userId, 'delivery');
   },
 
   register(userId, role = 'customer', extraTags = {}) {
@@ -81,55 +149,53 @@ const PushNotifications = {
     const id = String(userId);
     const roleTag = String(role || 'customer').toLowerCase().replace(/\s+/g, '_');
     const identityKey = this._storageKey(roleTag, id, extraTags);
-    if (this._lastIdentityKey === identityKey) return;
-    this._lastIdentityKey = identityKey;
+    const stored = this._readStoredIdentity();
 
-    let storedRole = null;
-    let storedExternal = null;
-    try {
-      storedRole = sessionStorage.getItem('push_role');
-      storedExternal = sessionStorage.getItem('push_external_id');
-    } catch (_) { /* ignore */ }
-
-    const needsRoleSwitch = storedRole && storedRole !== roleTag;
-    if (needsRoleSwitch) {
+    if (stored.role && stored.role !== roleTag) {
       return this.registerWithRoleSwitch(userId, role, extraTags);
     }
 
+    if (
+      this._lastIdentityKey === identityKey &&
+      stored.external === id &&
+      stored.role === roleTag
+    ) {
+      return;
+    }
+
+    this._lastIdentityKey = identityKey;
     const tags = { user_id: id, role: roleTag, ...extraTags };
-    window.OneSignalDeferred.push(async function (OneSignal) {
-      try {
-        const permission = await OneSignal.Notifications.permission;
-        if (!permission) await OneSignal.Notifications.requestPermission();
-        const optedIn = await OneSignal.User.PushSubscription.optedIn;
-        if (!optedIn) await OneSignal.User.PushSubscription.optIn();
+    const needsLogin = stored.external !== id;
 
-        if (storedExternal && storedExternal !== id && typeof OneSignal.logout === 'function') {
+    this._enqueue(async (OneSignal) => {
+      await this._ensureSubscribed(OneSignal);
+      if (needsLogin) {
+        if (stored.external && typeof OneSignal.logout === 'function') {
           await OneSignal.logout();
-          await new Promise((r) => setTimeout(r, 200));
+          await new Promise((r) => setTimeout(r, 300));
         }
-
-        if (storedExternal !== id && typeof OneSignal.login === 'function') {
-          await OneSignal.login(id);
-        }
-
-        await OneSignal.User.addTags(tags);
-        try {
-          sessionStorage.setItem('push_role', roleTag);
-          sessionStorage.setItem('push_external_id', id);
-        } catch (_) { /* ignore */ }
-      } catch (e) {
-        console.warn('Push registration failed', e);
+        await this._safeLogin(OneSignal, id);
       }
+      await OneSignal.User.addTags(tags);
+      this._writeStoredIdentity(roleTag, id);
     });
   },
 
   registerForContext() {
+    clearTimeout(this._registerDebounce);
+    this._registerDebounce = setTimeout(() => this._registerForContextNow(), 200);
+  },
+
+  _registerForContextNow() {
     const path = window.location.pathname || '';
     let deliveryUser = null;
     let storeOwnerUser = null;
-    try { deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null'); } catch (_) { /* ignore */ }
-    try { storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null'); } catch (_) { /* ignore */ }
+    try {
+      deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
+    } catch (_) { /* ignore */ }
+    try {
+      storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null');
+    } catch (_) { /* ignore */ }
 
     if (path.startsWith('/delivery')) {
       if (deliveryUser?.id) return this.registerDelivery(deliveryUser.id);
@@ -141,8 +207,8 @@ const PushNotifications = {
         const extra = {};
         const rid = storeOwnerUser.restaurant?.id || storeOwnerUser.restaurant_id;
         if (rid) extra.restaurant_id = String(rid);
-        const storedRole = sessionStorage.getItem('push_role');
-        if (storedRole && storedRole !== 'store_owner') {
+        const stored = this._readStoredIdentity();
+        if (stored.role && stored.role !== 'store_owner') {
           return this.registerWithRoleSwitch(storeOwnerUser.id, 'store_owner', extra);
         }
         return this.register(storeOwnerUser.id, 'store_owner', extra);
@@ -151,8 +217,8 @@ const PushNotifications = {
       return;
     }
     if (typeof Store !== 'undefined' && Store.isLoggedIn) {
-      const storedRole = sessionStorage.getItem('push_role');
-      if (storedRole && storedRole !== 'customer' && !storedRole.includes('customer')) {
+      const stored = this._readStoredIdentity();
+      if (stored.role && stored.role !== 'customer' && !stored.role.includes('customer')) {
         return this.registerWithRoleSwitch(Store.user.id, Store.user.role || 'customer');
       }
       return this.register(Store.user.id, Store.user.role || 'customer');
@@ -162,8 +228,8 @@ const PushNotifications = {
 
   registerStoreOwner(userId, restaurantId) {
     const extra = restaurantId ? { restaurant_id: String(restaurantId) } : {};
-    const storedRole = sessionStorage.getItem('push_role');
-    if (storedRole && storedRole !== 'store_owner') {
+    const stored = this._readStoredIdentity();
+    if (stored.role && stored.role !== 'store_owner') {
       return this.registerWithRoleSwitch(userId, 'store_owner', extra);
     }
     this.register(userId, 'store_owner', extra);
