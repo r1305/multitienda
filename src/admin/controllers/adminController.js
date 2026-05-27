@@ -9,10 +9,16 @@ async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
   const order = orders[0];
   if (!order) throw new Error('Order not found');
 
-  await sequelize.query(
-    'UPDATE orders SET delivery_guy_id = ?, orderstatus_id = 3 WHERE id = ?',
-    { replacements: [deliveryUserId, orderId] }
-  );
+  try {
+    await sequelize.query(
+      'UPDATE orders SET delivery_guy_id = ?, orderstatus_id = 3 WHERE id = ?',
+      { replacements: [deliveryUserId, orderId] }
+    );
+  } catch (_) {
+    await sequelize.query('UPDATE orders SET orderstatus_id = 3 WHERE id = ?', {
+      replacements: [orderId],
+    });
+  }
 
   await sequelize.query('DELETE FROM accept_deliveries WHERE order_id = ?', { replacements: [orderId] });
   await sequelize.query(
@@ -134,23 +140,59 @@ exports.dashboard = async (req, res) => {
 
 // ==================== 1. ORDERS ====================
 exports.orders = async (req, res) => {
+  let orders = [];
+  let deliveryGuys = [];
+
   try {
-    const [orders] = await sequelize.query(`
-      SELECT o.*, u.name as user_name, r.name as restaurant_name,
-        dg.name as delivery_guy_name
+    const [rows] = await sequelize.query(`
+      SELECT o.*, u.name AS user_name, r.name AS restaurant_name,
+        dg.name AS delivery_guy_name, ad.user_id AS delivery_guy_id
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       LEFT JOIN restaurants r ON o.restaurant_id = r.id
-      LEFT JOIN users dg ON o.delivery_guy_id = dg.id
+      LEFT JOIN accept_deliveries ad ON ad.order_id = o.id
+      LEFT JOIN users dg ON dg.id = ad.user_id
       ORDER BY o.id DESC
     `);
-    const [deliveryGuys] = await sequelize.query(`
+    orders = rows;
+  } catch (err) {
+    console.warn('orders list with delivery join:', err.message);
+    try {
+      const [rows] = await sequelize.query(`
+        SELECT o.*, u.name AS user_name, r.name AS restaurant_name
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN restaurants r ON o.restaurant_id = r.id
+        ORDER BY o.id DESC
+      `);
+      orders = rows;
+    } catch (err2) {
+      console.error('orders list:', err2);
+      return res.render('admin/orders', {
+        user: req.session.user,
+        orders: [],
+        deliveryGuys: [],
+        formatOrderElapsed,
+        success: null,
+        error: 'Error loading orders',
+      });
+    }
+  }
+
+  try {
+    const [rows] = await sequelize.query(`
       SELECT u.id, u.name, u.phone FROM users u
       INNER JOIN model_has_roles mr ON u.id = mr.model_id
       INNER JOIN roles r ON mr.role_id = r.id
       WHERE r.name = 'Delivery Guy' AND u.is_active = 1
       ORDER BY u.name ASC
     `);
+    deliveryGuys = rows;
+  } catch (dgErr) {
+    console.warn('orders deliveryGuys:', dgErr.message);
+  }
+
+  try {
     res.render('admin/orders', {
       user: req.session.user,
       orders,
@@ -159,8 +201,8 @@ exports.orders = async (req, res) => {
       success: req.flash('success')[0],
       error: req.flash('error')[0],
     });
-  } catch (err) {
-    console.error(err);
+  } catch (renderErr) {
+    console.error('orders render:', renderErr);
     res.render('admin/orders', {
       user: req.session.user,
       orders: [],
@@ -186,6 +228,11 @@ exports.viewOrder = async (req, res) => {
     if (order) {
       [orderitems] = await sequelize.query('SELECT * FROM orderitems WHERE order_id = ?', { replacements: [order.id] });
       [deliveryGuys] = await sequelize.query(`SELECT u.id, u.name, u.phone FROM users u INNER JOIN model_has_roles mr ON u.id = mr.model_id INNER JOIN roles r ON mr.role_id = r.id WHERE r.name = 'Delivery Guy'`);
+      const [acceptRows] = await sequelize.query(
+        'SELECT user_id FROM accept_deliveries WHERE order_id = ? LIMIT 1',
+        { replacements: [order.id] }
+      );
+      if (acceptRows[0]) order.delivery_guy_id = acceptRows[0].user_id;
     }
     res.render('admin/viewOrder', {
       user: req.session.user,
