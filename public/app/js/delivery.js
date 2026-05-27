@@ -134,6 +134,10 @@ const DeliveryOrdersPage = {
       return true;
     },
     user() { return JSON.parse(localStorage.getItem('deliveryUser') || '{}'); },
+    deliveryUserId() {
+      const u = this.user;
+      return u.id || u.user_id || null;
+    },
     filteredOrders() {
       if (this.activeTab === 'available') return this.allOrders;
       if (this.activeTab === 'active') return this.myOrders.filter(o => [3, 4].includes(o.orderstatus_id));
@@ -165,15 +169,19 @@ const DeliveryOrdersPage = {
   },
   methods: {
     syncPushState() {
-      if (!window.PushNotifications) return;
+      if (!PushNotifications) return;
       this.pushState = PushNotifications.getBrowserPermission();
       if (Store.settings && Object.keys(Store.settings).length) this.settingsReady = true;
-      if (this.pushState === 'granted' && this.user.id && PushNotifications.isReady()) {
-        PushNotifications.registerDelivery(this.user.id);
+      if (this.pushState === 'granted' && this.deliveryUserId && PushNotifications.isReady()) {
+        PushNotifications.registerDelivery(this.deliveryUserId);
       }
     },
     async enablePush() {
-      if (!this.user.id || !window.PushNotifications) {
+      if (!PushNotifications) {
+        this.pushError = 'El módulo de notificaciones no cargó. Recarga la página.';
+        return;
+      }
+      if (!this.deliveryUserId) {
         this.pushError = 'Sesión no válida. Vuelve a iniciar sesión.';
         return;
       }
@@ -181,7 +189,7 @@ const DeliveryOrdersPage = {
       this.pushError = '';
       this.pushSuccess = false;
       try {
-        const result = await PushNotifications.enableDeliveryPush(this.user.id);
+        const result = await PushNotifications.enableDeliveryPush(this.deliveryUserId);
         this.syncPushState();
         if (result.ok) {
           this.pushSuccess = true;

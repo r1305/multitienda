@@ -458,3 +458,5 @@ const PushNotifications = {
     this.register(userId, 'store_owner', extra);
   },
 };
+
+window.PushNotifications = PushNotifications;
