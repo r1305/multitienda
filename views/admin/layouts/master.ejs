@@ -203,7 +203,24 @@
       window.initAdminListTable = function(selector, options) {
         var $table = $(selector);
         if (!$table.length) return null;
-        if ($.fn.DataTable.isDataTable($table[0])) return $table.DataTable();
+        if ($.fn.DataTable.isDataTable($table[0])) {
+          $table.DataTable().destroy();
+          $table.find('tbody tr').each(function() {
+            $(this).children('td,th').each(function() {
+              var idx = $(this).data('dt-column');
+              if (idx !== undefined) $(this).removeData('dt-column');
+            });
+          });
+        }
+        var colCount = $table.find('thead th').length;
+        $table.find('tbody tr').each(function() {
+          var $tr = $(this);
+          if ($tr.find('td[colspan]').length) return;
+          var n = $tr.children('td').length;
+          if (n > 0 && n !== colCount) {
+            console.warn('DataTables: fila con', n, 'celdas, se esperaban', colCount, $tr[0]);
+          }
+        });
         return $table.DataTable($.extend(true, {
           responsive: true,
           pageLength: 25,
@@ -217,6 +234,19 @@
         $input.on('keyup input', function() {
           var api = $table.DataTable();
           if (api) api.search(this.value).draw();
+        });
+      };
+      /** Plain HTML table filter (no DataTables) — use when DT breaks on complex rows */
+      window.wireAdminTableSearchSimple = function(inputSelector, tableSelector) {
+        var $input = $(inputSelector);
+        var $table = $(tableSelector);
+        if (!$input.length || !$table.length) return;
+        $input.on('keyup input', function() {
+          var q = this.value.toLowerCase().trim();
+          $table.find('tbody tr').each(function() {
+            var text = $(this).text().toLowerCase();
+            $(this).toggle(!q || text.indexOf(q) >= 0);
+          });
         });
       };
 

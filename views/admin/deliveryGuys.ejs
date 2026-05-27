@@ -5,8 +5,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 $(function(){
-  initAdminListTable("#deliveryTable");
-  wireAdminListSearch("#deliveryTableSearch", "#deliveryTable");
+  wireAdminTableSearchSimple("#deliveryTableSearch", "#deliveryTable");
 
   var mapEl = document.getElementById("deliveryGuysMap");
   if (!mapEl || typeof L === "undefined") return;
@@ -98,6 +97,10 @@ $(function(){
 });
 </script>`; %>
 <%
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 var modalsHtml = '';
 var body = `
 <div class="card mb-3">
@@ -136,9 +139,9 @@ if (typeof deliveryGuys !== 'undefined' && deliveryGuys.length) {
     var dgEarnings = parseFloat(dg.total_earnings || 0).toFixed(2);
     body += `<tr>
       <td>${dg.id}</td>
-      <td><strong>${dg.name}</strong></td>
-      <td>${dg.phone || '-'}</td>
-      <td>${dg.vehicle_number || '-'}</td>
+      <td><strong>${escHtml(dg.name)}</strong></td>
+      <td>${escHtml(dg.phone) || '-'}</td>
+      <td>${escHtml(dg.vehicle_number) || '-'}</td>
       <td><span class="badge badge-info">${commLabel}</span><br><small class="text-muted">${commType}</small></td>
       <td><strong style="color:#28a745">${typeof currency !== 'undefined' ? currency : '$'}${dgEarnings}</strong></td>
       <td>${statusBadge}</td>
@@ -173,6 +176,7 @@ if (typeof deliveryGuys !== 'undefined' && deliveryGuys.length) {
   body += '<tr><td colspan="8" class="text-center text-muted py-4">No delivery guys found</td></tr>';
 }
 
-body += `</tbody></table></div></div></div>${modalsHtml}`;
+body += `</tbody></table></div></div></div>
+<div id="deliveryGuysModals">${modalsHtml}</div>`;
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>
