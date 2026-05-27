@@ -46,36 +46,94 @@ async function getOneSignalKeys() {
   return config;
 }
 
+async function getAppBaseUrl() {
+  const cache = require('./cache');
+  const cached = await cache.get('settings:appBaseUrl');
+  if (cached) return cached;
+
+  let base = (process.env.APP_URL || '').trim().replace(/\/$/, '');
+  if (!/^https?:\/\//i.test(base)) {
+    try {
+      const [rows] = await sequelize.query(
+        "SELECT value FROM settings WHERE `key` IN ('appUrl', 'storeUrl', 'siteUrl', 'websiteUrl') AND value IS NOT NULL AND value != '' LIMIT 1"
+      );
+      if (rows[0]?.value) base = String(rows[0].value).trim().replace(/\/$/, '');
+    } catch (_) { /* ignore */ }
+  }
+
+  const resolved = /^https?:\/\//i.test(base) ? base : null;
+  if (resolved) await cache.set('settings:appBaseUrl', resolved, 600);
+  return resolved;
+}
+
+function toAbsoluteAssetUrl(pathOrUrl, baseUrl) {
+  if (!pathOrUrl || !baseUrl) return null;
+  const s = String(pathOrUrl).trim();
+  if (!s || s === 'null' || s === 'undefined') return null;
+  if (/^https?:\/\//i.test(s)) return s;
+  try {
+    return new URL(s.startsWith('/') ? s : `/${s}`, `${baseUrl}/`).href;
+  } catch (_) {
+    return null;
+  }
+}
+
+function sanitizeNotificationData(data, title, message, baseUrl) {
+  const notifData = { ...data, title, message };
+  Object.keys(notifData).forEach((key) => {
+    const val = notifData[key];
+    if (val == null) {
+      delete notifData[key];
+      return;
+    }
+    if (typeof val === 'string' && (key.includes('image') || key.includes('icon') || key.includes('url'))) {
+      const abs = toAbsoluteAssetUrl(val, baseUrl);
+      if (abs) notifData[key] = abs;
+      else delete notifData[key];
+    }
+  });
+  return notifData;
+}
+
 async function sendViaOneSignal(title, message, userId, role, data) {
   try {
     const config = await getOneSignalKeys();
     if (!config.onesignalAppId || !config.onesignalRestApiKey) return;
 
+    const baseUrl = await getAppBaseUrl();
+    const iconUrl = toAbsoluteAssetUrl('/assets/img/favicons/favicon-96x96.png', baseUrl);
+
     const payload = {
       app_id: config.onesignalAppId,
       headings: { en: title },
       contents: { en: message },
-      data: { ...data, title, message },
+      data: sanitizeNotificationData(data || {}, title, message, baseUrl),
       priority: 10,
-      chrome_web_badge: '/assets/img/favicons/favicon-96x96.png',
-      chrome_web_icon: '/assets/img/favicons/favicon-96x96.png',
-      firefox_icon: '/assets/img/favicons/favicon-96x96.png',
     };
 
-    const baseUrl = process.env.APP_URL || '';
-    if (data.type === 'new_order' && data.order_id) {
-      payload.url = baseUrl + '/store-owner/order/' + data.order_id;
-      payload.web_url = payload.url;
-    } else if (data.type === 'chat' && data.order_id) {
-      if (data.recipient_role === 'delivery') {
-        payload.url = baseUrl + '/delivery/order/' + data.order_id;
-      } else if (data.unique_order_id) {
-        payload.url = baseUrl + '/order/' + data.unique_order_id;
+    if (iconUrl) {
+      payload.chrome_web_badge = iconUrl;
+      payload.chrome_web_icon = iconUrl;
+      payload.firefox_icon = iconUrl;
+    }
+
+    if (baseUrl) {
+      if (data.type === 'new_order' && data.order_id) {
+        payload.url = `${baseUrl}/store-owner/order/${data.order_id}`;
+        payload.web_url = payload.url;
+      } else if (data.type === 'chat' && data.order_id) {
+        if (data.recipient_role === 'delivery') {
+          payload.url = `${baseUrl}/delivery/order/${data.order_id}`;
+        } else if (data.unique_order_id) {
+          payload.url = `${baseUrl}/order/${data.unique_order_id}`;
+        }
+        payload.web_url = payload.url;
+      } else if (data.unique_order_id && !role) {
+        payload.url = `${baseUrl}/order/${data.unique_order_id}`;
+        payload.web_url = payload.url;
       }
-      payload.web_url = payload.url;
-    } else if (data.unique_order_id && !role) {
-      payload.url = baseUrl + '/order/' + data.unique_order_id;
-      payload.web_url = payload.url;
+      const bigImage = toAbsoluteAssetUrl(data.image, baseUrl);
+      if (bigImage) payload.chrome_web_image = bigImage;
     }
 
     if (!userId && data.restaurant_id && data.recipient_role === 'store_owner') {
