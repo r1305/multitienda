@@ -617,24 +617,65 @@ exports.banUser = async (req, res) => {
 };
 // ==================== 7. DELIVERY GUYS ====================
 exports.deliveryGuys = async (req, res) => {
+  const mapCenter = { lat: 9.9281, lng: -84.0907 };
   try {
-    const [deliveryGuys] = await sequelize.query(`
-      SELECT u.*, dgd.vehicle_number, dgd.commission_rate, dgd.commission_type, dgd.fixed_commission,
-        COALESCE(de.total_earnings, 0) as total_earnings
+    const [geoRows] = await sequelize.query(
+      'SELECT latitude, longitude FROM popular_geo_places WHERE is_default = 1 LIMIT 1'
+    );
+    if (geoRows && geoRows[0]) {
+      mapCenter.lat = parseFloat(geoRows[0].latitude) || mapCenter.lat;
+      mapCenter.lng = parseFloat(geoRows[0].longitude) || mapCenter.lng;
+    }
+  } catch (geoErr) {
+    console.warn('deliveryGuys mapCenter:', geoErr.message);
+  }
+
+  const deliveryGuysFrom = `
       FROM users u
       INNER JOIN model_has_roles mr ON u.id = mr.model_id
       INNER JOIN roles r ON mr.role_id = r.id
       LEFT JOIN delivery_guy_details dgd ON u.id = dgd.user_id
-      LEFT JOIN (SELECT user_id, SUM(amount) as total_earnings FROM delivery_earnings GROUP BY user_id) de ON de.user_id = u.id
-      WHERE r.name = 'Delivery Guy' ORDER BY u.is_active ASC, u.id DESC
+      WHERE r.name = 'Delivery Guy'`;
+
+  let deliveryGuys = [];
+  try {
+    const [rows] = await sequelize.query(`
+      SELECT u.id, u.name, u.email, u.phone, u.is_active,
+        dgd.vehicle_number, dgd.commission_rate, dgd.commission_type, dgd.fixed_commission,
+        dgd.percentage_base, dgd.dynamic_base_distance, dgd.dynamic_base_price, dgd.dynamic_price_per_km,
+        COALESCE((
+          SELECT SUM(amount) FROM delivery_earnings de WHERE de.user_id = u.id
+        ), 0) AS total_earnings
+      ${deliveryGuysFrom}
+      ORDER BY u.is_active ASC, u.id DESC
     `);
-    const [[geo]] = await sequelize.query(
-      'SELECT latitude, longitude FROM popular_geo_places WHERE is_default = 1 LIMIT 1'
-    );
-    const mapCenter = {
-      lat: geo && geo.latitude ? parseFloat(geo.latitude) : 9.9281,
-      lng: geo && geo.longitude ? parseFloat(geo.longitude) : -84.0907,
-    };
+    deliveryGuys = rows;
+  } catch (earningsErr) {
+    console.warn('deliveryGuys earnings subquery:', earningsErr.message);
+    try {
+      const [rows] = await sequelize.query(`
+        SELECT u.id, u.name, u.email, u.phone, u.is_active,
+          dgd.vehicle_number, dgd.commission_rate, dgd.commission_type, dgd.fixed_commission,
+          dgd.percentage_base, dgd.dynamic_base_distance, dgd.dynamic_base_price, dgd.dynamic_price_per_km,
+          0 AS total_earnings
+        ${deliveryGuysFrom}
+        ORDER BY u.is_active ASC, u.id DESC
+      `);
+      deliveryGuys = rows;
+    } catch (detailsErr) {
+      console.warn('deliveryGuys commission columns:', detailsErr.message);
+      const [rows] = await sequelize.query(`
+        SELECT u.id, u.name, u.email, u.phone, u.is_active,
+          dgd.vehicle_number, dgd.commission_rate, dgd.commission_type, dgd.fixed_commission,
+          0 AS total_earnings
+        ${deliveryGuysFrom}
+        ORDER BY u.is_active ASC, u.id DESC
+      `);
+      deliveryGuys = rows;
+    }
+  }
+
+  try {
     res.render('admin/deliveryGuys', {
       user: req.session.user,
       deliveryGuys,
@@ -642,12 +683,12 @@ exports.deliveryGuys = async (req, res) => {
       success: req.flash('success')[0],
       error: req.flash('error')[0],
     });
-  } catch (err) {
-    console.error(err);
+  } catch (renderErr) {
+    console.error('deliveryGuys render:', renderErr);
     res.render('admin/deliveryGuys', {
       user: req.session.user,
       deliveryGuys: [],
-      mapCenter: { lat: 9.9281, lng: -84.0907 },
+      mapCenter,
       success: null,
       error: 'Error loading delivery guys',
     });
