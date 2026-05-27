@@ -62,12 +62,84 @@ async function updateDeliveryGps(userId, latitude, longitude, heading) {
 async function getDeliveryGps(userId) {
   const live = await getLivePosition(userId);
   if (live) {
-    return { delivery_lat: live.lat, delivery_long: live.lng, heading: live.heading };
+    return {
+      delivery_lat: live.lat,
+      delivery_long: live.lng,
+      heading: live.heading,
+      updated_at: live.updatedAt,
+      live: true,
+    };
   }
   const detail = await DeliveryGuyDetail.findOne({ where: { user_id: userId } });
   return detail
-    ? { delivery_lat: detail.latitude, delivery_long: detail.longitude, heading: detail.heading }
+    ? {
+        delivery_lat: detail.latitude,
+        delivery_long: detail.longitude,
+        heading: detail.heading,
+        updated_at: detail.updated_at ? new Date(detail.updated_at).getTime() : null,
+        live: false,
+      }
     : null;
 }
 
-module.exports = { updateDeliveryGps, getDeliveryGps };
+/** Batch GPS for admin map (Redis live first, then DB). */
+async function getDeliveryGpsBatch(userIds) {
+  const ids = [...new Set(userIds.map((id) => parseInt(id, 10)).filter((id) => id > 0))];
+  const out = {};
+  if (!ids.length) return out;
+
+  const missing = [];
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const keys = ids.map((id) => `gps:live:${id}`);
+      const values = await redis.mget(keys);
+      ids.forEach((id, i) => {
+        if (values[i]) {
+          try {
+            const live = JSON.parse(values[i]);
+            out[id] = {
+              delivery_lat: live.lat,
+              delivery_long: live.lng,
+              heading: live.heading,
+              updated_at: live.updatedAt,
+              live: true,
+            };
+          } catch (_) {
+            missing.push(id);
+          }
+        } else {
+          missing.push(id);
+        }
+      });
+    } catch (_) {
+      missing.push(...ids.filter((id) => !out[id]));
+    }
+  } else {
+    missing.push(...ids);
+  }
+
+  if (missing.length) {
+    const details = await DeliveryGuyDetail.findAll({
+      where: { user_id: missing },
+      attributes: ['user_id', 'latitude', 'longitude', 'heading', 'updated_at'],
+    });
+    for (const d of details) {
+      const uid = d.user_id;
+      if (out[uid]) continue;
+      const lat = parseFloat(d.latitude);
+      const lng = parseFloat(d.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      out[uid] = {
+        delivery_lat: lat,
+        delivery_long: lng,
+        heading: d.heading,
+        updated_at: d.updated_at ? new Date(d.updated_at).getTime() : null,
+        live: false,
+      };
+    }
+  }
+  return out;
+}
+
+module.exports = { updateDeliveryGps, getDeliveryGps, getDeliveryGpsBatch };

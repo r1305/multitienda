@@ -223,6 +223,7 @@ router.post('/admin/user/new/save', adminController.createUser);
 router.get('/admin/user/ban/:id', adminController.banUser);
 
 // Delivery Guys
+router.get('/admin/api/delivery-guys-locations', adminController.deliveryGuysLocations);
 router.get('/admin/delivery-guys', adminController.deliveryGuys);
 router.get('/admin/user/approve/:id', adminController.approveUser);
 router.post('/admin/delivery-guy/commission/save', adminController.saveDeliveryCommission);

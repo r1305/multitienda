@@ -1,6 +1,7 @@
 <% var active = 'dashboard'; var pageTitle = 'Dashboard'; %>
 <%
 var currency = typeof settings !== 'undefined' && settings && settings.currencySymbol ? settings.currencySymbol : '$';
+var elapsedFn = typeof formatOrderElapsed === 'function' ? formatOrderElapsed : function() { return '-'; };
 
 var scripts = `
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
@@ -62,7 +63,32 @@ function loadChart(filter) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', function() { loadChart('week'); });
+document.addEventListener('DOMContentLoaded', function() { loadChart('week'); refreshOrderElapsedCells(); setInterval(refreshOrderElapsedCells, 30000); });
+
+window.formatOrderElapsed = function(createdAt, statusId, updatedAt) {
+  if (!createdAt) return '-';
+  var start = new Date(createdAt).getTime();
+  if (isNaN(start)) return '-';
+  var sid = parseInt(statusId, 10);
+  var end = Date.now();
+  if ((sid === 5 || sid === 6) && updatedAt) {
+    var u = new Date(updatedAt).getTime();
+    if (!isNaN(u)) end = u;
+  }
+  var ms = Math.max(0, end - start);
+  var mins = Math.floor(ms / 60000);
+  if (mins < 1) return '< 1 min';
+  if (mins < 60) return mins + ' min';
+  var hours = Math.floor(mins / 60), rm = mins % 60;
+  if (hours < 24) return rm ? hours + ' h ' + rm + ' min' : hours + ' h';
+  var days = Math.floor(hours / 24), rh = hours % 24;
+  return rh ? days + ' d ' + rh + ' h' : days + ' d';
+};
+function refreshOrderElapsedCells() {
+  document.querySelectorAll('[data-order-elapsed]').forEach(function(el) {
+    el.textContent = formatOrderElapsed(el.dataset.created, el.dataset.status, el.dataset.updated || '');
+  });
+}
 
 function statusBadge(id) {
   const map = {1:'info',2:'warning',3:'warning',4:'warning',5:'success',6:'danger',7:'success',8:'secondary',9:'danger',10:'purple',11:'info'};
@@ -260,18 +286,23 @@ var body = `
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover mb-0">
-            <thead><tr><th>#</th><th>Cliente</th><th>Tienda</th><th>Total</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <thead><tr><th>#</th><th>Cliente</th><th>Tienda</th><th>Total</th><th>Estado</th><th>Tiempo</th><th>Fecha</th></tr></thead>
             <tbody>
-              ${(typeof recentOrders !== 'undefined' ? recentOrders : []).map(o => `
-              <tr style="cursor:pointer" onclick="location.href='/admin/order/${o.id}'">
+              ${(typeof recentOrders !== 'undefined' ? recentOrders : []).map(o => {
+                const elapsed = elapsedFn(o.created_at, o.orderstatus_id, o.updated_at);
+                const orderUrl = o.unique_order_id || o.id;
+                return `
+              <tr style="cursor:pointer" onclick="location.href='/admin/order/${orderUrl}'">
                 <td><strong>${o.unique_order_id || o.id}</strong></td>
                 <td>${o.user_name || '-'}</td>
                 <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.restaurant_name || '-'}</td>
                 <td><strong>${currency}${parseFloat(o.total||0).toFixed(2)}</strong></td>
                 <td><span class="badge badge-${({1:'info',2:'warning',3:'warning',4:'warning',5:'success',6:'danger',7:'success',8:'secondary',10:'purple',11:'info'})[o.orderstatus_id]||'secondary'}">${({1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pend.',10:'Programado',11:'Confirmado'})[o.orderstatus_id]||'-'}</span></td>
+                <td><span class="text-nowrap" style="font-size:12px" data-order-elapsed data-created="${o.created_at || ''}" data-status="${o.orderstatus_id}" data-updated="${o.updated_at || ''}">${elapsed}</span></td>
                 <td style="font-size:11px;color:#888">${new Date(o.created_at).toLocaleDateString('es',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
-              </tr>`).join('')}
-              ${(typeof recentOrders === 'undefined' || !recentOrders.length) ? '<tr><td colspan="6" class="text-center text-muted py-4">Sin pedidos</td></tr>' : ''}
+              </tr>`;
+              }).join('')}
+              ${(typeof recentOrders === 'undefined' || !recentOrders.length) ? '<tr><td colspan="7" class="text-center text-muted py-4">Sin pedidos</td></tr>' : ''}
             </tbody>
           </table>
         </div>

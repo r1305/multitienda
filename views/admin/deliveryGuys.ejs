@@ -1,9 +1,126 @@
 <% var active = 'delivery'; var pageTitle = 'Delivery Guys'; %>
-<% var scripts = '<script>$(document).ready(function(){ if($("#deliveryTable tbody tr").length > 1) { $("#deliveryTable").DataTable(); } });</script>'; %>
+<% var mc = typeof mapCenter !== 'undefined' ? mapCenter : { lat: 9.9281, lng: -84.0907 }; %>
+<% var scripts = `
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+$(function(){
+  initAdminListTable("#deliveryTable");
+  wireAdminListSearch("#deliveryTableSearch", "#deliveryTable");
+
+  var mapEl = document.getElementById("deliveryGuysMap");
+  if (!mapEl || typeof L === "undefined") return;
+
+  var defaultCenter = [${mc.lat}, ${mc.lng}];
+  var map = L.map("deliveryGuysMap", { scrollWheelZoom: true }).setView(defaultCenter, 12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }).addTo(map);
+
+  var markers = {};
+  var pollMs = 15000;
+  var staleMs = 5 * 60 * 1000;
+  var userMovedMap = false;
+  map.on("dragstart zoomstart", function() { userMovedMap = true; });
+
+  function esc(s) {
+    if (!s) return "";
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function markerColor(driver) {
+    if (driver.is_active === 0) return "#6c757d";
+    if (driver.updated_at && (Date.now() - driver.updated_at) > staleMs) return "#fd7e14";
+    return driver.live ? "#28a745" : "#17a2b8";
+  }
+
+  function formatUpdated(ts) {
+    if (!ts) return "Sin hora de actualizaci\u00f3n";
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return "Sin hora de actualizaci\u00f3n";
+    return d.toLocaleString();
+  }
+
+  function refreshMap() {
+    var statusEl = document.getElementById("deliveryMapStatus");
+    fetch("/admin/api/delivery-guys-locations", { credentials: "same-origin", headers: { Accept: "application/json" } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var drivers = data.drivers || [];
+        var seen = {};
+        drivers.forEach(function(d) {
+          seen[d.id] = true;
+          var pos = [d.lat, d.lng];
+          var popup = "<strong>" + esc(d.name) + "</strong><br>" +
+            (d.phone ? esc(d.phone) + "<br>" : "") +
+            (d.vehicle ? "Veh\u00edculo: " + esc(d.vehicle) + "<br>" : "") +
+            "<small>" + formatUpdated(d.updated_at) + (d.live ? " (en vivo)" : "") + "</small>";
+          var color = markerColor(d);
+          if (markers[d.id]) {
+            markers[d.id].setLatLng(pos);
+            markers[d.id].setPopupContent(popup);
+            markers[d.id].setStyle({ fillColor: color, color: color });
+          } else {
+            markers[d.id] = L.circleMarker(pos, {
+              radius: 9,
+              fillColor: color,
+              color: color,
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.85
+            }).addTo(map).bindPopup(popup);
+          }
+        });
+        Object.keys(markers).forEach(function(id) {
+          if (!seen[id]) {
+            map.removeLayer(markers[id]);
+            delete markers[id];
+          }
+        });
+        if (drivers.length && !userMovedMap) {
+          var bounds = L.latLngBounds(drivers.map(function(d) { return [d.lat, d.lng]; }));
+          if (drivers.length === 1) map.setView(bounds.getCenter(), 14);
+          else map.fitBounds(bounds.pad(0.15));
+        }
+        if (statusEl) {
+          statusEl.textContent = drivers.length + " en mapa / " + (data.total || 0) + " repartidores \u00b7 actualizado " + new Date().toLocaleTimeString();
+        }
+      })
+      .catch(function() {
+        if (statusEl) statusEl.textContent = "No se pudo cargar ubicaciones";
+      });
+  }
+
+  refreshMap();
+  setInterval(refreshMap, pollMs);
+  setTimeout(function() { map.invalidateSize(); }, 300);
+});
+</script>`; %>
 <%
 var body = `
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px">
+        <span><i class="fas fa-map-marked-alt text-primary"></i> Ubicaci\u00f3n en tiempo real</span>
+        <div class="d-flex align-items-center flex-wrap" style="gap:12px;font-size:12px">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#28a745"></span> Activo (vivo)</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#17a2b8"></span> Activo</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#fd7e14"></span> Desactualizado</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6c757d"></span> Pendiente</span>
+            <small class="text-muted" id="deliveryMapStatus">Cargando mapa...</small>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div id="deliveryGuysMap" style="height:280px;min-height:200px;background:#e9ecef"></div>
+    </div>
+</div>
 <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:10px">
+        <span>Repartidores</span>
+        <div class="admin-list-search ml-auto"><i class="fas fa-search"></i><input type="search" id="deliveryTableSearch" class="form-control form-control-sm" placeholder="Buscar nombre, teléfono, vehículo..." autocomplete="off"></div>
+    </div>
     <div class="card-body">
+        <div class="table-responsive">
         <table class="table table-hover" id="deliveryTable">
             <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Vehicle</th><th>Commission</th><th>Ganancias</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>`;
@@ -55,6 +172,6 @@ if (typeof deliveryGuys !== 'undefined' && deliveryGuys.length) {
   body += '<tr><td colspan="8" class="text-center text-muted py-4">No delivery guys found</td></tr>';
 }
 
-body += `</tbody></table></div></div>`;
+body += `</tbody></table></div></div></div>`;
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

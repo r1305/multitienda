@@ -121,6 +121,9 @@ async function sendViaOneSignal(title, message, userId, role, data) {
       if (data.type === 'new_order' && data.order_id) {
         payload.url = `${baseUrl}/store-owner/order/${data.order_id}`;
         payload.web_url = payload.url;
+      } else if (data.type === 'delivery_assigned' && data.order_id) {
+        payload.url = `${baseUrl}/delivery/order/${data.order_id}`;
+        payload.web_url = payload.url;
       } else if (data.type === 'chat' && data.order_id) {
         if (data.recipient_role === 'delivery') {
           payload.url = `${baseUrl}/delivery/order/${data.order_id}`;
@@ -430,6 +433,19 @@ async function notifyDeliveryNewOrder(order) {
   });
 }
 
+async function notifyDeliveryOrderAssigned(order, deliveryUserId) {
+  const title = 'Pedido asignado';
+  const message = `Te asignaron el pedido #${order.unique_order_id}`;
+  const data = {
+    type: 'delivery_assigned',
+    recipient_role: 'delivery',
+    order_id: Number(order.id),
+    unique_order_id: order.unique_order_id,
+  };
+  await saveNotification(deliveryUserId, title, message, data);
+  await sendPushNotification(title, message, deliveryUserId, null, data);
+}
+
 async function notifyAdminNewDelivery(name, phone) {
   const title = 'Nuevo repartidor registrado';
   const message = `${name} (${phone}) solicita ser repartidor.`;
@@ -460,6 +476,7 @@ module.exports = {
   broadcastToRole,
   notifyStoreNewOrder,
   notifyDeliveryNewOrder,
+  notifyDeliveryOrderAssigned,
   notifyAdminNewDelivery,
   notifyCustomerDeliveryAccepted,
   notifyCustomerOrderOnWay,

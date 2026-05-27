@@ -1,11 +1,14 @@
 <% var active = 'stores'; var pageTitle = 'Stores'; %>
-<% var scripts = '<script>$(document).ready(function(){ if($("#storesTable tbody tr").length > 1) { $("#storesTable").DataTable(); } });</script>'; %>
+<% var scripts = '<script>$(function(){ initAdminListTable("#storesTable"); wireAdminListSearch("#storesTableSearch", "#storesTable"); });</script>'; %>
 <%
 var body = `
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>All Stores (${typeof count !== 'undefined' ? count : 0})</span>
-        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newStoreModal"><i class="fas fa-plus"></i> Add Store</button>
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:10px">
+        <span>Tiendas (${typeof count !== 'undefined' ? count : 0})</span>
+        <div class="d-flex align-items-center flex-wrap ml-auto" style="gap:10px">
+            <div class="admin-list-search"><i class="fas fa-search"></i><input type="search" id="storesTableSearch" class="form-control form-control-sm" placeholder="Buscar nombre o dirección..." autocomplete="off"></div>
+            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newStoreModal"><i class="fas fa-plus"></i> Add Store</button>
+        </div>
     </div>
     <div class="card-body">
         <div class="table-responsive">

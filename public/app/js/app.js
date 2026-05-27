@@ -100,7 +100,9 @@ Store.applyTheme();
           if (!data.order_id && !data.unique_order_id) return;
           const storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null');
           const deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null');
-          if (data.type === 'new_order' || data.recipient_role === 'store_owner' || storeOwnerUser) {
+          if (data.type === 'delivery_assigned' && data.order_id) {
+            router.push('/delivery/order/' + data.order_id);
+          } else if (data.type === 'new_order' || data.recipient_role === 'store_owner' || storeOwnerUser) {
             router.push('/store-owner/order/' + data.order_id);
           } else if (data.recipient_role === 'delivery' || deliveryUser) {
             router.push('/delivery/order/' + (data.order_id || data.unique_order_id));

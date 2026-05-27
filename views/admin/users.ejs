@@ -1,14 +1,17 @@
 <% var active = 'users'; var pageTitle = 'Users'; %>
-<% var scripts = '<script>$(document).ready(function(){ if($("#usersTable tbody tr").length > 1) { $("#usersTable").DataTable(); } });</script>'; %>
+<% var scripts = '<script>$(function(){ initAdminListTable("#usersTable", { order: [[0, "desc"]] }); wireAdminListSearch("#usersTableSearch", "#usersTable"); });</script>'; %>
 <%
 var roleOptions = '';
 if (typeof roles !== 'undefined') { roles.forEach(function(r) { roleOptions += `<option value="${r.name}">${r.name}</option>`; }); }
 
 var body = `
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>All Users</span>
-        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newUserModal"><i class="fas fa-plus"></i> Add User</button>
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:10px">
+        <span>Usuarios / Clientes</span>
+        <div class="d-flex align-items-center flex-wrap ml-auto" style="gap:10px">
+            <div class="admin-list-search"><i class="fas fa-search"></i><input type="search" id="usersTableSearch" class="form-control form-control-sm" placeholder="Buscar nombre, email, teléfono..." autocomplete="off"></div>
+            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newUserModal"><i class="fas fa-plus"></i> Add User</button>
+        </div>
     </div>
     <div class="card-body">
         <table class="table table-hover" id="usersTable">

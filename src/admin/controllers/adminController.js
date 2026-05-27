@@ -1,4 +1,29 @@
 const { sequelize } = require('../../models');
+const { formatOrderElapsed } = require('../../helpers/orderDuration');
+
+async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
+  const [orders] = await sequelize.query(
+    'SELECT * FROM orders WHERE id = ? LIMIT 1',
+    { replacements: [orderId] }
+  );
+  const order = orders[0];
+  if (!order) throw new Error('Order not found');
+
+  await sequelize.query(
+    'UPDATE orders SET delivery_guy_id = ?, orderstatus_id = 3 WHERE id = ?',
+    { replacements: [deliveryUserId, orderId] }
+  );
+
+  await sequelize.query('DELETE FROM accept_deliveries WHERE order_id = ?', { replacements: [orderId] });
+  await sequelize.query(
+    'INSERT INTO accept_deliveries (order_id, user_id) VALUES (?, ?)',
+    { replacements: [orderId, deliveryUserId] }
+  );
+
+  const { notifyDeliveryOrderAssigned } = require('../../helpers/notifications');
+  await notifyDeliveryOrderAssigned(order, deliveryUserId);
+  return order;
+}
 
 exports.dashboard = async (req, res) => {
   try {
@@ -32,7 +57,7 @@ exports.dashboard = async (req, res) => {
       q("SELECT COALESCE(SUM(total),0) as v FROM orders WHERE orderstatus_id = 5 AND DATE(created_at) = CURDATE()"),
       q("SELECT COALESCE(SUM(total),0) as v FROM orders WHERE orderstatus_id = 5"),
       qa(`
-      SELECT o.id, o.unique_order_id, o.total, o.orderstatus_id, o.payment_mode, o.created_at,
+      SELECT o.id, o.unique_order_id, o.total, o.orderstatus_id, o.payment_mode, o.created_at, o.updated_at,
         u.name as user_name, r.name as restaurant_name
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
@@ -66,6 +91,7 @@ exports.dashboard = async (req, res) => {
       topStores,
       activeDelivery,
       currency,
+      formatOrderElapsed,
       success: req.flash('success')[0],
       error: req.flash('error')[0]
     });
@@ -78,6 +104,7 @@ exports.dashboard = async (req, res) => {
       topStores: [],
       activeDelivery: [],
       currency: '$',
+      formatOrderElapsed,
       success: null,
       error: 'Error loading dashboard: ' + err.message
     });
@@ -88,16 +115,39 @@ exports.dashboard = async (req, res) => {
 exports.orders = async (req, res) => {
   try {
     const [orders] = await sequelize.query(`
-      SELECT o.*, u.name as user_name, r.name as restaurant_name
+      SELECT o.*, u.name as user_name, r.name as restaurant_name,
+        dg.name as delivery_guy_name
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       LEFT JOIN restaurants r ON o.restaurant_id = r.id
+      LEFT JOIN users dg ON o.delivery_guy_id = dg.id
       ORDER BY o.id DESC
     `);
-    res.render('admin/orders', { user: req.session.user, orders, success: req.flash('success')[0], error: req.flash('error')[0] });
+    const [deliveryGuys] = await sequelize.query(`
+      SELECT u.id, u.name, u.phone FROM users u
+      INNER JOIN model_has_roles mr ON u.id = mr.model_id
+      INNER JOIN roles r ON mr.role_id = r.id
+      WHERE r.name = 'Delivery Guy' AND u.is_active = 1
+      ORDER BY u.name ASC
+    `);
+    res.render('admin/orders', {
+      user: req.session.user,
+      orders,
+      deliveryGuys,
+      formatOrderElapsed,
+      success: req.flash('success')[0],
+      error: req.flash('error')[0],
+    });
   } catch (err) {
     console.error(err);
-    res.render('admin/orders', { user: req.session.user, orders: [], success: null, error: 'Error loading orders' });
+    res.render('admin/orders', {
+      user: req.session.user,
+      orders: [],
+      deliveryGuys: [],
+      formatOrderElapsed,
+      success: null,
+      error: 'Error loading orders',
+    });
   }
 };
 
@@ -116,10 +166,26 @@ exports.viewOrder = async (req, res) => {
       [orderitems] = await sequelize.query('SELECT * FROM orderitems WHERE order_id = ?', { replacements: [order.id] });
       [deliveryGuys] = await sequelize.query(`SELECT u.id, u.name, u.phone FROM users u INNER JOIN model_has_roles mr ON u.id = mr.model_id INNER JOIN roles r ON mr.role_id = r.id WHERE r.name = 'Delivery Guy'`);
     }
-    res.render('admin/viewOrder', { user: req.session.user, order, orderitems, deliveryGuys, success: req.flash('success')[0], error: req.flash('error')[0] });
+    res.render('admin/viewOrder', {
+      user: req.session.user,
+      order,
+      orderitems,
+      deliveryGuys,
+      formatOrderElapsed,
+      success: req.flash('success')[0],
+      error: req.flash('error')[0],
+    });
   } catch (err) {
     console.error(err);
-    res.render('admin/viewOrder', { user: req.session.user, order: null, orderitems: [], deliveryGuys: [], success: null, error: 'Error loading order' });
+    res.render('admin/viewOrder', {
+      user: req.session.user,
+      order: null,
+      orderitems: [],
+      deliveryGuys: [],
+      formatOrderElapsed,
+      success: null,
+      error: 'Error loading order',
+    });
   }
 };
 
@@ -149,18 +215,28 @@ exports.acceptOrder = async (req, res) => {
 
 exports.assignDelivery = async (req, res) => {
   try {
-    await sequelize.query('UPDATE orders SET delivery_guy_id = ?, orderstatus_id = 3 WHERE id = ?', { replacements: [req.body.user_id, req.body.order_id] });
-    req.flash('success', 'Delivery assigned');
-  } catch (err) { req.flash('error', 'Error assigning delivery'); }
-  res.redirect('/admin/order/' + req.body.order_id);
+    const order = await assignOrderToDeliveryGuy(req.body.order_id, req.body.user_id);
+    req.flash('success', 'Repartidor asignado y notificado');
+    if (req.body.return_to === 'orders') return res.redirect('/admin/orders');
+    return res.redirect('/admin/order/' + (order.unique_order_id || order.id));
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Error al asignar repartidor');
+    if (req.body.return_to === 'orders') return res.redirect('/admin/orders');
+    res.redirect('/admin/orders');
+  }
 };
 
 exports.reassignDelivery = async (req, res) => {
   try {
-    await sequelize.query('UPDATE orders SET delivery_guy_id = ? WHERE id = ?', { replacements: [req.body.user_id, req.body.order_id] });
-    req.flash('success', 'Delivery reassigned');
-  } catch (err) { req.flash('error', 'Error reassigning delivery'); }
-  res.redirect('/admin/order/' + req.body.order_id);
+    const order = await assignOrderToDeliveryGuy(req.body.order_id, req.body.user_id);
+    req.flash('success', 'Repartidor reasignado y notificado');
+    return res.redirect('/admin/order/' + (order.unique_order_id || order.id));
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Error al reasignar repartidor');
+    res.redirect('/admin/orders');
+  }
 };
 
 // ==================== 2. STORES ====================
@@ -535,10 +611,72 @@ exports.deliveryGuys = async (req, res) => {
       LEFT JOIN (SELECT user_id, SUM(amount) as total_earnings FROM delivery_earnings GROUP BY user_id) de ON de.user_id = u.id
       WHERE r.name = 'Delivery Guy' ORDER BY u.is_active ASC, u.id DESC
     `);
-    res.render('admin/deliveryGuys', { user: req.session.user, deliveryGuys, success: req.flash('success')[0], error: req.flash('error')[0] });
+    const [[geo]] = await sequelize.query(
+      'SELECT latitude, longitude FROM popular_geo_places WHERE is_default = 1 LIMIT 1'
+    );
+    const mapCenter = {
+      lat: geo && geo.latitude ? parseFloat(geo.latitude) : 9.9281,
+      lng: geo && geo.longitude ? parseFloat(geo.longitude) : -84.0907,
+    };
+    res.render('admin/deliveryGuys', {
+      user: req.session.user,
+      deliveryGuys,
+      mapCenter,
+      success: req.flash('success')[0],
+      error: req.flash('error')[0],
+    });
   } catch (err) {
     console.error(err);
-    res.render('admin/deliveryGuys', { user: req.session.user, deliveryGuys: [], success: null, error: 'Error loading delivery guys' });
+    res.render('admin/deliveryGuys', {
+      user: req.session.user,
+      deliveryGuys: [],
+      mapCenter: { lat: 9.9281, lng: -84.0907 },
+      success: null,
+      error: 'Error loading delivery guys',
+    });
+  }
+};
+
+exports.deliveryGuysLocations = async (req, res) => {
+  try {
+    const [rows] = await sequelize.query(`
+      SELECT u.id, u.name, u.phone, u.is_active, dgd.vehicle_number
+      FROM users u
+      INNER JOIN model_has_roles mr ON u.id = mr.model_id
+      INNER JOIN roles r ON mr.role_id = r.id
+      LEFT JOIN delivery_guy_details dgd ON u.id = dgd.user_id
+      WHERE r.name = 'Delivery Guy'
+    `);
+    const gps = require('../../helpers/gps');
+    const positions = await gps.getDeliveryGpsBatch(rows.map((r) => r.id));
+    const drivers = rows
+      .map((r) => {
+        const p = positions[r.id];
+        const lat = p ? parseFloat(p.delivery_lat) : null;
+        const lng = p ? parseFloat(p.delivery_long) : null;
+        return {
+          id: r.id,
+          name: r.name,
+          phone: r.phone,
+          is_active: r.is_active,
+          vehicle: r.vehicle_number,
+          lat: Number.isFinite(lat) ? lat : null,
+          lng: Number.isFinite(lng) ? lng : null,
+          heading: p?.heading,
+          updated_at: p?.updated_at || null,
+          live: !!p?.live,
+        };
+      })
+      .filter((d) => d.lat != null && d.lng != null);
+    res.json({
+      drivers,
+      total: rows.length,
+      on_map: drivers.length,
+      fetched_at: Date.now(),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ drivers: [], total: 0, on_map: 0, error: 'Error loading locations' });
   }
 };
 

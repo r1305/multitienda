@@ -20,6 +20,11 @@ async function notifyDeliveryNewOrder(order) {
   return enqueue('notifyDeliveryNewOrder', { args: [order] });
 }
 
+async function notifyDeliveryOrderAssigned(order, deliveryUserId) {
+  const impl = require('./notifications.impl');
+  return impl.notifyDeliveryOrderAssigned(order, deliveryUserId);
+}
+
 async function notifyAdminNewDelivery(name, phone) {
   return enqueue('notifyAdminNewDelivery', { args: [name, phone] });
 }
@@ -39,6 +44,7 @@ module.exports = {
   saveFCMToken: impl.saveFCMToken,
   notifyStoreNewOrder,
   notifyDeliveryNewOrder,
+  notifyDeliveryOrderAssigned,
   notifyAdminNewDelivery,
   notifyCustomerDeliveryAccepted,
   notifyCustomerOrderOnWay,

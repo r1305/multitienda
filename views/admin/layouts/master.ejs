@@ -78,6 +78,11 @@
         .dataTables_filter input { border-radius: 6px; font-size: 13px; }
         .dataTables_length select { border-radius: 6px; }
         div.dataTables_wrapper div.dataTables_info { font-size: 12px; }
+        .admin-list-search { position: relative; min-width: 200px; max-width: 320px; flex: 1 1 200px; }
+        .admin-list-search .fa-search { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #8a9bb5; font-size: 12px; pointer-events: none; }
+        .admin-list-search input { padding-left: 30px; }
+        #deliveryGuysMap { z-index: 1; }
+        .leaflet-container { font-family: inherit; font-size: 13px; }
 
         /* Dark Mode */
         [data-theme="dark"] body { background: #121212; color: #e0e0e0; }
@@ -194,7 +199,26 @@
         });
       });
       // DataTables responsive defaults
-      $.extend($.fn.dataTable.defaults, { responsive: true, language: { search: '', searchPlaceholder: 'Buscar...', lengthMenu: '_MENU_ por página', info: '_START_-_END_ de _TOTAL_', paginate: { previous: '‹', next: '›' } } });
+      $.extend($.fn.dataTable.defaults, { responsive: true, language: { search: '', searchPlaceholder: 'Buscar...', lengthMenu: '_MENU_ por página', info: '_START_-_END_ de _TOTAL_', emptyTable: 'Sin resultados', zeroRecords: 'Ningún resultado coincide', paginate: { previous: '‹', next: '›' } } });
+      window.initAdminListTable = function(selector, options) {
+        var $table = $(selector);
+        if (!$table.length) return null;
+        if ($.fn.DataTable.isDataTable($table[0])) return $table.DataTable();
+        return $table.DataTable($.extend(true, {
+          responsive: true,
+          pageLength: 25,
+          dom: 'lrtip'
+        }, options || {}));
+      };
+      window.wireAdminListSearch = function(inputSelector, tableSelector) {
+        var $input = $(inputSelector);
+        var $table = $(tableSelector);
+        if (!$input.length || !$table.length) return;
+        $input.on('keyup input', function() {
+          var api = $table.DataTable();
+          if (api) api.search(this.value).draw();
+        });
+      };
 
       // Theme toggle
       function toggleTheme() {

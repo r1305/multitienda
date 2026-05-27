@@ -1,34 +1,98 @@
 <% var active = 'orders'; var pageTitle = 'Orders'; %>
-<% var scripts = '<script>$(document).ready(function(){ if($("#ordersTable tbody tr").length > 1) { $("#ordersTable").DataTable({order:[[6,"desc"]]}); } });</script>'; %>
+<% var elapsedFn = typeof formatOrderElapsed === 'function' ? formatOrderElapsed : function() { return '-'; }; %>
+<% var scripts = `
+<script>
+window.formatOrderElapsed = function(createdAt, statusId, updatedAt) {
+  if (!createdAt) return '-';
+  var start = new Date(createdAt).getTime();
+  if (isNaN(start)) return '-';
+  var sid = parseInt(statusId, 10);
+  var end = Date.now();
+  if ((sid === 5 || sid === 6) && updatedAt) {
+    var u = new Date(updatedAt).getTime();
+    if (!isNaN(u)) end = u;
+  }
+  var ms = Math.max(0, end - start);
+  var mins = Math.floor(ms / 60000);
+  if (mins < 1) return '< 1 min';
+  if (mins < 60) return mins + ' min';
+  var hours = Math.floor(mins / 60), rm = mins % 60;
+  if (hours < 24) return rm ? hours + ' h ' + rm + ' min' : hours + ' h';
+  var days = Math.floor(hours / 24), rh = hours % 24;
+  return rh ? days + ' d ' + rh + ' h' : days + ' d';
+};
+function refreshOrderElapsedCells() {
+  document.querySelectorAll('[data-order-elapsed]').forEach(function(el) {
+    el.textContent = formatOrderElapsed(el.dataset.created, el.dataset.status, el.dataset.updated || '');
+  });
+}
+$(function(){
+  initAdminListTable("#ordersTable", { order: [[7, "desc"]] });
+  wireAdminListSearch("#ordersTableSearch", "#ordersTable");
+  refreshOrderElapsedCells();
+  setInterval(refreshOrderElapsedCells, 30000);
+});
+</script>`; %>
 <%
 var body = `
 <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:10px">
+        <span>Pedidos</span>
+        <div class="admin-list-search ml-auto"><i class="fas fa-search"></i><input type="search" id="ordersTableSearch" class="form-control form-control-sm" placeholder="Buscar ID, cliente, tienda..." autocomplete="off"></div>
+    </div>
     <div class="card-body">
+        <div class="table-responsive">
         <table class="table table-hover" id="ordersTable">
             <thead>
-                <tr><th>#ID</th><th>Customer</th><th>Store</th><th>Total</th><th>Status</th><th>Payment</th><th>Date</th><th>Actions</th></tr>
+                <tr><th>#ID</th><th>Cliente</th><th>Tienda</th><th>Total</th><th>Estado</th><th>Tiempo</th><th>Pago</th><th>Fecha</th><th>Acciones</th></tr>
             </thead>
             <tbody>`;
 
 if (typeof orders !== 'undefined' && orders.length) {
   var statusColors = {1:'info',2:'primary',3:'warning',4:'warning',5:'success',6:'danger',7:'secondary',8:'dark',9:'danger',10:'info',11:'primary'};
-  var statusNames = {1:'Order Placed',2:'Preparing',3:'Delivery Assigned',4:'Picked Up',5:'Delivered',6:'Canceled',7:'Ready Pickup',8:'Awaiting Payment',9:'Payment Failed',10:'Scheduled',11:'Confirmed'};
+  var statusNames = {1:'Nuevo',2:'Preparando',3:'Asignado',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo pickup',8:'Pago pend.',9:'Pago fallido',10:'Programado',11:'Confirmado'};
+  var assignable = {1:1,2:1,3:1,4:1,7:1,10:1,11:1};
   orders.forEach(function(o) {
+    var elapsed = elapsedFn(o.created_at, o.orderstatus_id, o.updated_at);
+    var canAssign = o.delivery_type == 1 && assignable[o.orderstatus_id];
+    var assignHtml = '';
+    if (canAssign && typeof deliveryGuys !== 'undefined' && deliveryGuys.length) {
+      var dgSelect = '<option value="">Repartidor...</option>';
+      deliveryGuys.forEach(function(dg) {
+        var sel = o.delivery_guy_id == dg.id ? ' selected' : '';
+        dgSelect += '<option value="' + dg.id + '"' + sel + '>' + (dg.name || '') + '</option>';
+      });
+      assignHtml = `<form method="POST" action="/admin/order/assign-delivery" class="d-flex align-items-center mt-1" style="gap:4px;max-width:200px" onclick="event.stopPropagation()">
+        <input type="hidden" name="order_id" value="${o.id}">
+        <input type="hidden" name="return_to" value="orders">
+        <select name="user_id" class="form-control form-control-sm" required style="min-width:110px">${dgSelect}</select>
+        <button type="submit" class="btn btn-sm btn-warning" title="Asignar repartidor"><i class="fas fa-motorcycle"></i></button>
+      </form>`;
+      if (o.delivery_guy_name) {
+        assignHtml = '<small class="text-muted d-block">' + o.delivery_guy_name + '</small>' + assignHtml;
+      }
+    } else if (o.delivery_guy_name) {
+      assignHtml = '<small class="text-muted">' + o.delivery_guy_name + '</small>';
+    }
     body += `<tr>
       <td><strong>${o.unique_order_id}</strong></td>
       <td>${o.user_name || '-'}</td>
       <td>${o.restaurant_name || '-'}</td>
       <td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(o.total || 0).toFixed(2)}</td>
       <td><span class="badge badge-${statusColors[o.orderstatus_id] || 'secondary'}">${statusNames[o.orderstatus_id] || 'Unknown'}</span></td>
+      <td><span class="text-nowrap" data-order-elapsed data-created="${o.created_at || ''}" data-status="${o.orderstatus_id}" data-updated="${o.updated_at || ''}">${elapsed}</span></td>
       <td>${o.payment_mode || 'COD'}</td>
       <td>${o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
-      <td><a href="/admin/order/${o.unique_order_id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+      <td style="min-width:140px">
+        <a href="/admin/order/${o.unique_order_id}" class="btn btn-sm btn-outline-primary" title="Ver"><i class="fas fa-eye"></i></a>
+        ${assignHtml}
+      </td>
     </tr>`;
   });
 } else {
-  body += '<tr><td colspan="8" class="text-center text-muted py-4">No orders found</td></tr>';
+  body += '<tr><td colspan="9" class="text-center text-muted py-4">No orders found</td></tr>';
 }
 
-body += `</tbody></table></div></div>`;
+body += `</tbody></table></div></div></div>`;
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>
