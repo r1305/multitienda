@@ -15,6 +15,17 @@ const order = require('../controllers/orderController');
 const misc = require('../controllers/miscControllers');
 const storeOwner = require('../controllers/storeOwnerController');
 
+// OneSignal service worker — must return JS (never SPA index.html)
+const ONE_SIGNAL_WORKER_SOURCE = "importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');\n";
+router.get('/onesignal-service-worker.js', (req, res) => {
+  res.set({
+    'Content-Type': 'application/javascript; charset=utf-8',
+    'Service-Worker-Allowed': '/',
+    'Cache-Control': 'public, max-age=86400',
+  });
+  res.send(ONE_SIGNAL_WORKER_SOURCE);
+});
+
 // ─── Public routes ────────────────────────────────────────────────────────────
 router.post('/coordinate-to-address', misc.coordinatesToAddress);
 router.post('/address-to-coordinate', misc.addressToCoordinates);

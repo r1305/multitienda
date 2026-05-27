@@ -74,7 +74,12 @@ Store.applyTheme();
     if (Store.settings.onesignalAppId) {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {
-        const serviceWorkerUrl = new URL('/app/OneSignalSDKWorker.js', window.location.origin).href;
+        const serviceWorkerUrl = PushNotifications.serviceWorkerUrl();
+        const workerOk = await PushNotifications.verifyServiceWorker();
+        if (!workerOk) {
+          console.warn('OneSignal: service worker URL returned HTML or failed — push disabled. URL:', serviceWorkerUrl);
+          return;
+        }
         try {
           await OneSignal.init({
             appId: Store.settings.onesignalAppId,

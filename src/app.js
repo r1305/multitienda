@@ -23,7 +23,13 @@ async function createApp() {
     res.sendFile(oneSignalWorkerPath);
   };
 
-  // Before SPA catch-all / proxies — SW must not receive index.html (text/html)
+  const oneSignalWorkerJs = "importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');\n";
+  const serveOneSignalWorkerApi = (req, res) => {
+    res.type('application/javascript');
+    res.set({ 'Service-Worker-Allowed': '/', 'Cache-Control': 'public, max-age=86400' });
+    res.send(oneSignalWorkerJs);
+  };
+  app.get(['/public/api/onesignal-service-worker.js', '/api/onesignal-service-worker.js'], serveOneSignalWorkerApi);
   app.get(/^\/(app\/)?OneSignalSDKWorker\.js$/i, serveOneSignalWorker);
 
   app.set('trust proxy', 1);
@@ -77,6 +83,9 @@ async function createApp() {
 
   const spaFile = path.join(__dirname, '../public/app/index.html');
   app.get('*', (req, res) => {
+    if (/onesignal/i.test(req.path) && /\.js$/i.test(req.path)) {
+      return serveOneSignalWorker(req, res);
+    }
     if (req.path.startsWith('/admin') || req.path.startsWith('/auth')) {
       return res.status(404).send('Route not found');
     }

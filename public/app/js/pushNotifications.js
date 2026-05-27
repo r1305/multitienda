@@ -1,5 +1,19 @@
 /** Register web push (OneSignal) — tags + external_id for server targeting */
 const PushNotifications = {
+  /** Served by Node API so cPanel never returns SPA HTML for the worker */
+  serviceWorkerUrl() {
+    return new URL('/public/api/onesignal-service-worker.js', window.location.origin).href;
+  },
+
+  async verifyServiceWorker() {
+    try {
+      const res = await fetch(this.serviceWorkerUrl(), { method: 'GET', cache: 'no-store' });
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      return res.ok && ct.includes('javascript');
+    } catch (_) {
+      return false;
+    }
+  },
   register(userId, role = 'customer', extraTags = {}) {
     if (!userId || !window.OneSignalDeferred) return;
     const id = String(userId);
