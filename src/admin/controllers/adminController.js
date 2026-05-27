@@ -928,24 +928,34 @@ exports.notifications = (req, res) => {
 exports.sendNotification = async (req, res) => {
   try {
     const { title, message, image, target, user_ids } = req.body;
-    const { sendPushNotification, saveNotification } = require('../../helpers/notifications');
+    const { sendPushNotification, saveNotification, broadcastToRole } = require('../../helpers/notifications');
+    const extra = image ? { image } : {};
 
     if (target === 'specific' && user_ids) {
-      const ids = user_ids.split(',').map(id => id.trim()).filter(Boolean);
+      const ids = user_ids.split(',').map((id) => id.trim()).filter(Boolean);
       for (const uid of ids) {
-        await sendPushNotification(title, message, uid);
-        await saveNotification(uid, title, message);
+        await saveNotification(uid, title, message, extra);
+        await sendPushNotification(title, message, uid, null, extra);
       }
+      req.flash('success', `Notificación enviada a ${ids.length} usuario(s).`);
     } else if (target === 'customers') {
-      await sendPushNotification(title, message, null, 'customer', image ? { image } : {});
+      const n = await broadcastToRole('customer', title, message, extra);
+      req.flash('success', n ? `Notificación enviada a ${n} cliente(s).` : 'Enviado por tag; verifica que los clientes tengan push activo.');
     } else if (target === 'delivery') {
-      await sendPushNotification(title, message, null, 'delivery', image ? { image } : {});
+      const n = await broadcastToRole('delivery', title, message, extra);
+      req.flash(
+        'success',
+        n
+          ? `Notificación enviada a ${n} repartidor(es). Deben tener la app /delivery abierta con notificaciones activadas.`
+          : 'No hay repartidores en el sistema. Regístralos con rol Delivery Guy.'
+      );
     } else if (target === 'store_owners') {
-      await sendPushNotification(title, message, null, 'store_owner', image ? { image } : {});
+      const n = await broadcastToRole('store_owner', title, message, extra);
+      req.flash('success', n ? `Notificación enviada a ${n} dueño(s) de tienda.` : 'No hay dueños de tienda asignados.');
     } else {
-      await sendPushNotification(title, message, null, null, image ? { image } : {});
+      await sendPushNotification(title, message, null, null, extra);
+      req.flash('success', 'Notificación enviada a todos los suscriptos.');
     }
-    req.flash('success', 'Notificación enviada correctamente');
   } catch (err) {
     console.error('Send notification error:', err);
     req.flash('error', 'Error al enviar la notificación: ' + err.message);

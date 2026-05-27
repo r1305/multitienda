@@ -163,8 +163,9 @@ async function sendViaOneSignal(title, message, userId, role, data) {
 
     if (result.errors) {
       console.error('OneSignal error:', JSON.stringify(result.errors));
-    } else if (userId && result.recipients === 0) {
-      console.warn('OneSignal: no recipients for user', userId);
+    } else if (result.recipients === 0) {
+      if (userId) console.warn('OneSignal: no recipients for user', userId);
+      else if (role) console.warn('OneSignal: no recipients for role tag', role);
     }
     return result;
   } catch (e) {
@@ -343,10 +344,61 @@ async function notifyStoreNewOrder(order, restaurantId) {
   }
 }
 
+const ROLE_TAG_TO_NAME = {
+  delivery: 'Delivery Guy',
+  customer: 'Customer',
+  store_owner: 'Store Owner',
+  admin: 'Admin',
+};
+
+async function getUserIdsByRoleTag(roleTag) {
+  const roleName = ROLE_TAG_TO_NAME[roleTag];
+  if (!roleName) return [];
+  const [rows] = await sequelize.query(
+    `SELECT DISTINCT u.id FROM users u
+     INNER JOIN model_has_roles mr ON mr.model_id = u.id
+     INNER JOIN roles r ON r.id = mr.role_id
+     WHERE r.name = ?`,
+    { replacements: [roleName] }
+  );
+  return [...new Set(rows.map((r) => Number(r.id)).filter((id) => id > 0))];
+}
+
+async function broadcastToRole(roleTag, title, message, data = {}) {
+  const userIds = await getUserIdsByRoleTag(roleTag);
+  const baseUrl = await getAppBaseUrl();
+  const payloadData = { ...data, recipient_role: roleTag };
+
+  if (roleTag === 'delivery' && baseUrl) {
+    payloadData.url = `${baseUrl}/delivery/orders`;
+    payloadData.web_url = payloadData.url;
+  } else if (roleTag === 'store_owner' && baseUrl) {
+    payloadData.url = `${baseUrl}/store-owner/dashboard`;
+    payloadData.web_url = payloadData.url;
+  }
+
+  for (const userId of userIds) {
+    await saveNotification(userId, title, message, payloadData);
+    await sendPushNotification(title, message, userId, null, payloadData);
+  }
+
+  if (!userIds.length) {
+    console.warn('[broadcastToRole] No users with role', roleTag);
+    await sendPushNotification(title, message, null, roleTag, payloadData);
+    return 0;
+  }
+
+  return userIds.length;
+}
+
 async function notifyDeliveryNewOrder(order) {
   const title = 'Pedido disponible!';
   const message = `Nuevo pedido #${order.unique_order_id} listo para recoger`;
-  await sendPushNotification(title, message, null, 'delivery', { order_id: String(order.id), unique_order_id: order.unique_order_id });
+  await broadcastToRole('delivery', title, message, {
+    order_id: Number(order.id),
+    unique_order_id: order.unique_order_id,
+    type: 'delivery_order',
+  });
 }
 
 async function notifyAdminNewDelivery(name, phone) {
@@ -374,6 +426,8 @@ module.exports = {
   sendPushNotification,
   saveNotification,
   saveFCMToken,
+  getUserIdsByRoleTag,
+  broadcastToRole,
   notifyStoreNewOrder,
   notifyDeliveryNewOrder,
   notifyAdminNewDelivery,

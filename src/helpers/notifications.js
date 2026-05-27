@@ -2,7 +2,13 @@ const impl = require('./notifications.impl');
 const { enqueue } = require('./notificationQueue');
 
 async function sendPushNotification(title, message, userId = null, role = null, data = {}) {
-  return enqueue('push', { title, message, userId, role, data });
+  const impl = require('./notifications.impl');
+  return impl.sendPushNotification(title, message, userId, role, data);
+}
+
+async function broadcastToRole(roleTag, title, message, data = {}) {
+  const impl = require('./notifications.impl');
+  return impl.broadcastToRole(roleTag, title, message, data);
 }
 
 async function notifyStoreNewOrder(order, restaurantId) {
@@ -28,6 +34,7 @@ async function notifyCustomerOrderOnWay(order) {
 
 module.exports = {
   sendPushNotification,
+  broadcastToRole,
   saveNotification: impl.saveNotification,
   saveFCMToken: impl.saveFCMToken,
   notifyStoreNewOrder,
