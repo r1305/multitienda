@@ -31,8 +31,8 @@ const tables = [
 
   `CREATE TABLE IF NOT EXISTS settings (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `key` VARCHAR(255) NOT NULL,
-    `value` TEXT NULL,
+    \`key\` VARCHAR(255) NOT NULL,
+    \`value\` TEXT NULL,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
@@ -378,6 +378,16 @@ const tables = [
     updated_at TIMESTAMP NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  `CREATE TABLE IF NOT EXISTS delivery_earnings (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NULL,
+    order_id INT UNSIGNED NULL,
+    amount DECIMAL(10,2) NULL,
+    commission_type VARCHAR(50) NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS popular_geo_places (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -635,7 +645,7 @@ const tables = [
     ('Delivery Guy', 'web', NOW(), NOW())`,
 
   // Seed: default settings
-  `INSERT IGNORE INTO settings (`key`, `value`, created_at, updated_at) VALUES
+  `INSERT IGNORE INTO settings (\`key\`, \`value\`, created_at, updated_at) VALUES
     ('taxApplicable', 'false', NOW(), NOW()),
     ('taxPercentage', '0', NOW(), NOW()),
     ('enablePushNotificationOrders', 'false', NOW(), NOW()),
@@ -652,8 +662,36 @@ const tables = [
     ('English', 'en', 1, 1, '{"orderPaymentWalletComment":"Payment for order ","orderPartialPaymentWalletComment":"Partial payment for order ","orderRefundWalletComment":"Refund for order ","orderPartialRefundWalletComment":"Partial refund for order "}', NOW(), NOW())`,
 ];
 
-(async () => {
-  let ok = 0, fail = 0;
+const columns = [
+  { table: 'restaurants', column: 'prep_minutes', ddl: 'ALTER TABLE restaurants ADD COLUMN prep_minutes INT NULL DEFAULT 20' },
+  { table: 'ratings', column: 'reply', ddl: 'ALTER TABLE ratings ADD COLUMN reply TEXT NULL' },
+];
+
+const uniques = [
+  { table: 'ratings', index: 'ratings_order_id_unique' },
+  { table: 'accept_deliveries', index: 'accept_deliveries_order_id_unique' },
+  { table: 'delivery_earnings', index: 'delivery_earnings_order_id_unique' },
+];
+
+async function columnExists(table, column) {
+  const [rows] = await sequelize.query(
+    'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+    { replacements: [table, column] }
+  );
+  return rows.length > 0;
+}
+
+async function indexExists(table, index) {
+  const [rows] = await sequelize.query(
+    'SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ? LIMIT 1',
+    { replacements: [table, index] }
+  );
+  return rows.length > 0;
+}
+
+async function run() {
+  let ok = 0, skipped = 0, fail = 0;
+
   for (const sql of tables) {
     try {
       await sequelize.query(sql);
@@ -663,6 +701,59 @@ const tables = [
       fail++;
     }
   }
-  console.log(`\nMigración completada: ${ok} OK | ${fail} errores`);
-  process.exit(fail > 0 ? 1 : 0);
-})();
+
+  for (const c of columns) {
+    try {
+      if (await columnExists(c.table, c.column)) {
+        console.log(`OMITIDO: ${c.table}.${c.column} ya existe`);
+        skipped++;
+      } else {
+        await sequelize.query(c.ddl);
+        console.log(`APLICADO: columna ${c.table}.${c.column}`);
+        ok++;
+      }
+    } catch (err) {
+      console.error(`Error columna ${c.table}.${c.column}:`, err.message);
+      fail++;
+    }
+  }
+
+  for (const u of uniques) {
+    try {
+      if (await indexExists(u.table, u.index)) {
+        console.log(`OMITIDO: UNIQUE ${u.index} ya existe`);
+        skipped++;
+        continue;
+      }
+      const [dups] = await sequelize.query(
+        `SELECT order_id, COUNT(*) AS cnt FROM \`${u.table}\` WHERE order_id IS NOT NULL GROUP BY order_id HAVING COUNT(*) > 1`
+      );
+      if (dups.length > 0) {
+        const ids = dups.map((d) => d.order_id).join(', ');
+        console.warn(`AVISO: ${u.table} tiene order_id duplicados (${dups.length}): ${ids}. UNIQUE ${u.index} NO creado; depurar a mano y volver a correr.`);
+        skipped++;
+        continue;
+      }
+      await sequelize.query(`ALTER TABLE \`${u.table}\` ADD UNIQUE KEY \`${u.index}\` (order_id)`);
+      console.log(`APLICADO: UNIQUE ${u.index} en ${u.table}(order_id)`);
+      ok++;
+    } catch (err) {
+      console.error(`Error UNIQUE ${u.index}:`, err.message);
+      fail++;
+    }
+  }
+
+  console.log(`\nMigración completada: ${ok} aplicadas | ${skipped} omitidas | ${fail} errores`);
+  return fail;
+}
+
+run()
+  .then(async (fail) => {
+    await sequelize.close();
+    process.exitCode = fail > 0 ? 1 : 0;
+  })
+  .catch(async (err) => {
+    console.error('Migración abortada:', err.message);
+    try { await sequelize.close(); } catch (e) {}
+    process.exitCode = 1;
+  });
