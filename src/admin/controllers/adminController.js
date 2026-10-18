@@ -7,6 +7,7 @@ const { cancelOrderWithRefund } = require('../../helpers/orderCancel');
 const { emitOrderEvent } = require('../../helpers/orderEvents');
 const { releaseDueScheduledOrders } = require('../../helpers/scheduledOrders');
 const { walletDeposit, walletWithdraw } = require('../../helpers/orderWallet');
+const businessTypes = require('../../helpers/businessTypes');
 
 async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
   const id = rules.toPositiveId(orderId);
@@ -337,12 +338,14 @@ exports.reassignDelivery = async (req, res) => {
 exports.stores = async (req, res) => {
   try {
     const [stores] = await sequelize.query(`
-      SELECT r.*, COALESCE(e.earnings, 0) as total_earnings
+      SELECT r.*, COALESCE(e.earnings, 0) as total_earnings, bt.name AS business_type_name
       FROM restaurants r
+      LEFT JOIN business_types bt ON bt.id = r.business_type_id
       LEFT JOIN (SELECT restaurant_id, SUM(total) as earnings FROM orders WHERE orderstatus_id = 5 GROUP BY restaurant_id) e ON e.restaurant_id = r.id
       ORDER BY r.id DESC
     `);
-    res.render('admin/stores', { user: req.session.user, stores, count: stores.length, success: req.flash('success')[0], error: req.flash('error')[0] });
+    const businessTypeOptions = await businessTypes.listActiveBusinessTypes(sequelize);
+    res.render('admin/stores', { user: req.session.user, stores, businessTypeOptions, count: stores.length, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     console.error(err);
     res.render('admin/stores', { user: req.session.user, stores: [], count: 0, success: null, error: 'Error loading stores' });
@@ -352,7 +355,10 @@ exports.stores = async (req, res) => {
 exports.editStore = async (req, res) => {
   try {
     const [rows] = await sequelize.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', { replacements: [req.params.id] });
-    res.render('admin/editStore', { user: req.session.user, restaurant: rows[0] || null, success: req.flash('success')[0], error: req.flash('error')[0] });
+    const [allTypes] = await sequelize.query('SELECT id, name, is_active FROM business_types ORDER BY name ASC');
+    const currentTypeId = rows[0] ? rows[0].business_type_id : null;
+    const businessTypeOptions = allTypes.filter((t) => t.is_active || t.id === currentTypeId);
+    res.render('admin/editStore', { user: req.session.user, restaurant: rows[0] || null, businessTypeOptions, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     req.flash('error', 'Error loading store');
     res.redirect('/admin/stores');
@@ -363,10 +369,15 @@ exports.createStore = async (req, res) => {
   try {
     const { name, description, address, latitude, longitude, delivery_charges, commission_rate, delivery_type } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : null;
+    const rubro = await businessTypes.resolveActiveBusinessTypeId(sequelize, req.body.business_type_id);
+    if (!rubro.ok) {
+      req.flash('error', rubro.message);
+      return res.redirect('/admin/stores');
+    }
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now();
     await sequelize.query(
-      'INSERT INTO restaurants (name, slug, description, address, latitude, longitude, delivery_charges, commission_rate, delivery_type, image, is_active, is_accepted, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,1,NOW(),NOW())',
-      { replacements: [name, slug, description||'', address||'', latitude||'', longitude||'', delivery_charges||0, commission_rate||0, delivery_type||1, image] }
+      'INSERT INTO restaurants (name, slug, description, address, latitude, longitude, delivery_charges, commission_rate, delivery_type, image, business_type_id, is_active, is_accepted, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,1,1,NOW(),NOW())',
+      { replacements: [name, slug, description||'', address||'', latitude||'', longitude||'', delivery_charges||0, commission_rate||0, delivery_type||1, image, rubro.id] }
     );
     req.flash('success', 'Store created');
   } catch (err) { console.error(err); req.flash('error', 'Error creating store'); }
@@ -383,9 +394,15 @@ exports.updateStore = async (req, res) => {
     const auto_acceptable = req.body.auto_acceptable ? 1 : 0;
     const is_sms_notifiable = req.body.is_notifiable ? 1 : 0;
     const is_accepted = 1;
+    const [currentRows] = await sequelize.query('SELECT business_type_id FROM restaurants WHERE id = ? LIMIT 1', { replacements: [id] });
+    const rubro = await businessTypes.resolveActiveBusinessTypeId(sequelize, req.body.business_type_id, { currentId: currentRows[0] ? currentRows[0].business_type_id : null });
+    if (!rubro.ok) {
+      req.flash('error', rubro.message);
+      return res.redirect('/admin/store/edit/' + encodeURIComponent(id));
+    }
     await sequelize.query(
-      `UPDATE restaurants SET name=?, description=?, address=?, latitude=?, longitude=?, pincode=?, landmark=?, certificate=?, rating=?, delivery_time=?, price_range=?, restaurant_charges=?, delivery_charges=?, commission_rate=?, delivery_type=?, delivery_radius=?, min_order_price=?, image=?, is_pureveg=?, is_featured=?, is_schedulable=?, auto_acceptable=?, is_sms_notifiable=?, is_accepted=?, updated_at=NOW() WHERE id=?`,
-      { replacements: [name, description||'', address||'', latitude||'', longitude||'', pincode||'', landmark||'', certificate||'', rating||'', delivery_time||'', price_range||'', restaurant_charges||0, delivery_charges||0, commission_rate||0, delivery_type||1, delivery_radius||'', min_order_price||0, image, is_pureveg, is_featured, is_schedulable, auto_acceptable, is_sms_notifiable, is_accepted, id] }
+      `UPDATE restaurants SET name=?, description=?, address=?, latitude=?, longitude=?, pincode=?, landmark=?, certificate=?, rating=?, delivery_time=?, price_range=?, restaurant_charges=?, delivery_charges=?, commission_rate=?, delivery_type=?, delivery_radius=?, min_order_price=?, image=?, is_pureveg=?, is_featured=?, is_schedulable=?, auto_acceptable=?, is_sms_notifiable=?, is_accepted=?, business_type_id=?, updated_at=NOW() WHERE id=?`,
+      { replacements: [name, description||'', address||'', latitude||'', longitude||'', pincode||'', landmark||'', certificate||'', rating||'', delivery_time||'', price_range||'', restaurant_charges||0, delivery_charges||0, commission_rate||0, delivery_type||1, delivery_radius||'', min_order_price||0, image, is_pureveg, is_featured, is_schedulable, auto_acceptable, is_sms_notifiable, is_accepted, rubro.id, id] }
     );
     req.flash('success', 'Store updated');
   } catch (err) { console.error(err); req.flash('error', 'Error updating store'); }
@@ -417,6 +434,49 @@ exports.deleteStore = async (req, res) => {
     req.flash('success', 'Store deleted');
   } catch (err) { req.flash('error', 'Error deleting store'); }
   res.redirect('/admin/stores');
+};
+
+// ==================== 2b. RUBROS (business_types) ====================
+exports.businessTypes = async (req, res) => {
+  try {
+    const [rows] = await sequelize.query(`
+      SELECT bt.id, bt.name, bt.is_active, COUNT(r.id) AS stores_count
+      FROM business_types bt
+      LEFT JOIN restaurants r ON r.business_type_id = bt.id
+      GROUP BY bt.id, bt.name, bt.is_active
+      ORDER BY bt.name ASC
+    `);
+    res.render('admin/businessTypes', { user: req.session.user, businessTypes: rows, count: rows.length, success: req.flash('success')[0], error: req.flash('error')[0] });
+  } catch (err) {
+    console.error(err);
+    res.render('admin/businessTypes', { user: req.session.user, businessTypes: [], count: 0, success: null, error: 'Error al cargar los rubros' });
+  }
+};
+
+exports.createBusinessType = async (req, res) => {
+  try {
+    const parsed = businessTypes.normalizeBusinessTypeName(req.body.name);
+    if (!parsed.ok) {
+      req.flash('error', parsed.message);
+      return res.redirect('/admin/business-types');
+    }
+    const [exists] = await sequelize.query('SELECT id FROM business_types WHERE name = ? LIMIT 1', { replacements: [parsed.name] });
+    if (exists.length) {
+      req.flash('error', 'Ya existe un rubro con ese nombre');
+      return res.redirect('/admin/business-types');
+    }
+    await sequelize.query('INSERT INTO business_types (name, is_active) VALUES (?, 1)', { replacements: [parsed.name] });
+    req.flash('success', 'Rubro creado');
+  } catch (err) { console.error(err); req.flash('error', 'Error al crear el rubro'); }
+  res.redirect('/admin/business-types');
+};
+
+exports.toggleBusinessType = async (req, res) => {
+  try {
+    await sequelize.query('UPDATE business_types SET is_active = IF(is_active = 1, 0, 1) WHERE id = ?', { replacements: [req.params.id] });
+    req.flash('success', 'Estado del rubro actualizado');
+  } catch (err) { console.error(err); req.flash('error', 'Error al cambiar el estado del rubro'); }
+  res.redirect('/admin/business-types');
 };
 
 // ==================== 3. ITEMS ====================

@@ -879,6 +879,12 @@ const StoreOwnerSettingsPage = {
               <div class="so-form-group"><label>Nombre *</label><input v-model="form.name" placeholder="Nombre de la tienda"></div>
               <div class="so-form-group"><label>Descripcion</label><textarea v-model="form.description" rows="2" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px;resize:vertical"></textarea></div>
               <div class="so-form-group"><label>Direccion</label><input v-model="form.address" placeholder="Direccion completa"></div>
+              <div class="so-form-group"><label>Rubro</label>
+                <select v-model="form.business_type_id" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px">
+                  <option value="">Restaurante (por defecto)</option>
+                  <option v-for="t in businessTypes" :key="t.id" :value="t.id">{{t.name}}</option>
+                </select>
+              </div>
               <div class="so-form-row">
                 <div class="so-form-group"><label>Latitud</label><input v-model="form.latitude" type="number" step="any"></div>
                 <div class="so-form-group"><label>Longitud</label><input v-model="form.longitude" type="number" step="any"></div>
@@ -896,7 +902,7 @@ const StoreOwnerSettingsPage = {
             <div class="so-card-header">Cargos y Delivery</div>
             <div class="so-card-body">
               <div class="so-form-row">
-                <div class="so-form-group"><label>Cargo del restaurante</label><input v-model="form.restaurant_charges" type="number" step="0.01"></div>
+                <div class="so-form-group"><label>Cargo del comercio</label><input v-model="form.restaurant_charges" type="number" step="0.01"></div>
                 <div class="so-form-group"><label>Cargo de delivery</label><input v-model="form.delivery_charges" type="number" step="0.01"></div>
               </div>
               <div class="so-form-group"><label>Tipo de cargo delivery</label><select v-model="form.delivery_charge_type" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px"><option value="FIXED">Fijo</option><option value="DYNAMIC">Dinamico (por distancia)</option></select></div>
@@ -929,10 +935,11 @@ const StoreOwnerSettingsPage = {
             <button class="so-btn so-btn-primary" style="width:100%;justify-content:center;padding:14px" @click="save" :disabled="saving"><i class="fas fa-save"></i> {{saving?'Guardando...':'Guardar Cambios'}}</button>
           </div>
           <div v-if="successMsg" style="background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:8px;font-size:13px;text-align:center;margin-bottom:16px">{{successMsg}}</div>
+          <div v-if="errorMsg" style="background:#ffebee;color:#c62828;padding:10px;border-radius:8px;font-size:13px;text-align:center;margin-bottom:16px">{{errorMsg}}</div>
         </template>
       </div>
     </div>`,
-  data() { return { store: {}, form: {}, loading: true, saving: false, imageFile: null, successMsg: '' }; },
+  data() { return { store: {}, form: {}, businessTypes: [], loading: true, saving: false, imageFile: null, successMsg: '', errorMsg: '' }; },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.load(); },
   methods: {
     async load() {
@@ -941,7 +948,9 @@ const StoreOwnerSettingsPage = {
         const res = await API.post('/store-owner/get-store-page', { token });
         if (res.success && res.restaurant) {
           this.store = res.restaurant;
+          this.businessTypes = Array.isArray(res.business_types) ? res.business_types : [];
           this.form = {
+            business_type_id: res.restaurant.business_type_id || '',
             name: res.restaurant.name || '', description: res.restaurant.description || '', address: res.restaurant.address || '',
             latitude: res.restaurant.latitude || '', longitude: res.restaurant.longitude || '',
             delivery_time: res.restaurant.delivery_time || '', price_range: res.restaurant.price_range || '',
@@ -960,7 +969,7 @@ const StoreOwnerSettingsPage = {
     },
     onFile(e) { this.imageFile = e.target.files[0] || null; },
     async save() {
-      this.saving = true; this.successMsg = '';
+      this.saving = true; this.successMsg = ''; this.errorMsg = '';
       try {
         const token = localStorage.getItem('storeOwnerToken');
         const fd = new FormData();
@@ -969,6 +978,7 @@ const StoreOwnerSettingsPage = {
         if (this.imageFile) fd.append('image', this.imageFile);
         const res = await fetch(`${API.publicApiBase()}/store-owner/update-store`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
         if (res.success) this.successMsg = 'Cambios guardados!';
+        else if (res.message) this.errorMsg = res.message;
       } catch(e) { console.error(e); }
       this.saving = false;
     }

@@ -247,6 +247,9 @@ router.post('/admin/store/new/save', upload.single('image'), adminController.cre
 router.post('/admin/store/disable/:id', adminController.disableStore);
 router.post('/admin/store/delete/:id', adminController.deleteStore);
 router.get('/admin/store/earnings/:id', adminController.storeEarnings);
+router.get('/admin/business-types', adminController.businessTypes);
+router.post('/admin/business-types/new', adminController.createBusinessType);
+router.post('/admin/business-types/toggle/:id', adminController.toggleBusinessType);
 
 // Items
 router.get('/admin/items', adminController.items);

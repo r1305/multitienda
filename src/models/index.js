@@ -55,7 +55,14 @@ const Restaurant = sequelize.define('Restaurant', {
   custom_message_on_list: DataTypes.TEXT,
   zone_id: DataTypes.INTEGER,
   order_column: DataTypes.INTEGER,
+  business_type_id: DataTypes.INTEGER,
 }, { tableName: 'restaurants' });
+
+const BusinessType = sequelize.define('BusinessType', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  name: DataTypes.STRING,
+  is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
+}, { tableName: 'business_types', updatedAt: false });
 
 const Item = sequelize.define('Item', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -320,6 +327,7 @@ Address.belongsTo(User, { foreignKey: 'user_id' });
 User.hasOne(DeliveryGuyDetail, { foreignKey: 'user_id', as: 'delivery_guy_detail' });
 DeliveryGuyDetail.belongsTo(User, { foreignKey: 'user_id' });
 
+Restaurant.belongsTo(BusinessType, { foreignKey: 'business_type_id', as: 'businessType' });
 Restaurant.hasMany(Item, { foreignKey: 'restaurant_id', as: 'items' });
 Item.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 
@@ -362,7 +370,7 @@ RestaurantCategory.belongsToMany(Restaurant, {
 });
 
 module.exports = {
-  sequelize, User, Address, Restaurant, Item, ItemCategory, Addon, AddonCategory,
+  sequelize, User, Address, Restaurant, BusinessType, Item, ItemCategory, Addon, AddonCategory,
   Order, Orderitem, OrderItemAddon, Coupon, Rating, Setting, Location, PromoSlider,
   Page, Translation, PushToken, SmsOtp, PasswordResetOtp, RestaurantCategory,
   RestaurantCategorySlider, DeliveryGuyDetail, AcceptDelivery, PopularGeoPlace,

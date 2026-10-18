@@ -1,6 +1,7 @@
 const { sequelize, Restaurant } = require('../models');
 const { getDistance } = require('./utils');
 const cache = require('./cache');
+const { DEFAULT_BUSINESS_TYPE_LABEL } = require('./businessTypes');
 
 function safeDistance(lat1, lon1, lat2, lon2) {
   const a = parseFloat(lat1);
@@ -51,6 +52,8 @@ function mapRow(r, latitude, longitude) {
     delivery_time: r.delivery_time,
     price_range: r.price_range,
     slug: r.slug,
+    business_type_id: r.business_type_id == null ? null : r.business_type_id,
+    business_type_name: r.business_type_name || DEFAULT_BUSINESS_TYPE_LABEL,
     is_featured: r.is_featured,
     is_active: r.is_active,
     distance,
@@ -82,9 +85,10 @@ async function queryRestaurants(deliveryTypes, isActive) {
   const types = Array.isArray(deliveryTypes) ? deliveryTypes : [deliveryTypes];
   const placeholders = types.map(() => '?').join(',');
   const [rows] = await sequelize.query(
-    `SELECT * FROM restaurants
-     WHERE is_accepted = 1 AND is_active = ? AND delivery_type IN (${placeholders})
-     ORDER BY order_column ASC`,
+    `SELECT r.*, bt.name AS business_type_name FROM restaurants r
+     LEFT JOIN business_types bt ON bt.id = r.business_type_id
+     WHERE r.is_accepted = 1 AND r.is_active = ? AND r.delivery_type IN (${placeholders})
+     ORDER BY r.order_column ASC`,
     { replacements: [isActive ? 1 : 0, ...types] }
   );
   const avgMap = await loadAvgRatings(rows.map((r) => r.id));

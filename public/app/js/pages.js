@@ -6,7 +6,7 @@ const HomePage = {
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else>
         <div v-if="!Store.location" style="padding:20px;text-align:center">
-          <p style="margin-bottom:12px;color:var(--muted)">Selecciona tu ubicación para ver restaurantes</p>
+          <p style="margin-bottom:12px;color:var(--muted)">Selecciona tu ubicación para ver comercios</p>
           <button class="btn-primary" @click="$router.push('/location')"><i class="fas fa-map-marker-alt"></i> Seleccionar ubicación</button>
         </div>
         <template v-else>
@@ -17,7 +17,11 @@ const HomePage = {
             <button :class="{active: mode==='delivery'}" @click="mode='delivery'; loadStores()">Delivery</button>
             <button :class="{active: mode==='pickup'}" @click="mode='pickup'; loadStores()">Recoger</button>
           </div>
-          <div class="section-title" v-if="stores.length">{{stores.length}} restaurantes</div>
+          <div v-if="businessTypes.length" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 12px">
+            <button :style="chipStyle(!businessTypeId)" @click="selectBusinessType(null)">Todos</button>
+            <button v-for="t in businessTypes" :key="t.id" :style="chipStyle(businessTypeId === t.id)" @click="selectBusinessType(t.id)">{{t.name}}</button>
+          </div>
+          <div class="section-title" v-if="stores.length">{{stores.length}} {{stores.length === 1 ? 'comercio' : 'comercios'}}</div>
           <div style="padding:0 16px">
             <div v-for="s in sortedStores" :key="s.id" class="store-card" :class="{'store-closed':!s.is_active}">
               <div style="flex:1;display:flex;gap:12px" @click="$router.push('/store/'+s.slug)">
@@ -40,14 +44,14 @@ const HomePage = {
           </div>
           <div v-if="!stores.length && !loading" class="empty-state">
             <i class="fas fa-store-slash"></i>
-            <p>No hay restaurantes en tu zona</p>
+            <p>No hay comercios en tu zona</p>
           </div>
         </template>
       </template>
       <cart-float></cart-float>
     </div>`,
   components: { AppHeader, CartFloat },
-  data() { return { loading: false, stores: [], sliders: [], mode: 'delivery', favorites: JSON.parse(localStorage.getItem('appFavorites') || '[]') }; },
+  data() { return { loading: false, stores: [], sliders: [], businessTypes: [], businessTypeId: null, mode: 'delivery', favorites: JSON.parse(localStorage.getItem('appFavorites') || '[]') }; },
   setup() { return { Store }; },
   computed: {
     sortedStores() {
@@ -59,17 +63,22 @@ const HomePage = {
       });
     }
   },
-  async mounted() { if (Store.location) { await this.loadStores(); await this.loadSliders(); } },
+  async mounted() { if (Store.location) { await this.loadBusinessTypes(); await this.loadStores(); await this.loadSliders(); } },
   methods: {
     async loadSliders() {
       try { const res = await API.getPromoSliders(Store.location.lat, Store.location.lng); this.sliders = Array.isArray(res) ? res.filter(s => s.image) : []; } catch(e) {}
     },
+    async loadBusinessTypes() {
+      try { const res = await API.getBusinessTypes(); this.businessTypes = Array.isArray(res) ? res : []; } catch(e) { this.businessTypes = []; }
+    },
+    chipStyle(on) { return { flex: '0 0 auto', padding: '6px 14px', borderRadius: '16px', border: '1px solid var(--border)', background: on ? 'var(--primary)' : 'var(--white)', color: on ? '#fff' : 'var(--text)', fontSize: '13px' }; },
+    selectBusinessType(id) { this.businessTypeId = id; this.loadStores(); },
     async loadStores() {
       this.loading = true;
       const { lat, lng } = Store.location;
       try {
-        if (this.mode === 'delivery') this.stores = await API.getDeliveryRestaurants(lat, lng);
-        else this.stores = await API.getSelfpickupRestaurants(lat, lng);
+        if (this.mode === 'delivery') this.stores = await API.getDeliveryRestaurants(lat, lng, this.businessTypeId);
+        else this.stores = await API.getSelfpickupRestaurants(lat, lng, this.businessTypeId);
       } catch(e) { this.stores = []; }
       this.loading = false;
     },
@@ -275,7 +284,7 @@ const CartPage = {
       <div v-if="!cart.length" class="empty-state">
         <i class="fas fa-shopping-bag"></i>
         <p>Tu carrito está vacío</p>
-        <button class="btn-primary" style="margin-top:20px;width:auto;padding:12px 30px;display:inline-block" @click="$router.push('/')">Ver restaurantes</button>
+        <button class="btn-primary" style="margin-top:20px;width:auto;padding:12px 30px;display:inline-block" @click="$router.push('/')">Ver comercios</button>
       </div>
       <template v-else>
         <div style="padding:0 16px">
@@ -347,13 +356,13 @@ const ExplorePage = {
       <app-header title="Buscar"></app-header>
       <div class="search-box" style="margin-top:0;border-radius:0;box-shadow:none;border-bottom:1px solid var(--border)">
         <i class="fas fa-search"></i>
-        <input v-model="query" @input="onSearch" placeholder="Buscar restaurantes o items...">
+        <input v-model="query" @input="onSearch" placeholder="Buscar comercios o items...">
         <i v-if="query" class="fas fa-times" style="cursor:pointer" @click="query='';results=null"></i>
       </div>
       <div v-if="loading" class="loading"><div class="spinner"></div></div>
       <template v-else-if="results">
         <div v-if="results.restaurants && results.restaurants.length">
-          <div class="section-title">Restaurantes</div>
+          <div class="section-title">Comercios</div>
           <div style="padding:0 16px">
             <div v-for="r in results.restaurants" :key="r.id" class="store-card" @click="$router.push('/store/'+r.slug)">
               <img :src="Store.imageUrl(r.image)" class="store-card-img" alt="">
@@ -805,7 +814,7 @@ const OrderDetailPage = {
           <div class="bill-row total"><span>Total</span><span>{{Store.formatPrice(order.total)}}</span></div>
         </div>
         <div style="padding:0 16px">
-          <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px"><div style="font-size:12px;color:var(--muted)">Restaurante</div><div style="font-size:14px;font-weight:500">{{order.restaurant ? order.restaurant.name : '-'}}</div></div>
+          <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px"><div style="font-size:12px;color:var(--muted)">Comercio</div><div style="font-size:14px;font-weight:500">{{order.restaurant ? order.restaurant.name : '-'}}</div></div>
           <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px"><div style="font-size:12px;color:var(--muted)">Pago</div><div style="font-size:14px;font-weight:500">{{order.payment_mode || 'COD'}}</div></div>
           <div v-if="order.address" style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px"><div style="font-size:12px;color:var(--muted)">Direccion</div><div style="font-size:14px">{{order.address}}</div></div>
         </div>
@@ -1037,7 +1046,7 @@ const RateOrderPage = {
       <div style="padding:24px 16px;text-align:center">
         <div style="font-size:16px;font-weight:600;margin-bottom:20px">¿Cómo fue tu experiencia?</div>
         <div style="margin-bottom:20px">
-          <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Restaurante</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Comercio</div>
           <div style="display:flex;justify-content:center;gap:8px">
             <i v-for="s in 5" :key="'store'+s" class="fas fa-star" :style="{fontSize:'28px',cursor:'pointer',color:s<=storeRating?'#ffc107':'#ddd'}" @click="storeRating=s"></i>
           </div>

@@ -1,0 +1,47 @@
+<% var active = 'businesstypes'; var pageTitle = 'Rubros'; %>
+<% var scripts = ''; %>
+<%
+var body = `
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Rubros de comercios (${esc(typeof count !== 'undefined' ? count : 0)})</span>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newBusinessTypeModal"><i class="fas fa-plus"></i> Nuevo rubro</button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+        <table class="table table-hover">
+            <thead><tr><th>Nombre</th><th>Comercios</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody>`;
+
+if (typeof businessTypes !== 'undefined' && businessTypes.length) {
+  businessTypes.forEach(function(t) {
+    body += `<tr>
+      <td><strong>${esc(t.name)}</strong></td>
+      <td>${esc(t.stores_count || 0)}</td>
+      <td><span class="badge badge-${esc(t.is_active ? 'success' : 'secondary')}">${esc(t.is_active ? 'Activo' : 'Inactivo')}</span></td>
+      <td>
+        <form method="POST" action="/admin/business-types/toggle/${esc(t.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-warning" title="Activar / desactivar"><i class="fas fa-ban"></i></button></form>
+      </td>
+    </tr>`;
+  });
+} else {
+  body += '<tr><td colspan="4" class="text-center text-muted py-4">No hay rubros</td></tr>';
+}
+
+body += `</tbody></table></div></div></div>
+
+<div class="modal fade" id="newBusinessTypeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/admin/business-types/new">
+                <div class="modal-header"><h5 class="modal-title">Nuevo rubro</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
+                <div class="modal-body">
+                    <div class="form-group"><label>Nombre *</label><input type="text" name="name" class="form-control" maxlength="100" required></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar rubro</button></div>
+            </form>
+        </div>
+    </div>
+</div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

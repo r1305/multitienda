@@ -637,6 +637,22 @@ const tables = [
     PRIMARY KEY (permission_id, role_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  `CREATE TABLE IF NOT EXISTS business_types (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY business_types_name_unique (name)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `INSERT IGNORE INTO business_types (name, is_active) VALUES
+    ('Restaurante', 1),
+    ('Farmacia', 1),
+    ('Tienda', 1),
+    ('Licorería', 1),
+    ('Ferretería', 1),
+    ('Panadería', 1)`,
+
   // Seed: default roles
   `INSERT IGNORE INTO roles (name, guard_name, created_at, updated_at) VALUES
     ('Admin', 'web', NOW(), NOW()),
@@ -663,6 +679,7 @@ const tables = [
 ];
 
 const columns = [
+  { table: 'restaurants', column: 'business_type_id', ddl: 'ALTER TABLE restaurants ADD COLUMN business_type_id INT UNSIGNED NULL' },
   { table: 'restaurants', column: 'prep_minutes', ddl: 'ALTER TABLE restaurants ADD COLUMN prep_minutes INT NULL DEFAULT 20' },
   { table: 'ratings', column: 'reply', ddl: 'ALTER TABLE ratings ADD COLUMN reply TEXT NULL' },
 ];

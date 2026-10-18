@@ -9,6 +9,7 @@ const { emitOrderEvent } = require('../helpers/orderEvents');
 const { releaseDueScheduledOrders } = require('../helpers/scheduledOrders');
 const { escapeLike } = require('../helpers/utils');
 const { normalizePrepMinutes, MAX_PREP_MINUTES } = require('../helpers/orderEta');
+const businessTypes = require('../helpers/businessTypes');
 
 exports.login = async (req, res) => {
   try {
@@ -372,7 +373,8 @@ exports.getInactiveItems = async (req, res) => {
 exports.getStorePage = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
-    res.json({ success: true, restaurant });
+    const business_types = await businessTypes.listActiveBusinessTypes(sequelize);
+    res.json({ success: true, restaurant, business_types });
   } catch (err) {
     res.status(500).json({ success: false });
   }
@@ -405,9 +407,12 @@ exports.updateStore = async (req, res) => {
         return res.status(422).json({ success: false, message: `El tiempo de preparación debe ser un entero entre 0 y ${MAX_PREP_MINUTES}` });
       }
     }
+    const rubro = await businessTypes.resolveActiveBusinessTypeId(sequelize, req.body.business_type_id, { currentId: restaurant.business_type_id });
+    if (!rubro.ok) return res.status(422).json({ success: false, message: rubro.message });
     const image = req.file ? '/uploads/' + req.file.filename : null;
     let sql = `UPDATE restaurants SET name=?, description=?, address=?, latitude=?, longitude=?, delivery_time=?, price_range=?, restaurant_charges=?, delivery_charges=?, delivery_charge_type=?, base_delivery_charge=?, base_delivery_distance=?, extra_delivery_charge=?, extra_delivery_distance=?, delivery_radius=?, min_order_price=?, free_delivery_subtotal=?, delivery_type=?, auto_acceptable=?, is_schedulable=?, updated_at=NOW()`;
     const params = [name || restaurant.name, description || '', address || '', latitude || restaurant.latitude, longitude || restaurant.longitude, delivery_time || '', price_range || '', restaurant_charges || 0, delivery_charges || 0, delivery_charge_type || 'FIXED', base_delivery_charge || 0, base_delivery_distance || 0, extra_delivery_charge || 0, extra_delivery_distance || restaurant.extra_delivery_distance || 1, delivery_radius || 0, min_order_price || 0, free_delivery_subtotal || 0, delivery_type || 1, auto_acceptable ? 1 : 0, is_schedulable ? 1 : 0];
+    if (rubro.provided) { sql += ', business_type_id=?'; params.push(rubro.id); }
     if (image) { sql += ', image=?'; params.push(image); }
     sql += ' WHERE id=?';
     params.push(restaurant.id);

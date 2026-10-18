@@ -55,6 +55,7 @@ router.post('/search-restaurants', restaurant.searchRestaurants);
 router.post('/send-otp', otpRateLimit, misc.sendOtp);
 router.post('/verify-otp', otpRateLimit, misc.verifyOtp);
 router.post('/check-restaurant-operation-service', restaurant.checkRestaurantOperationService);
+router.post('/get-business-types', restaurant.getBusinessTypes);
 router.post('/get-single-item', restaurant.getSingleItem);
 router.post('/get-all-languages', misc.getAllLanguages);
 router.post('/get-single-language', misc.getSingleLanguage);

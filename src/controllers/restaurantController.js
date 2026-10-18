@@ -2,6 +2,22 @@ const { Op } = require('sequelize');
 const { Restaurant, Item, ItemCategory, AddonCategory, Addon, RestaurantCategory, sequelize } = require('../models');
 const rq = require('../helpers/restaurantQueries');
 const { escapeLike } = require('../helpers/utils');
+const businessTypes = require('../helpers/businessTypes');
+
+async function applyBusinessTypeFilter(list, businessTypeId) {
+  if (businessTypeId === undefined || businessTypeId === null || businessTypeId === '') return list;
+  const active = await businessTypes.listActiveBusinessTypes(sequelize);
+  return businessTypes.filterStoresByBusinessType(list, businessTypeId, active);
+}
+
+exports.getBusinessTypes = async (req, res) => {
+  try {
+    res.json(await businessTypes.listActiveBusinessTypes(sequelize));
+  } catch (err) {
+    console.error('[restaurant] business types', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
 
 exports.getDeliveryRestaurants = async (req, res) => {
   try {
@@ -12,7 +28,7 @@ exports.getDeliveryRestaurants = async (req, res) => {
       longitude,
       cachePrefix: 'restaurants:delivery',
     });
-    res.json(list);
+    res.json(await applyBusinessTypeFilter(list, req.body.business_type_id));
   } catch (err) {
     console.error('[getDeliveryRestaurants]', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -28,7 +44,7 @@ exports.getSelfPickupRestaurants = async (req, res) => {
       longitude,
       cachePrefix: 'restaurants:pickup',
     });
-    res.json(list);
+    res.json(await applyBusinessTypeFilter(list, req.body.business_type_id));
   } catch (err) {
     console.error('[restaurant]', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -260,7 +276,7 @@ exports.checkRestaurantOperationService = async (req, res) => {
 exports.getRestaurantInfoAndOperationalStatus = async (req, res) => {
   try {
     const r = await Restaurant.findByPk(req.body.id);
-    if (!r) return res.status(400).json({ error: 'Restaurant not found' });
+    if (!r) return res.status(400).json({ error: 'Comercio no encontrado' });
     r.avgRating = await rq.getAvgRatingForRestaurant(r.id);
     const data = r.toJSON();
     delete data.delivery_areas;

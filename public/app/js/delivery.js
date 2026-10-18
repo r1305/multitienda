@@ -112,7 +112,7 @@ const DeliveryOrdersPage = {
                 <span style="font-weight:600;font-size:14px">#{{o.unique_order_id}}</span>
                 <span :style="{background:statusBg(o.orderstatus_id),color:'#fff',fontSize:'11px',padding:'3px 8px',borderRadius:'4px',fontWeight:600}">{{statusLabel(o.orderstatus_id)}}</span>
               </div>
-              <div style="font-size:13px;margin-bottom:4px"><i class="fas fa-store" style="color:var(--primary);width:18px"></i> {{o.restaurant ? o.restaurant.name : 'Restaurante'}}</div>
+              <div style="font-size:13px;margin-bottom:4px"><i class="fas fa-store" style="color:var(--primary);width:18px"></i> {{o.restaurant ? o.restaurant.name : 'Comercio'}}</div>
               <div style="font-size:12px;color:var(--muted);margin-bottom:4px"><i class="fas fa-map-marker-alt" style="width:18px"></i> {{o.address || 'Sin direccion'}}</div>
               <div style="font-size:12px;color:var(--muted);margin-bottom:10px"><i class="fas fa-money-bill" style="width:18px"></i> {{Store.formatPrice(o.total)}}</div>
               <div style="display:flex;gap:8px">
@@ -286,7 +286,7 @@ const DeliveryOrderDetailPage = {
         </div>
         <div style="padding:0 16px">
           <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:10px">
-            <div style="font-size:12px;color:var(--muted)">Restaurante</div>
+            <div style="font-size:12px;color:var(--muted)">Comercio</div>
             <div style="font-size:15px;font-weight:600">{{order.restaurant ? order.restaurant.name : '-'}}</div>
             <div v-if="order.restaurant && order.restaurant.address" style="font-size:12px;color:var(--muted);margin-top:4px">{{order.restaurant.address}}</div>
             <div v-if="order.restaurant" style="display:flex;gap:8px;margin-top:8px">
@@ -318,7 +318,7 @@ const DeliveryOrderDetailPage = {
         </div>
         <div style="padding:16px">
           <button v-if="order.orderstatus_id === 2 || order.orderstatus_id === 12" class="btn-primary" @click="acceptOrder" :disabled="actionLoading"><i class="fas fa-check"></i> {{actionLoading ? 'Procesando...' : 'Aceptar Pedido'}}</button>
-          <button v-else-if="order.orderstatus_id === 3" class="btn-primary" style="background:#ff9800" @click="pickupOrder" :disabled="actionLoading"><i class="fas fa-box"></i> {{actionLoading ? 'Procesando...' : 'Recogido del Restaurante'}}</button>
+          <button v-else-if="order.orderstatus_id === 3" class="btn-primary" style="background:#ff9800" @click="pickupOrder" :disabled="actionLoading"><i class="fas fa-box"></i> {{actionLoading ? 'Procesando...' : 'Recogido del Comercio'}}</button>
           <button v-else-if="order.orderstatus_id === 4" class="btn-primary" style="background:#4caf50" @click="deliverOrder" :disabled="actionLoading"><i class="fas fa-check-double"></i> {{actionLoading ? 'Procesando...' : 'Marcar como Entregado'}}</button>
           <div v-else-if="order.orderstatus_id === 5" style="text-align:center;padding:20px;color:#4caf50;font-weight:600"><i class="fas fa-check-circle" style="font-size:24px"></i><p>Pedido entregado</p></div>
         </div>
