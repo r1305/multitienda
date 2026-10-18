@@ -643,11 +643,18 @@ exports.getSingleDeliveryOrder = async (req, res) => {
 
 exports.setDeliveryGuyGpsLocation = async (req, res) => {
   try {
+    const rawLat = req.body.latitude;
+    const rawLng = req.body.longitude;
+    const lat = typeof rawLat === 'number' || (typeof rawLat === 'string' && rawLat.trim() !== '') ? Number(rawLat) : NaN;
+    const lng = typeof rawLng === 'number' || (typeof rawLng === 'string' && rawLng.trim() !== '') ? Number(rawLng) : NaN;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ success: false, message: 'Coordenadas inválidas' });
+    }
     const gps = require('../helpers/gps');
     const result = await gps.updateDeliveryGps(
       req.user.id,
-      req.body.latitude,
-      req.body.longitude,
+      lat,
+      lng,
       req.body.heading
     );
     res.json({ success: true, throttled: result.throttled || false });

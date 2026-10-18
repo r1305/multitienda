@@ -340,7 +340,7 @@ const DeliveryOrderDetailPage = {
     </div>`,
   components: { AppHeader },
   setup() { return { Store }; },
-  data() { return { order: null, loading: true, actionLoading: false, successMsg: '', gpsInterval: null, messages: [], chatMsg: '', chatInterval: null }; },
+  data() { return { order: null, loading: true, actionLoading: false, successMsg: '', gpsInterval: null, gpsWatcherId: null, gpsWatcherPending: false, gpsWatcherCancel: false, messages: [], chatMsg: '', chatInterval: null }; },
   computed: {
     statusText() { return {2:'Esperando repartidor',12:'Esperando repartidor',3:'Asignado',4:'En camino',5:'Entregado'}[this.order?.orderstatus_id] || ''; },
     statusColor() { return {2:'#ff9800',12:'#ff9800',3:'#2196f3',4:'#ff9800',5:'#4caf50'}[this.order?.orderstatus_id] || '#9e9e9e'; },
@@ -358,9 +358,34 @@ const DeliveryOrderDetailPage = {
     async acceptOrder() { this.actionLoading = true; try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/accept-to-deliver', { token, order_id: this.order.id }); this.order.orderstatus_id = 3; this.successMsg = 'Pedido aceptado!'; this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); } catch(e) {} this.actionLoading = false; },
     async pickupOrder() { this.actionLoading = true; try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/pickedup-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 4; this.successMsg = 'Pedido recogido!'; } catch(e) {} this.actionLoading = false; },
     async deliverOrder() { this.actionLoading = true; try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/deliver-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 5; this.successMsg = 'Pedido entregado!'; this.stopGpsTracking(); if (this.chatInterval) clearInterval(this.chatInterval); } catch(e) {} this.actionLoading = false; },
-    startGpsTracking() { if (this.gpsInterval) return; this.sendGps(); this.gpsInterval = setInterval(() => this.sendGps(), 30000); },
-    stopGpsTracking() { if (this.gpsInterval) { clearInterval(this.gpsInterval); this.gpsInterval = null; } },
-    sendGps() { if (!navigator.geolocation) return; navigator.geolocation.getCurrentPosition(async (pos) => { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/set-delivery-guy-gps-location', { token, latitude: pos.coords.latitude, longitude: pos.coords.longitude, heading: pos.coords.heading || 0 }); }, () => {}, { enableHighAccuracy: true, timeout: 8000 }); },
+    nativeBgGeo() { const C = window.Capacitor; if (!(C && C.isNativePlatform && C.isNativePlatform())) return null; return (C.Plugins && C.Plugins.BackgroundGeolocation) || (C.registerPlugin ? C.registerPlugin('BackgroundGeolocation') : null) || null; },
+    startNativeWatcher() {
+      const bg = this.nativeBgGeo(); if (!bg || typeof bg.addWatcher !== 'function') return false;
+      this.gpsWatcherPending = true; this.gpsWatcherCancel = false;
+      try {
+        bg.addWatcher({ backgroundMessage: 'Compartiendo ubicación para tu entrega', backgroundTitle: 'Entrega en curso', requestPermissions: true, stale: false, distanceFilter: 20 }, (location) => { if (location) this.sendNativeGps(location); })
+          .then((id) => { this.gpsWatcherPending = false; if (this.gpsWatcherCancel) { this.gpsWatcherCancel = false; try { bg.removeWatcher({ id }); } catch (e) {} } else { this.gpsWatcherId = id; } })
+          .catch((e) => { this.gpsWatcherPending = false; console.warn('GPS nativo: no se pudo iniciar', e); });
+      } catch (e) { this.gpsWatcherPending = false; return false; }
+      return true;
+    },
+    stopNativeWatcher() {
+      if (this.gpsWatcherId) { const bg = this.nativeBgGeo(); const id = this.gpsWatcherId; this.gpsWatcherId = null; try { if (bg) bg.removeWatcher({ id }); } catch (e) {} }
+      else if (this.gpsWatcherPending) this.gpsWatcherCancel = true;
+    },
+    async sendNativeGps(location) {
+      try {
+        const token = localStorage.getItem('deliveryToken'); if (!token) return;
+        const http = (window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) || window.CapacitorHttp;
+        if (!http) return;
+        await API.resolveBase();
+        const url = new URL(API._base + '/delivery/set-delivery-guy-gps-location', window.location.href).href;
+        await http.post({ url, headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + token }, data: { token, latitude: location.latitude, longitude: location.longitude, heading: location.bearing || 0 } });
+      } catch (e) { console.warn('GPS nativo: no se pudo enviar la ubicación', e); }
+    },
+    startGpsTracking() { if (this.gpsInterval || this.gpsWatcherId || this.gpsWatcherPending) return; if (this.startNativeWatcher()) return; this.sendGps(); this.gpsInterval = setInterval(() => this.sendGps(), 30000); },
+    stopGpsTracking() { this.stopNativeWatcher(); if (this.gpsInterval) { clearInterval(this.gpsInterval); this.gpsInterval = null; } },
+    sendGps() { if (!navigator.geolocation) return; navigator.geolocation.getCurrentPosition(async (pos) => { try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/set-delivery-guy-gps-location', { token, latitude: pos.coords.latitude, longitude: pos.coords.longitude, heading: pos.coords.heading || 0 }); } catch (e) { console.warn('GPS: no se pudo enviar la ubicación', e); } }, () => {}, { enableHighAccuracy: true, timeout: 8000 }); },
     async loadMessages() { try { const token = localStorage.getItem('deliveryToken'); const res = await API.post('/conversation/chat', { token, order_id: this.order.id }); this.messages = Array.isArray(res) ? res : []; this.$nextTick(() => { if (this.$refs.chatBox) this.$refs.chatBox.scrollTop = this.$refs.chatBox.scrollHeight; }); } catch(e) {} },
     async sendMessage() { if (!this.chatMsg.trim()) return; try { const token = localStorage.getItem('deliveryToken'); await API.post('/conversation/send', { token, order_id: this.order.id, message: this.chatMsg.trim() }); this.chatMsg = ''; await this.loadMessages(); } catch(e) {} },
     formatTime(d) { if (!d) return ''; return new Date(d).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }); }
