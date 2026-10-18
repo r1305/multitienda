@@ -27,7 +27,7 @@ module.exports = forward;
 
 if (typeof PhusionPassenger !== 'undefined') {
   ready.then(() => app.listen('passenger'));
-} else if (require.main === module) {
+} else if (require.main === module || process.env.NODE_ENV !== 'test') {
   const PORT = process.env.PORT || process.env.APP_PORT || 3000;
   ready.then(() => {
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
