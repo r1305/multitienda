@@ -307,6 +307,12 @@ const Transaction = sequelize.define('Transaction', {
   uuid: DataTypes.STRING,
 }, { tableName: 'transactions' });
 
+const UserFavoriteStore = sequelize.define('UserFavoriteStore', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  user_id: DataTypes.INTEGER,
+  restaurant_id: DataTypes.INTEGER,
+}, { tableName: 'user_favorite_stores', updatedAt: false });
+
 // Associations
 User.hasMany(Address, { foreignKey: 'user_id', as: 'addresses' });
 Address.belongsTo(User, { foreignKey: 'user_id' });
@@ -360,5 +366,5 @@ module.exports = {
   Order, Orderitem, OrderItemAddon, Coupon, Rating, Setting, Location, PromoSlider,
   Page, Translation, PushToken, SmsOtp, PasswordResetOtp, RestaurantCategory,
   RestaurantCategorySlider, DeliveryGuyDetail, AcceptDelivery, PopularGeoPlace,
-  Wallet, Transaction, PaymentGateway, AddonCategoryItem,
+  Wallet, Transaction, PaymentGateway, AddonCategoryItem, UserFavoriteStore,
 };

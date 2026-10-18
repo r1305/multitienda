@@ -450,6 +450,8 @@ async function notifyCustomerOrderOnWay(order) {
 
 const CUSTOMER_ORDER_EVENTS = {
   accepted: { title: 'Pedido aceptado', message: (o) => `La tienda aceptó tu pedido #${o.unique_order_id}` },
+  preparing: { title: 'Pedido en preparación', message: (o) => `La tienda está preparando tu pedido #${o.unique_order_id}` },
+  ready: { title: 'Pedido listo', message: (o) => `Tu pedido #${o.unique_order_id} está listo para recoger` },
   cancelled: { title: 'Pedido cancelado', message: (o) => `Tu pedido #${o.unique_order_id} fue cancelado` },
   delivered: { title: 'Pedido entregado', message: (o) => `Tu pedido #${o.unique_order_id} fue entregado. ¡Gracias!` },
   scheduled_confirmed: { title: 'Pedido programado confirmado', message: (o) => `La tienda confirmó tu pedido programado #${o.unique_order_id}` },

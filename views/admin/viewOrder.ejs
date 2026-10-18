@@ -3,7 +3,7 @@
 <%
 var body = '';
 if (typeof order !== 'undefined' && order) {
-  var statusNames = {1:'Order Placed',2:'Preparing',3:'Delivery Assigned',4:'Picked Up',5:'Delivered',6:'Canceled',7:'Ready Pickup',8:'Awaiting Payment',9:'Payment Failed',10:'Scheduled',11:'Confirmed'};
+  var statusNames = {1:'Order Placed',2:'Accepted',3:'Delivery Assigned',4:'Picked Up',5:'Delivered',6:'Canceled',7:'Ready Pickup',8:'Awaiting Payment',9:'Payment Failed',10:'Scheduled',11:'Confirmed',12:'In preparation'};
   var statusBadge = order.orderstatus_id == 5 ? 'success' : order.orderstatus_id == 6 ? 'danger' : 'warning';
 
   var itemsHtml = '';
@@ -20,7 +20,7 @@ if (typeof order !== 'undefined' && order) {
       acceptBtn = `<div class="col-md-6"><form method="POST" action="/admin/order/accept"><input type="hidden" name="id" value="${esc(order.id)}"><button class="btn btn-success btn-block"><i class="fas fa-check"></i> Accept Order</button></form></div>`;
     }
     var deliveryForm = '';
-    var assignableStatus = [1, 2, 3, 4, 7, 10, 11].indexOf(order.orderstatus_id) >= 0;
+    var assignableStatus = [1, 2, 3, 4, 7, 10, 11, 12].indexOf(order.orderstatus_id) >= 0;
     if (order.delivery_type == 1 && assignableStatus) {
       var dgOptions = '';
       if (typeof deliveryGuys !== 'undefined') {

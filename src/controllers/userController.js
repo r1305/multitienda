@@ -221,7 +221,7 @@ exports.updateUserInfo = async (req, res) => {
       });
     } else {
       runningOrder = await Order.findOne({
-        where: { user_id: user.id, orderstatus_id: [1, 2, 3, 4, 7, 8] },
+        where: { user_id: user.id, orderstatus_id: [1, 2, 3, 4, 7, 8, 12] },
         include: [{ association: 'restaurant' }, { association: 'orderitems' }],
         order: [['id', 'DESC']],
       });
@@ -246,10 +246,16 @@ exports.updateUserInfo = async (req, res) => {
     let walletBalance = 0;
     try { const w = await Wallet.findOne({ where: { holder_type: 'App\\User', holder_id: user.id } }); if (w) walletBalance = parseFloat(w.balance); } catch(e) {}
 
+    let runningOrderOut = runningOrder;
+    if (runningOrder) {
+      runningOrderOut = runningOrder.toJSON();
+      await require('../helpers/orderEta').attachEta(require('../models').sequelize, [runningOrderOut]);
+    }
+
     res.json({
       success: true,
       data: { id: user.id, auth_token: user.auth_token, name: user.name, email: user.email, phone: user.phone, default_address_id: user.default_address_id, default_address: defaultAddress, wallet_balance: walletBalance, avatar: user.avatar, tax_number: user.tax_number },
-      running_order: runningOrder,
+      running_order: runningOrderOut,
       delivery_details: deliveryDetails,
     });
   } catch (err) {
@@ -260,7 +266,7 @@ exports.updateUserInfo = async (req, res) => {
 
 exports.checkRunningOrder = async (req, res) => {
   try {
-    const count = await Order.count({ where: { user_id: req.user.id, orderstatus_id: [1, 2, 3, 4, 7] } });
+    const count = await Order.count({ where: { user_id: req.user.id, orderstatus_id: [1, 2, 3, 4, 7, 12] } });
     res.json(count > 0);
   } catch (err) {
     res.status(500).json(false);

@@ -28,6 +28,7 @@ const restaurant = require('../controllers/restaurantController');
 const order = require('../controllers/orderController');
 const misc = require('../controllers/miscControllers');
 const storeOwner = require('../controllers/storeOwnerController');
+const favorites = require('../controllers/favoritesController');
 
 // Shorthand: every protected route uses jwtAuth explicitly
 const auth = jwtAuth;
@@ -65,6 +66,7 @@ router.post('/verify-password-reset-otp', otpRateLimit, misc.verifyPasswordReset
 router.post('/change-user-password', authRateLimit, misc.changeUserPassword);
 router.post('/check-cart-items-availability', restaurant.checkCartItemsAvailability);
 router.get('/get-store-reviews/:slug', misc.getRatingAndReview);
+router.get('/restaurants/:id/ratings', restaurant.getPublicRatings);
 router.post('/save-notification-token-no-user', misc.saveTokenNoUser);
 router.post('/login', authRateLimit, user.login);
 router.post('/login-with-otp', authRateLimit, user.loginWithOtp);
@@ -95,6 +97,11 @@ router.post('/set-default-address', auth, misc.setDefaultAddress);
 router.post('/get-orders', auth, order.getOrders);
 router.post('/get-order-items', auth, order.getOrderItems);
 router.post('/cancel-order', auth, order.cancelOrder);
+router.get('/orders/history', auth, order.getOrderHistory);
+router.post('/orders/:id/reorder', auth, order.reorder);
+router.get('/favorites/stores', auth, favorites.listFavoriteStores);
+router.post('/favorites/stores/:restaurantId', auth, favorites.addFavoriteStore);
+router.delete('/favorites/stores/:restaurantId', auth, favorites.removeFavoriteStore);
 router.post('/get-wallet-transactions', auth, user.getWalletTransactions);
 router.post('/get-user-notifications', auth, misc.getUserNotifications);
 router.post('/mark-all-notifications-read', auth, misc.markAllNotificationsRead);
@@ -127,6 +134,9 @@ router.post('/store-owner/get-orders', auth, storeOnly, storeOwner.getOrders);
 router.post('/store-owner/get-single-order', auth, storeOnly, storeOwner.getSingleOrder);
 router.post('/store-owner/cancel-order', auth, storeOnly, storeOwner.cancelOrder);
 router.post('/store-owner/accept-order', auth, storeOnly, storeOwner.acceptOrder);
+router.post('/store-owner/mark-order-preparing', auth, storeOnly, storeOwner.markOrderPreparing);
+router.get('/store-owner/new-orders-count', auth, storeOnly, storeOwner.newOrdersCount);
+router.post('/store-owner/reply-rating', auth, storeOnly, storeOwner.replyToRating);
 router.post('/store-owner/mark-selfpickup-order-ready', auth, storeOnly, storeOwner.markSelfpickupOrderReady);
 router.post('/store-owner/mark-selfpickup-order-completed', auth, storeOnly, storeOwner.markSelfpickupOrderCompleted);
 router.post('/store-owner/confirm-scheduled-order', auth, storeOnly, storeOwner.confirmScheduledOrder);

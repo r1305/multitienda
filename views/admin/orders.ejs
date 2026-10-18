@@ -58,9 +58,9 @@ var body = `
             <tbody>`;
 
 if (typeof orders !== 'undefined' && orders.length) {
-  var statusColors = {1:'info',2:'primary',3:'warning',4:'warning',5:'success',6:'danger',7:'secondary',8:'dark',9:'danger',10:'info',11:'primary'};
-  var statusNames = {1:'Nuevo',2:'Preparando',3:'Asignado',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo pickup',8:'Pago pend.',9:'Pago fallido',10:'Programado',11:'Confirmado'};
-  var assignable = {1:1,2:1,3:1,4:1,7:1,10:1,11:1};
+  var statusColors = {1:'info',2:'primary',3:'warning',4:'warning',5:'success',6:'danger',7:'secondary',8:'dark',9:'danger',10:'info',11:'primary',12:'primary'};
+  var statusNames = {1:'Nuevo',2:'Aceptado',3:'Asignado',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo pickup',8:'Pago pend.',9:'Pago fallido',10:'Programado',11:'Confirmado',12:'En preparación'};
+  var assignable = {1:1,2:1,3:1,4:1,7:1,10:1,11:1,12:1};
   orders.forEach(function(o) {
     var elapsed = elapsedFn(o.created_at, o.orderstatus_id, o.updated_at);
     var canAssign = o.delivery_type == 1 && assignable[o.orderstatus_id];

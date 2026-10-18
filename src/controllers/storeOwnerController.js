@@ -8,6 +8,7 @@ const { cancelOrderWithRefund } = require('../helpers/orderCancel');
 const { emitOrderEvent } = require('../helpers/orderEvents');
 const { releaseDueScheduledOrders } = require('../helpers/scheduledOrders');
 const { escapeLike } = require('../helpers/utils');
+const { normalizePrepMinutes, MAX_PREP_MINUTES } = require('../helpers/orderEta');
 
 exports.login = async (req, res) => {
   try {
@@ -70,7 +71,7 @@ exports.getOrders = async (req, res) => {
     await releaseDueScheduledOrders();
 
     const orders = await Order.findAll({
-      where: { restaurant_id: restaurant.id, orderstatus_id: { [Op.in]: [1, 2, 3, 4, 7, 10, 11] } },
+      where: { restaurant_id: restaurant.id, orderstatus_id: { [Op.in]: [1, 2, 3, 4, 7, 10, 11, 12] } },
       include: [{ association: 'orderitems', include: [{ association: 'order_item_addons' }] }],
       order: [['id', 'DESC']],
     });
@@ -150,6 +151,37 @@ exports.acceptOrder = async (req, res) => {
   }
 };
 
+// Aceptado (2) -> en preparación (12). Avisa al cliente.
+exports.markOrderPreparing = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const order = await findOwnedOrder(req.body && req.body.order_id, restaurant.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    await states.transition(order, [states.STATUS.ACCEPTED], states.STATUS.PREPARING, 'store', null, { where: { restaurant_id: restaurant.id } });
+    await emitOrderEvent('preparing', order);
+    res.json({ success: true });
+  } catch (err) {
+    sendStateError(err, res);
+  }
+};
+
+// Pedidos nuevos (estado 1) de la tienda; lo consulta el sondeo del panel solo con la pestaña visible.
+exports.newOrdersCount = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false, count: 0 });
+    const [[row]] = await sequelize.query(
+      'SELECT COUNT(*) AS c FROM orders WHERE restaurant_id = ? AND orderstatus_id = ?',
+      { replacements: [restaurant.id, states.STATUS.PENDING] }
+    );
+    res.json({ success: true, count: Number(row && row.c) || 0 });
+  } catch (err) {
+    console.error('newOrdersCount error:', err.message);
+    res.status(500).json({ success: false, count: 0 });
+  }
+};
+
 exports.markSelfpickupOrderReady = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
@@ -159,7 +191,8 @@ exports.markSelfpickupOrderReady = async (req, res) => {
     if (Number(order.delivery_type) !== 2) {
       return res.status(409).json({ success: false, message: 'El pedido no es de recojo en tienda' });
     }
-    await states.transition(order, [states.STATUS.ACCEPTED], states.STATUS.SELFPICKUP_READY, 'store', null, { where: { restaurant_id: restaurant.id } });
+    await states.transition(order, [states.STATUS.ACCEPTED, states.STATUS.PREPARING], states.STATUS.SELFPICKUP_READY, 'store', null, { where: { restaurant_id: restaurant.id } });
+    await emitOrderEvent('ready', order);
     res.json({ success: true });
   } catch (err) {
     sendStateError(err, res);
@@ -293,6 +326,30 @@ exports.getRatings = async (req, res) => {
   }
 };
 
+// La tienda responde a una reseña de su propia tienda (pedido entregado). Filtra por restaurant_id.
+exports.replyToRating = async (req, res) => {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const ratingId = rules.toPositiveId(req.body && req.body.rating_id);
+    if (!ratingId) return res.status(404).json({ success: false, message: 'Reseña no encontrada' });
+    const raw = req.body && req.body.reply;
+    const reply = typeof raw === 'string' ? raw.trim().slice(0, 500) : '';
+    if (!reply) return res.status(422).json({ success: false, message: 'Escribe una respuesta' });
+    const [, affected] = await sequelize.query(
+      `UPDATE ratings r JOIN orders o ON o.id = r.order_id
+       SET r.reply = ?
+       WHERE r.id = ? AND r.restaurant_id = ? AND o.restaurant_id = ? AND o.orderstatus_id = 5`,
+      { replacements: [reply, ratingId, restaurant.id, restaurant.id], type: QueryTypes.UPDATE }
+    );
+    if (!affected) return res.status(404).json({ success: false, message: 'Reseña no encontrada' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('replyToRating error:', err.message);
+    res.status(500).json({ success: false });
+  }
+};
+
 exports.sendPayoutRequest = async (req, res) => {
   try {
     res.json({ success: true, message: 'Payout request sent' });
@@ -341,6 +398,13 @@ exports.updateStore = async (req, res) => {
         return res.status(422).json({ success: false, message: 'La distancia extra de entrega debe ser mayor que 0' });
       }
     }
+    let prepMinutes = null;
+    if (req.body.prep_minutes !== undefined && req.body.prep_minutes !== null && req.body.prep_minutes !== '') {
+      prepMinutes = Number(req.body.prep_minutes);
+      if (!Number.isInteger(prepMinutes) || prepMinutes < 0 || prepMinutes > MAX_PREP_MINUTES) {
+        return res.status(422).json({ success: false, message: `El tiempo de preparación debe ser un entero entre 0 y ${MAX_PREP_MINUTES}` });
+      }
+    }
     const image = req.file ? '/uploads/' + req.file.filename : null;
     let sql = `UPDATE restaurants SET name=?, description=?, address=?, latitude=?, longitude=?, delivery_time=?, price_range=?, restaurant_charges=?, delivery_charges=?, delivery_charge_type=?, base_delivery_charge=?, base_delivery_distance=?, extra_delivery_charge=?, extra_delivery_distance=?, delivery_radius=?, min_order_price=?, free_delivery_subtotal=?, delivery_type=?, auto_acceptable=?, is_schedulable=?, updated_at=NOW()`;
     const params = [name || restaurant.name, description || '', address || '', latitude || restaurant.latitude, longitude || restaurant.longitude, delivery_time || '', price_range || '', restaurant_charges || 0, delivery_charges || 0, delivery_charge_type || 'FIXED', base_delivery_charge || 0, base_delivery_distance || 0, extra_delivery_charge || 0, extra_delivery_distance || restaurant.extra_delivery_distance || 1, delivery_radius || 0, min_order_price || 0, free_delivery_subtotal || 0, delivery_type || 1, auto_acceptable ? 1 : 0, is_schedulable ? 1 : 0];
@@ -348,7 +412,17 @@ exports.updateStore = async (req, res) => {
     sql += ' WHERE id=?';
     params.push(restaurant.id);
     await sequelize.query(sql, { replacements: params });
-    res.json({ success: true });
+    let prepSaved = null;
+    if (prepMinutes !== null) {
+      try {
+        await sequelize.query('UPDATE restaurants SET prep_minutes = ? WHERE id = ?', { replacements: [normalizePrepMinutes(prepMinutes), restaurant.id] });
+        prepSaved = true;
+      } catch (e) {
+        console.error('updateStore prep_minutes (¿falta la columna?):', e.message);
+        prepSaved = false;
+      }
+    }
+    res.json({ success: true, prep_minutes_saved: prepSaved });
   } catch (err) {
     console.error('updateStore error:', err.message);
     res.status(500).json({ success: false });

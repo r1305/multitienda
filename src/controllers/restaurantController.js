@@ -295,3 +295,50 @@ exports.getFavoriteStores = async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
+const RATINGS_PAGE_SIZE = 10;
+const RATINGS_MAX_PAGE_SIZE = 50;
+
+// GET /api/restaurants/:id/ratings — público, paginado. Solo pedidos entregados; sin datos de usuario ni de pedido.
+exports.getPublicRatings = async (req, res) => {
+  try {
+    const id = Number(req.params && req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(404).json({ success: false });
+    const store = await sequelize.query(
+      'SELECT id FROM restaurants WHERE id = ? AND is_accepted = 1 LIMIT 1',
+      { replacements: [id], type: sequelize.QueryTypes.SELECT }
+    );
+    if (!store.length) return res.status(404).json({ success: false });
+
+    const page = Math.min(Math.max(parseInt(req.query && req.query.page, 10) || 1, 1), 100000);
+    const perPage = Math.min(Math.max(parseInt(req.query && req.query.per_page, 10) || RATINGS_PAGE_SIZE, 1), RATINGS_MAX_PAGE_SIZE);
+    const from = 'FROM ratings r JOIN orders o ON o.id = r.order_id WHERE r.restaurant_id = ? AND o.restaurant_id = r.restaurant_id AND o.orderstatus_id = 5 AND r.rating_store IS NOT NULL';
+
+    const [summary] = await sequelize.query(
+      `SELECT AVG(r.rating_store) AS average, COUNT(*) AS total ${from}`,
+      { replacements: [id], type: sequelize.QueryTypes.SELECT }
+    );
+
+    const listSql = (withReply) => `SELECT r.rating_store AS rating, r.review_store AS comment, ${withReply ? 'r.reply' : 'NULL'} AS reply, r.created_at ${from} ORDER BY r.id DESC LIMIT ? OFFSET ?`;
+    const replacements = [id, perPage, (page - 1) * perPage];
+    let rows;
+    try {
+      rows = await sequelize.query(listSql(true), { replacements, type: sequelize.QueryTypes.SELECT });
+    } catch (e) {
+      rows = await sequelize.query(listSql(false), { replacements, type: sequelize.QueryTypes.SELECT });
+    }
+
+    const total = Number(summary && summary.total) || 0;
+    res.json({
+      success: true,
+      average: total ? Math.round(Number(summary.average) * 10) / 10 : null,
+      total,
+      per_page: perPage,
+      current_page: page,
+      data: rows.map((r) => ({ rating: Number(r.rating), comment: r.comment, reply: r.reply || null, created_at: r.created_at })),
+    });
+  } catch (err) {
+    console.error('[restaurant] ratings', err.message);
+    res.status(500).json({ success: false });
+  }
+};

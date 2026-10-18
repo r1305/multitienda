@@ -5,7 +5,7 @@ function slimOrder(order) {
   return o ? { id: o.id, user_id: o.user_id, unique_order_id: o.unique_order_id, delivery_type: o.delivery_type } : null;
 }
 
-// Eventos: accepted, cancelled, delivered, scheduled_confirmed, released.
+// Eventos: accepted, preparing, ready, cancelled, delivered, scheduled_confirmed, released.
 // accepted: avisa al cliente y, si es entrega a domicilio, a los repartidores.
 // released: un programado llegó a su hora; solo se avisa a los repartidores.
 async function emitOrderEvent(event, order, opts = {}) {

@@ -264,8 +264,8 @@ const DeliveryOrdersPage = {
     },
     async ignoreOrder(orderId) { try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/ignore-order', { token, order_id: orderId }); this.allOrders = this.allOrders.filter(o => o.id !== orderId); } catch(e) {} },
     tabCount(tab) { if (tab === 'available') return this.allOrders.length; if (tab === 'active') return this.myOrders.filter(o => [3,4].includes(o.orderstatus_id)).length; return this.myOrders.filter(o => [5,6].includes(o.orderstatus_id)).length; },
-    statusLabel(id) { return {2:'Disponible',3:'Aceptado',4:'En camino',5:'Entregado',6:'Cancelado'}[id] || ''; },
-    statusBg(id) { return {2:'#ff9800',3:'#2196f3',4:'#ff9800',5:'#4caf50',6:'#f44336'}[id] || '#9e9e9e'; },
+    statusLabel(id) { return {2:'Disponible',12:'Disponible',3:'Aceptado',4:'En camino',5:'Entregado',6:'Cancelado'}[id] || ''; },
+    statusBg(id) { return {2:'#ff9800',12:'#ff9800',3:'#2196f3',4:'#ff9800',5:'#4caf50',6:'#f44336'}[id] || '#9e9e9e'; },
     logout() {
       localStorage.removeItem('deliveryUser');
       localStorage.removeItem('deliveryToken');
@@ -317,7 +317,7 @@ const DeliveryOrderDetailPage = {
           <div v-if="order.order_comment" style="background:#fff3e0;border-radius:8px;padding:10px;margin-bottom:10px;font-size:13px"><i class="fas fa-comment" style="color:#ff9800;margin-right:6px"></i>{{order.order_comment}}</div>
         </div>
         <div style="padding:16px">
-          <button v-if="order.orderstatus_id === 2" class="btn-primary" @click="acceptOrder" :disabled="actionLoading"><i class="fas fa-check"></i> {{actionLoading ? 'Procesando...' : 'Aceptar Pedido'}}</button>
+          <button v-if="order.orderstatus_id === 2 || order.orderstatus_id === 12" class="btn-primary" @click="acceptOrder" :disabled="actionLoading"><i class="fas fa-check"></i> {{actionLoading ? 'Procesando...' : 'Aceptar Pedido'}}</button>
           <button v-else-if="order.orderstatus_id === 3" class="btn-primary" style="background:#ff9800" @click="pickupOrder" :disabled="actionLoading"><i class="fas fa-box"></i> {{actionLoading ? 'Procesando...' : 'Recogido del Restaurante'}}</button>
           <button v-else-if="order.orderstatus_id === 4" class="btn-primary" style="background:#4caf50" @click="deliverOrder" :disabled="actionLoading"><i class="fas fa-check-double"></i> {{actionLoading ? 'Procesando...' : 'Marcar como Entregado'}}</button>
           <div v-else-if="order.orderstatus_id === 5" style="text-align:center;padding:20px;color:#4caf50;font-weight:600"><i class="fas fa-check-circle" style="font-size:24px"></i><p>Pedido entregado</p></div>
@@ -342,8 +342,8 @@ const DeliveryOrderDetailPage = {
   setup() { return { Store }; },
   data() { return { order: null, loading: true, actionLoading: false, successMsg: '', gpsInterval: null, messages: [], chatMsg: '', chatInterval: null }; },
   computed: {
-    statusText() { return {2:'Esperando repartidor',3:'Asignado',4:'En camino',5:'Entregado'}[this.order?.orderstatus_id] || ''; },
-    statusColor() { return {2:'#ff9800',3:'#2196f3',4:'#ff9800',5:'#4caf50'}[this.order?.orderstatus_id] || '#9e9e9e'; },
+    statusText() { return {2:'Esperando repartidor',12:'Esperando repartidor',3:'Asignado',4:'En camino',5:'Entregado'}[this.order?.orderstatus_id] || ''; },
+    statusColor() { return {2:'#ff9800',12:'#ff9800',3:'#2196f3',4:'#ff9800',5:'#4caf50'}[this.order?.orderstatus_id] || '#9e9e9e'; },
     myId() { const u = JSON.parse(localStorage.getItem('deliveryUser') || '{}'); return u.id; },
     customerCoords() { if (!this.order || !this.order.location) return null; try { return JSON.parse(this.order.location); } catch(e) { return null; } }
   },

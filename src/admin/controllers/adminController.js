@@ -26,7 +26,7 @@ async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
 
     // Reasignar (ya en estado 3) no cambia el estado; asignar desde 1 o 2 pasa a 3 con la máquina de estados
     if (Number(found.orderstatus_id) !== states.STATUS.ASSIGNED) {
-      await states.transition(found, [states.STATUS.PENDING, states.STATUS.ACCEPTED], states.STATUS.ASSIGNED, 'admin', t);
+      await states.transition(found, [states.STATUS.PENDING, states.STATUS.ACCEPTED, states.STATUS.PREPARING], states.STATUS.ASSIGNED, 'admin', t);
     }
     await sequelize.query('DELETE FROM accept_deliveries WHERE order_id = ?', { replacements: [id], transaction: t });
     await sequelize.query('INSERT INTO accept_deliveries (order_id, user_id) VALUES (?, ?)', { replacements: [id, uid], transaction: t });
@@ -61,7 +61,7 @@ exports.dashboard = async (req, res) => {
     ] = await Promise.all([
       q('SELECT COUNT(*) as v FROM orders'),
       q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id = 5"),
-      q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id IN (1,2,3,4,7,10,11)"),
+      q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id IN (1,2,3,4,7,10,11,12)"),
       q("SELECT COUNT(*) as v FROM orders WHERE orderstatus_id = 6"),
       q('SELECT COUNT(*) as v FROM users'),
       q('SELECT COUNT(*) as v FROM restaurants'),

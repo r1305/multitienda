@@ -91,11 +91,11 @@ function refreshOrderElapsedCells() {
 }
 
 function statusBadge(id) {
-  const map = {1:'info',2:'warning',3:'warning',4:'warning',5:'success',6:'danger',7:'success',8:'secondary',9:'danger',10:'purple',11:'info'};
+  const map = {1:'info',2:'warning',3:'warning',4:'warning',5:'success',6:'danger',7:'success',8:'secondary',9:'danger',10:'purple',11:'info',12:'warning'};
   return map[id] || 'secondary';
 }
 function statusText(id) {
-  const map = {1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pend.',9:'Pago fallido',10:'Programado',11:'Confirmado'};
+  const map = {1:'Nuevo',2:'Aceptado',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pend.',9:'Pago fallido',10:'Programado',11:'Confirmado',12:'En preparación'};
   return map[id] || '-';
 }
 </script>
@@ -297,7 +297,7 @@ var body = `
                 <td>${esc(o.user_name || '-')}</td>
                 <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.restaurant_name || '-')}</td>
                 <td><strong>${esc(currency)}${esc(parseFloat(o.total||0).toFixed(2))}</strong></td>
-                <td><span class="badge badge-${esc(({1:'info',2:'warning',3:'warning',4:'warning',5:'success',6:'danger',7:'success',8:'secondary',10:'purple',11:'info'})[o.orderstatus_id]||'secondary')}">${esc(({1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pend.',10:'Programado',11:'Confirmado'})[o.orderstatus_id]||'-')}</span></td>
+                <td><span class="badge badge-${esc(({1:'info',2:'warning',3:'warning',4:'warning',5:'success',6:'danger',7:'success',8:'secondary',10:'purple',11:'info',12:'warning'})[o.orderstatus_id]||'secondary')}">${esc(({1:'Nuevo',2:'Aceptado',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pend.',10:'Programado',11:'Confirmado',12:'En preparación'})[o.orderstatus_id]||'-')}</span></td>
                 <td><span class="text-nowrap" style="font-size:12px" data-order-elapsed data-created="${esc(o.created_at || '')}" data-status="${esc(o.orderstatus_id)}" data-updated="${esc(o.updated_at || '')}">${esc(elapsed)}</span></td>
                 <td style="font-size:11px;color:#888">${esc(new Date(o.created_at).toLocaleDateString('es',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))}</td>
               </tr>`;

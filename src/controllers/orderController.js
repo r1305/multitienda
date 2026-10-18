@@ -1,10 +1,13 @@
 const Hashids = require('hashids/cjs');
 const hashids = new Hashids('', 5);
-const { Order, Orderitem, OrderItemAddon, Restaurant, Address, sequelize } = require('../models');
+const { QueryTypes } = require('sequelize');
+const { Order, Orderitem, OrderItemAddon, Restaurant, Address, Item, sequelize } = require('../models');
 const { getDistance, randomString } = require('../helpers/utils');
 const rules = require('../helpers/orderRules');
 const catalog = require('../helpers/orderCatalog');
 const { lockWallet, walletWithdraw } = require('../helpers/orderWallet');
+const { attachEta } = require('../helpers/orderEta');
+const { buildReorder } = require('../helpers/orderReorder');
 
 async function getSettings() {
   const cache = require('../helpers/cache');
@@ -171,30 +174,121 @@ exports.placeOrder = async (req, res) => {
   }
 };
 
+const HISTORY_PAGE_SIZE = 10;
+const HISTORY_MAX_PAGE_SIZE = 50;
+
+function parsePage(v) {
+  return Math.min(Math.max(parseInt(v, 10) || 1, 1), 100000);
+}
+
+async function listUserOrders(userId, page, perPage) {
+  const { count, rows } = await Order.findAndCountAll({
+    where: { user_id: userId },
+    include: [
+      { association: 'orderitems', include: [{ association: 'order_item_addons' }] },
+      { association: 'restaurant' },
+      { association: 'rating' },
+    ],
+    order: [['id', 'DESC']],
+    limit: perPage,
+    offset: (page - 1) * perPage,
+    distinct: true,
+  });
+
+  const data = rows.map((o) => {
+    const obj = o.toJSON();
+    obj.is_ratable = o.orderstatus_id == 5 && !o.rating;
+    return obj;
+  });
+  await attachEta(sequelize, data);
+  return { data, total: count, per_page: perPage, current_page: page };
+}
+
 exports.getOrders = async (req, res) => {
   try {
-    // Página siempre entera >= 1 (evita offset negativo o NaN)
-    const page = Math.min(Math.max(parseInt(req.body && req.body.page, 10) || 1, 1), 100000);
-    const { count, rows } = await Order.findAndCountAll({
-      where: { user_id: req.user.id },
-      include: [
-        { association: 'orderitems', include: [{ association: 'order_item_addons' }] },
-        { association: 'restaurant' },
-        { association: 'rating' },
-      ],
-      order: [['id', 'DESC']],
-      limit: 10,
-      offset: (page - 1) * 10,
-    });
-
-    const data = rows.map(o => {
-      const obj = o.toJSON();
-      obj.is_ratable = o.orderstatus_id == 5 && !o.rating;
-      return obj;
-    });
-
-    res.json({ data, total: count, per_page: 10, current_page: page });
+    const page = parsePage(req.body && req.body.page);
+    res.json(await listUserOrders(req.user.id, page, HISTORY_PAGE_SIZE));
   } catch (err) {
+    res.status(500).json({ success: false });
+  }
+};
+
+// GET /api/orders/history?page=1&per_page=10 — solo pedidos del usuario autenticado, siempre con LIMIT.
+exports.getOrderHistory = async (req, res) => {
+  try {
+    const page = parsePage(req.query && req.query.page);
+    const requested = parseInt(req.query && req.query.per_page, 10) || HISTORY_PAGE_SIZE;
+    const perPage = Math.min(Math.max(requested, 1), HISTORY_MAX_PAGE_SIZE);
+    res.json(await listUserOrders(req.user.id, page, perPage));
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+};
+
+// POST /api/orders/:id/reorder — arma el carrito con el catálogo vigente. No crea pedido ni usa precios viejos.
+exports.reorder = async (req, res) => {
+  try {
+    const orderId = rules.toPositiveId(req.params && req.params.id);
+    if (!orderId) return res.status(404).json({ success: false, message: 'Pedido no encontrado' });
+    const order = await Order.findOne({
+      where: { id: orderId, user_id: req.user.id },
+      include: [{ association: 'orderitems', include: [{ association: 'order_item_addons' }] }],
+    });
+    if (!order) return res.status(404).json({ success: false, message: 'Pedido no encontrado' });
+
+    const restaurant = await Restaurant.findByPk(order.restaurant_id, { attributes: ['id', 'name', 'slug', 'is_active', 'is_accepted'] });
+    if (!restaurant || !restaurant.is_accepted) {
+      return res.status(409).json({ success: false, message: 'La tienda ya no está disponible' });
+    }
+
+    const orderItems = order.orderitems.map((oi) => ({
+      item_id: oi.item_id,
+      name: oi.name,
+      quantity: oi.quantity,
+      addons: (oi.order_item_addons || []).map((a) => ({ addon_name: a.addon_name, addon_category_name: a.addon_category_name })),
+    }));
+    const itemIds = [...new Set(orderItems.map((oi) => Number(oi.item_id)).filter((n) => Number.isInteger(n) && n > 0))];
+
+    const items = itemIds.length
+      ? await Item.findAll({ where: { id: itemIds, restaurant_id: restaurant.id }, attributes: ['id', 'name', 'price', 'is_active', 'restaurant_id'] })
+      : [];
+    const addonRows = itemIds.length
+      ? await sequelize.query(
+          `SELECT aci.item_id, a.id, a.name, a.price, a.is_active, a.addon_category_id, ac.name AS category_name
+           FROM addon_category_item aci
+           JOIN addon_categories ac ON ac.id = aci.addon_category_id AND ac.restaurant_id = ?
+           JOIN addons a ON a.addon_category_id = ac.id
+           WHERE aci.item_id IN (?) LIMIT 2000`,
+          { replacements: [restaurant.id, itemIds], type: QueryTypes.SELECT }
+        )
+      : [];
+
+    const { lines, unavailable } = buildReorder({ orderItems, items, addonRows, restaurantId: restaurant.id });
+    const links = addonRows.map((r) => ({ item_id: r.item_id, addon_category_id: r.addon_category_id }));
+    const priced = lines.length
+      ? rules.priceLines(lines, { items, addons: addonRows, links, restaurantId: restaurant.id })
+      : { lines: [], sub_total: 0 };
+
+    const cart = priced.lines.map((l) => ({
+      id: l.item.id,
+      restaurant_id: restaurant.id,
+      name: l.item.name,
+      quantity: l.quantity,
+      price: l.unit_price,
+      line_total: l.line_total,
+      selectedaddons: l.addons.map((a) => ({ addon_id: a.id, addon_name: a.name, addon_price: rules.toMoney(a.price) })),
+    }));
+
+    res.json({
+      success: true,
+      restaurant: { id: restaurant.id, name: restaurant.name, slug: restaurant.slug, is_open: !!restaurant.is_active },
+      cart,
+      sub_total: priced.sub_total,
+      unavailable,
+    });
+  } catch (err) {
+    if (err instanceof rules.OrderValidationError) return res.status(409).json({ success: false, message: err.message });
+    console.error('reorder error:', err.message);
     res.status(500).json({ success: false });
   }
 };

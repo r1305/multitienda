@@ -1,5 +1,114 @@
 // ==================== STORE OWNER APP PAGES ====================
 
+// Alerta de pedidos nuevos: sondeo cada 20 s SOLO con la pestaña visible (sin timers en el servidor).
+const StoreOrderAlerts = (() => {
+  const POLL_MS = 20000;
+  let timer = null;
+  let wanted = false;
+  let last = null;
+  let audioCtx = null;
+  let bound = false;
+
+  function token() { try { return localStorage.getItem('storeOwnerToken'); } catch (e) { return null; } }
+
+  function unlockAudio() {
+    try {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtx = new Ctx();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+    } catch (e) {}
+  }
+
+  function beep() {
+    try {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      [0, 0.25].forEach((offset) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.3, now + offset + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.22);
+      });
+    } catch (e) {}
+  }
+
+  function notify(diff, total) {
+    beep();
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Nuevo pedido', { body: diff > 1 ? `Tienes ${total} pedidos nuevos por aceptar` : 'Tienes un pedido nuevo por aceptar' });
+      }
+    } catch (e) {}
+    window.dispatchEvent(new CustomEvent('store-owner:new-orders', { detail: { count: total } }));
+  }
+
+  async function poll() {
+    const tk = token();
+    if (!tk || document.hidden) return;
+    try {
+      const res = await API.request('/store-owner/new-orders-count', { method: 'GET', headers: { Authorization: 'Bearer ' + tk } });
+      const n = Number(res && res.count);
+      if (!Number.isFinite(n)) return;
+      if (last !== null && n > last) notify(n - last, n);
+      last = n;
+    } catch (e) {}
+  }
+
+  function clear() { if (timer) { clearInterval(timer); timer = null; } }
+
+  function arm() {
+    clear();
+    if (!wanted || document.hidden || !token()) return;
+    poll();
+    timer = setInterval(poll, POLL_MS);
+  }
+
+  function onVisibility() { if (document.hidden) clear(); else arm(); }
+
+  function start() {
+    wanted = true;
+    if (!bound) {
+      document.addEventListener('visibilitychange', onVisibility);
+      document.addEventListener('click', unlockAudio, { once: true });
+      document.addEventListener('keydown', unlockAudio, { once: true });
+      bound = true;
+    }
+    arm();
+  }
+
+  function stop() {
+    wanted = false;
+    last = null;
+    clear();
+    if (bound) {
+      document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
+      bound = false;
+    }
+  }
+
+  // Activo en las pantallas del panel de tienda con sesión iniciada; se apaga al salir de ellas.
+  function sync(path) {
+    const rel = String(path || '');
+    const inPanel = /\/store-owner\/[^/]+/.test(rel) && token();
+    if (inPanel) { if (!wanted) start(); } else if (wanted) stop();
+  }
+
+  return { start, stop, sync };
+})();
+window.StoreOrderAlerts = StoreOrderAlerts;
+
 const StoreOwnerLoginPage = {
   setup() { return { Store }; },
   template: `
@@ -177,7 +286,7 @@ const StoreOwnerOrdersPage = {
   computed: {
     filteredOrders() {
       if (this.activeTab === 'new') return this.orders.filter(o => [1, 11].includes(o.orderstatus_id));
-      if (this.activeTab === 'preparing') return this.orders.filter(o => [2, 3, 4, 7].includes(o.orderstatus_id));
+      if (this.activeTab === 'preparing') return this.orders.filter(o => [2, 3, 4, 7, 12].includes(o.orderstatus_id));
       return [...this.orders, ...this.pastOrders];
     }
   },
@@ -185,7 +294,7 @@ const StoreOwnerOrdersPage = {
   beforeUnmount() { if (this.interval) clearInterval(this.interval); },
   methods: {
     async loadOrders() { try { const token = localStorage.getItem('storeOwnerToken'); const [res, past] = await Promise.all([API.post('/store-owner/get-orders', { token }), API.post('/store-owner/get-past-orders', { token })]); this.orders = Array.isArray(res) ? res : (res.data || []); this.pastOrders = Array.isArray(past) ? past : (past.data || []); } catch(e) {} this.loading = false; },
-    statusText(id) { return {1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado'}[id] || ''; },
+    statusText(id) { return {1:'Nuevo',2:'Aceptado',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado',12:'En preparacion'}[id] || ''; },
     statusClass(id) { return [5].includes(id)?'so-badge-success':[6].includes(id)?'so-badge-danger':'so-badge-info'; }
   }
 };
@@ -240,8 +349,9 @@ const StoreOwnerOrderDetailPage = {
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button v-if="order.orderstatus_id===1||order.orderstatus_id===11" class="so-btn so-btn-success" style="flex:1" @click="acceptOrder" :disabled="actionLoading"><i class="fas fa-check"></i> Aceptar</button>
-            <button v-if="order.orderstatus_id===2&&order.delivery_type===2" class="so-btn so-btn-primary" style="flex:1" @click="markReady" :disabled="actionLoading"><i class="fas fa-box"></i> Listo para Recoger</button>
-            <button v-if="order.orderstatus_id===1||order.orderstatus_id===11" class="so-btn so-btn-danger" style="flex:1" @click="cancelOrder" :disabled="actionLoading"><i class="fas fa-times"></i> Rechazar</button>
+            <button v-if="order.orderstatus_id===2" class="so-btn so-btn-primary" style="flex:1" @click="markPreparing" :disabled="actionLoading"><i class="fas fa-fire"></i> En preparacion</button>
+            <button v-if="(order.orderstatus_id===2||order.orderstatus_id===12)&&order.delivery_type===2" class="so-btn so-btn-primary" style="flex:1" @click="markReady" :disabled="actionLoading"><i class="fas fa-box"></i> Listo para Recoger</button>
+            <button v-if="[1,2,11,12].includes(order.orderstatus_id)" class="so-btn so-btn-danger" style="flex:1" @click="cancelOrder" :disabled="actionLoading"><i class="fas fa-times"></i> {{order.orderstatus_id===1||order.orderstatus_id===11?'Rechazar':'Cancelar'}}</button>
           </div>
           <div v-if="successMsg" style="margin-top:12px;background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:8px;font-size:13px;text-align:center">{{successMsg}}</div>
         </template>
@@ -253,9 +363,10 @@ const StoreOwnerOrderDetailPage = {
   methods: {
     async loadOrder() { try { const token = localStorage.getItem('storeOwnerToken'); this.order = await API.post('/store-owner/get-single-order', { token, order_id: this.$route.params.id }); } catch(e) {} this.loading = false; },
     async acceptOrder() { this.actionLoading = true; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/accept-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 2; this.successMsg = 'Pedido aceptado!'; } catch(e) {} this.actionLoading = false; },
+    async markPreparing() { this.actionLoading = true; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/mark-order-preparing', { token, order_id: this.order.id }); this.order.orderstatus_id = 12; this.successMsg = 'Pedido en preparacion'; } catch(e) {} this.actionLoading = false; },
     async markReady() { this.actionLoading = true; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/mark-selfpickup-order-ready', { token, order_id: this.order.id }); this.order.orderstatus_id = 7; this.successMsg = 'Marcado como listo!'; } catch(e) {} this.actionLoading = false; },
     async cancelOrder() { if (!confirm('Rechazar pedido?')) return; this.actionLoading = true; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/cancel-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 6; this.successMsg = 'Pedido rechazado'; } catch(e) {} this.actionLoading = false; },
-    statusText(id) { return {1:'Nuevo',2:'Preparando',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado'}[id] || ''; },
+    statusText(id) { return {1:'Nuevo',2:'Aceptado',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado',12:'En preparacion'}[id] || ''; },
     statusClass(id) { return [5,7].includes(id)?'so-badge-success':[6].includes(id)?'so-badge-danger':'so-badge-info'; }
   }
 };
@@ -774,6 +885,7 @@ const StoreOwnerSettingsPage = {
               </div>
               <div class="so-form-row">
                 <div class="so-form-group"><label>Tiempo de entrega</label><input v-model="form.delivery_time" placeholder="Ej: 30-45 min"></div>
+                <div class="so-form-group"><label>Tiempo de preparacion (min, 0-180)</label><input v-model.number="form.prep_minutes" type="number" min="0" max="180" step="1"></div>
                 <div class="so-form-group"><label>Rango de precios</label><input v-model="form.price_range" placeholder="Ej: $$"></div>
               </div>
               <div class="so-form-group"><label>Imagen</label><input type="file" accept="image/*" @change="onFile" style="font-size:13px"></div>
@@ -839,7 +951,8 @@ const StoreOwnerSettingsPage = {
             extra_delivery_charge: res.restaurant.extra_delivery_charge || 0, extra_delivery_distance: res.restaurant.extra_delivery_distance || 0,
             delivery_radius: res.restaurant.delivery_radius || 0, min_order_price: res.restaurant.min_order_price || 0,
             free_delivery_subtotal: res.restaurant.free_delivery_subtotal || 0, delivery_type: res.restaurant.delivery_type || 1,
-            auto_acceptable: !!res.restaurant.auto_acceptable, is_schedulable: !!res.restaurant.is_schedulable
+            auto_acceptable: !!res.restaurant.auto_acceptable, is_schedulable: !!res.restaurant.is_schedulable,
+            prep_minutes: res.restaurant.prep_minutes === null || res.restaurant.prep_minutes === undefined ? 20 : res.restaurant.prep_minutes
           };
         }
       } catch(e) { console.error(e); }

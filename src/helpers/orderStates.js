@@ -1,7 +1,7 @@
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../models');
 
-// Estados de pedido (tabla orderstatus)
+// Estados de pedido (tabla orderstatus). 12 = en preparación (entre aceptado y listo/asignado)
 const STATUS = {
   PENDING: 1,
   ACCEPTED: 2,
@@ -14,12 +14,13 @@ const STATUS = {
   PAYMENT_FAILED: 9,
   SCHEDULED_PENDING: 10,
   SCHEDULED_CONFIRMED: 11,
+  PREPARING: 12,
 };
 
 // Transiciones permitidas (origen -> destinos). 5 y 6 son terminales.
 const TRANSITIONS = {
   1: [2, 6],
-  2: [3, 6, 7],
+  2: [3, 6, 7, 12],
   3: [4, 6],
   4: [5, 6],
   7: [5, 6],
@@ -27,6 +28,7 @@ const TRANSITIONS = {
   9: [6],
   10: [11, 6],
   11: [2, 6],
+  12: [3, 6, 7],
   5: [],
   6: [],
 };
@@ -34,9 +36,9 @@ const TRANSITIONS = {
 // Qué estados de origen puede usar cada actor para llegar a cada destino.
 const ACTOR_RULES = {
   customer: { 6: [1, 10] },
-  store: { 2: [1], 6: [1, 2, 10, 11], 7: [2], 5: [7], 11: [10] },
-  admin: { 2: [1], 3: [1, 2], 6: [1, 2, 3, 4, 7, 8, 10, 11], 11: [10] },
-  delivery: { 3: [2], 4: [3], 5: [4] },
+  store: { 2: [1], 6: [1, 2, 10, 11, 12], 7: [2, 12], 5: [7], 11: [10], 12: [2] },
+  admin: { 2: [1], 3: [1, 2, 12], 6: [1, 2, 3, 4, 7, 8, 10, 11, 12], 11: [10], 12: [2] },
+  delivery: { 3: [2, 12], 4: [3], 5: [4] },
   system: { 2: [11] },
 };
 

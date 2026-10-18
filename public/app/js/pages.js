@@ -754,6 +754,7 @@ const OrdersPage = {
                 <span :style="{fontSize:'11px',padding:'3px 8px',borderRadius:'4px',fontWeight:600,background:statusColor(o.orderstatus_id),color:'#fff'}">{{statusText(o.orderstatus_id)}}</span>
               </div>
               <div style="font-size:12px;color:var(--muted);margin-top:6px">{{o.restaurant ? o.restaurant.name : ''}}</div>
+              <div v-if="o.eta_at" style="font-size:12px;color:var(--muted);margin-top:4px"><i class="fas fa-clock"></i> Llegada estimada: {{new Date(o.eta_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}}</div>
               <div style="display:flex;justify-content:space-between;margin-top:8px">
                 <span style="font-size:13px;color:var(--muted)">{{formatDate(o.created_at)}}</span>
                 <span style="font-weight:600;font-size:14px">{{Store.formatPrice(o.total)}}</span>
@@ -773,8 +774,8 @@ const OrdersPage = {
     this.loading = false;
   },
   methods: {
-    statusText(id) { return {1:'Recibida',2:'Preparando',3:'En camino',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',9:'Pago fallido',10:'Programado',11:'Confirmado'}[id] || 'Desconocido'; },
-    statusColor(id) { return {1:'#2196f3',2:'#ff9800',3:'#ff9800',4:'#ff9800',5:'#4caf50',6:'#f44336',7:'#4caf50',8:'#9e9e9e',9:'#f44336',10:'#9c27b0',11:'#2196f3'}[id] || '#9e9e9e'; },
+    statusText(id) { return {1:'Recibida',2:'Aceptado',3:'En camino',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',9:'Pago fallido',10:'Programado',11:'Confirmado',12:'En preparacion'}[id] || 'Desconocido'; },
+    statusColor(id) { return {1:'#2196f3',2:'#ff9800',3:'#ff9800',4:'#ff9800',5:'#4caf50',6:'#f44336',7:'#4caf50',8:'#9e9e9e',9:'#f44336',10:'#9c27b0',11:'#2196f3',12:'#ff9800'}[id] || '#9e9e9e'; },
     formatDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('es', { day:'numeric', month:'short', year:'numeric' }); }
   }
 };
@@ -788,6 +789,7 @@ const OrderDetailPage = {
       <template v-else-if="order">
         <div style="padding:16px;text-align:center">
           <div :style="{display:'inline-block',padding:'6px 16px',borderRadius:'20px',fontSize:'13px',fontWeight:600,color:'#fff',background:statusColor(order.orderstatus_id)}">{{statusText(order.orderstatus_id)}}</div>
+          <div v-if="order.eta_at && isRunning" style="font-size:13px;color:var(--muted);margin-top:8px"><i class="fas fa-clock"></i> Llegada estimada: {{new Date(order.eta_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}}</div>
         </div>
         <div id="orderMap" style="width:calc(100% - 32px);height:250px;background:#eee;border-radius:12px;margin:0 16px 16px"></div>
         <div class="bill">
@@ -828,7 +830,7 @@ const OrderDetailPage = {
   setup() { return { Store }; },
   data() { return { order: null, loading: true, refreshInterval: null, map: null, deliveryMarker: null, routeLine: null, googleLoaded: false, messages: [], chatMsg: '', chatInterval: null }; },
   computed: {
-    isRunning() { return this.order && [1,2,3,4,7,8].includes(this.order.orderstatus_id); },
+    isRunning() { return this.order && [1,2,3,4,7,8,12].includes(this.order.orderstatus_id); },
     canCancel() { return this.order && [1,10].includes(this.order.orderstatus_id); },
     canRate() { return this.order && this.order.orderstatus_id === 5; }
   },
@@ -919,8 +921,8 @@ const OrderDetailPage = {
         }
       });
     },
-    statusText(id) { return {1:'Recibida',2:'Preparando',3:'En camino',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',9:'Pago fallido',10:'Programado',11:'Confirmado'}[id] || ''; },
-    statusColor(id) { return {1:'#2196f3',2:'#ff9800',3:'#ff9800',4:'#ff9800',5:'#4caf50',6:'#f44336',7:'#4caf50',8:'#9e9e9e',9:'#f44336',10:'#9c27b0',11:'#2196f3'}[id] || '#9e9e9e'; },
+    statusText(id) { return {1:'Recibida',2:'Aceptado',3:'En camino',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',9:'Pago fallido',10:'Programado',11:'Confirmado',12:'En preparacion'}[id] || ''; },
+    statusColor(id) { return {1:'#2196f3',2:'#ff9800',3:'#ff9800',4:'#ff9800',5:'#4caf50',6:'#f44336',7:'#4caf50',8:'#9e9e9e',9:'#f44336',10:'#9c27b0',11:'#2196f3',12:'#ff9800'}[id] || '#9e9e9e'; },
     async cancelOrder() { if (!confirm('Cancelar esta orden?')) return; try { await API.cancelOrder(Store.user.auth_token, Store.user.id, this.order.id); this.order.orderstatus_id = 6; } catch(e) {} },
     async loadMessages() { try { const res = await API.post('/conversation/chat', { token: Store.user.auth_token, order_id: this.order.id }); this.messages = Array.isArray(res) ? res : []; } catch(e) {} },
     async sendMessage() { if (!this.chatMsg.trim()) return; try { await API.post('/conversation/send', { token: Store.user.auth_token, order_id: this.order.id, message: this.chatMsg.trim() }); this.chatMsg = ''; await this.loadMessages(); } catch(e) {} },

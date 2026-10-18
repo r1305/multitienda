@@ -49,8 +49,9 @@ const router = createRouter({
   scrollBehavior() { return { top: 0 }; }
 });
 
-router.afterEach(() => {
+router.afterEach((to) => {
   if (window.PushNotifications) PushNotifications.registerForContext();
+  if (window.StoreOrderAlerts) StoreOrderAlerts.sync(to.path);
 });
 window.__appRouter = router;
 

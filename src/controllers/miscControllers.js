@@ -2,6 +2,7 @@ const { Setting, Location, Address, Coupon, PushToken, Order, Orderitem, OrderIt
 const { Op, QueryTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const otpHelper = require('../helpers/otp');
+const mailer = require('../helpers/mailer');
 const states = require('../helpers/orderStates');
 const { emitOrderEvent } = require('../helpers/orderEvents');
 const { releaseDueScheduledOrders } = require('../helpers/scheduledOrders');
@@ -303,14 +304,24 @@ exports.getAllRestaurantsCategories = async (req, res) => {
 };
 
 // ─── SMS / OTP ────────────────────────────────────────────────────────────────
-// PENDIENTE: el envío real del OTP (SMS/correo) no está integrado; el proyecto no tiene ningún canal configurado.
-// El código se guarda con caducidad de 5 minutos pero no se entrega al usuario ni se devuelve en la respuesta.
+// Envío del OTP por correo SMTP (src/helpers/mailer.js). El código nunca se devuelve en la respuesta.
+// El destino es el correo del usuario registrado con ese teléfono; solo si el teléfono no tiene cuenta
+// se acepta el correo indicado en la petición (alta nueva). La respuesta no revela si la cuenta existe.
+async function deliverPhoneOtp(req, res) {
+  const phone = req.body && req.body.phone;
+  if (!phone || typeof phone !== 'string') return res.status(400).json({ success: false });
+  const code = await otpHelper.issueOtp(SmsOtp, { phone });
+  const existing = await User.findOne({ where: { phone } });
+  const bodyEmail = req.body && req.body.email;
+  const to = existing ? existing.email : (mailer.isValidEmail(bodyEmail) ? bodyEmail : null);
+  if (to) void mailer.sendOtpMail(to, code, 'otp').catch((err) => console.error('[otp] envío', err.message));
+  else console.error('[otp] sin correo de destino para el OTP');
+  return res.json({ success: true });
+}
+
 exports.sendOtp = async (req, res) => {
   try {
-    const phone = req.body && req.body.phone;
-    if (!phone || typeof phone !== 'string') return res.status(400).json({ success: false });
-    await otpHelper.issueOtp(SmsOtp, { phone });
-    res.json({ success: true });
+    await deliverPhoneOtp(req, res);
   } catch (err) {
     res.status(500).json({ success: false });
   }
@@ -330,22 +341,20 @@ exports.verifyOtp = async (req, res) => {
 
 exports.generateOtpForLogin = async (req, res) => {
   try {
-    const phone = req.body && req.body.phone;
-    if (!phone || typeof phone !== 'string') return res.status(400).json({ success: false });
-    await otpHelper.issueOtp(SmsOtp, { phone });
-    res.json({ success: true });
+    await deliverPhoneOtp(req, res);
   } catch (err) {
     res.status(500).json({ success: false });
   }
 };
 
 // ─── Password Reset ───────────────────────────────────────────────────────────
-// PENDIENTE: igual que el OTP por SMS, falta integrar el envío del correo de recuperación.
 exports.sendPasswordResetMail = async (req, res) => {
   try {
     const email = req.body && req.body.email;
     if (!email || typeof email !== 'string') return res.status(400).json({ success: false });
-    await otpHelper.issueOtp(PasswordResetOtp, { email });
+    const code = await otpHelper.issueOtp(PasswordResetOtp, { email });
+    const user = await User.findOne({ where: { email } });
+    if (user) void mailer.sendOtpMail(email, code, 'reset').catch((err) => console.error('[reset] envío', err.message));
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -444,12 +453,15 @@ exports.rateOrder = async (req, res) => {
 
 exports.getRatingAndReview = async (req, res) => {
   try {
-    const restaurant = await Restaurant.findOne({ where: { slug: req.params.slug } });
-    if (!restaurant) return res.json([]);
-    const ratings = await Rating.findAll({ where: { restaurant_id: restaurant.id }, include: [{ model: User, as: 'user', attributes: ['name', 'avatar'] }] });
-    res.json(ratings);
+    const rows = await sequelize.query(
+      'SELECT id FROM restaurants WHERE slug = ? AND is_accepted = 1 LIMIT 1',
+      { replacements: [String(req.params.slug || '')], type: QueryTypes.SELECT }
+    );
+    if (!rows.length) return res.status(404).json({ success: false });
+    req.params = { ...req.params, id: String(rows[0].id) };
+    return require('./restaurantController').getPublicRatings(req, res);
   } catch (err) {
-    res.status(500).json([]);
+    res.status(500).json({ success: false });
   }
 };
 
@@ -571,7 +583,7 @@ exports.getDeliveryOrders = async (req, res) => {
     const ignoredIds = new Set(ignored.map((i) => i.order_id));
 
     const orders = await Order.findAll({
-      where: { orderstatus_id: 2, delivery_type: 1 },
+      where: { orderstatus_id: [2, 12], delivery_type: 1 },
       attributes: DELIVERY_ORDER_ATTRS,
       include: [
         { association: 'restaurant', attributes: DELIVERY_RESTAURANT_ATTRS },
@@ -610,7 +622,7 @@ exports.getSingleDeliveryOrder = async (req, res) => {
     });
     if (!order) return res.json(null);
     const assignedId = await getAssignedDeliveryId(orderId);
-    const isAvailable = !assignedId && Number(order.orderstatus_id) === 2 && Number(order.delivery_type) === 1;
+    const isAvailable = !assignedId && [2, 12].includes(Number(order.orderstatus_id)) && Number(order.delivery_type) === 1;
     if (assignedId !== Number(req.user.id) && !isAvailable) {
       return res.status(403).json(null);
     }
@@ -676,7 +688,7 @@ exports.acceptToDeliver = async (req, res) => {
       const existing = await AcceptDelivery.findOne({ where: { order_id: orderId }, transaction: t, lock: true });
       if (existing) return false;
       try {
-        await states.transition(orderId, [states.STATUS.ACCEPTED], states.STATUS.ASSIGNED, 'delivery', t, { where: { delivery_type: 1 } });
+        await states.transition(orderId, [states.STATUS.ACCEPTED, states.STATUS.PREPARING], states.STATUS.ASSIGNED, 'delivery', t, { where: { delivery_type: 1 } });
       } catch (err) {
         if (err instanceof states.OrderStateError) return false;
         throw err;
