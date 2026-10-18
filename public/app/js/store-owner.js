@@ -173,7 +173,7 @@ const StoreOwnerDashboardPage = {
         <div class="so-bottom-nav">
           <router-link to="/store-owner/dashboard" class="active"><i class="fas fa-home"></i><span>Inicio</span></router-link>
           <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-box"></i><span>Productos</span></router-link>
           <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
         </div>
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
@@ -257,7 +257,7 @@ const StoreOwnerOrdersPage = {
         <div class="so-bottom-nav">
           <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
           <router-link to="/store-owner/orders" class="active"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-box"></i><span>Productos</span></router-link>
           <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
@@ -393,7 +393,7 @@ const StoreOwnerHistoryPage = {
         <div class="so-bottom-nav">
           <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
           <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-box"></i><span>Productos</span></router-link>
           <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
         </div>
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
@@ -445,7 +445,7 @@ const StoreOwnerEarningsPage = {
         <div class="so-bottom-nav">
           <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
           <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-box"></i><span>Productos</span></router-link>
           <router-link to="/store-owner/earnings" class="active"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
         </div>
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
@@ -540,7 +540,7 @@ const StoreOwnerMenuPage = {
         <div class="so-bottom-nav">
           <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
           <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu" class="active"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/menu" class="active"><i class="fas fa-box"></i><span>Productos</span></router-link>
           <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
         </div>
         <div style="margin-bottom:12px"><input v-model="search" placeholder="Buscar producto..." style="width:100%;padding:10px 14px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px"></div>
@@ -665,7 +665,7 @@ const StoreOwnerCategoriesPage = {
         <div class="so-bottom-nav">
           <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
           <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-box"></i><span>Productos</span></router-link>
           <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
         </div>
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
@@ -746,7 +746,7 @@ const StoreOwnerAddonsPage = {
         <div class="so-bottom-nav">
           <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
           <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-box"></i><span>Productos</span></router-link>
           <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
         </div>
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
@@ -868,7 +868,7 @@ const StoreOwnerSettingsPage = {
         <div class="so-bottom-nav">
           <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
           <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-box"></i><span>Productos</span></router-link>
           <router-link to="/store-owner/settings" class="active"><i class="fas fa-cog"></i><span>Settings</span></router-link>
         </div>
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
@@ -1010,7 +1010,7 @@ const StoreOwnerCouponsPage = {
         <div class="so-bottom-nav">
           <router-link to="/store-owner/dashboard"><i class="fas fa-home"></i><span>Inicio</span></router-link>
           <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i><span>Pedidos</span></router-link>
-          <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i><span>Menu</span></router-link>
+          <router-link to="/store-owner/menu"><i class="fas fa-box"></i><span>Productos</span></router-link>
           <router-link to="/store-owner/earnings"><i class="fas fa-chart-line"></i><span>Ganancias</span></router-link>
         </div>
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
