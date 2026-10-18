@@ -34,7 +34,7 @@
         .sidebar hr { border-color: rgba(255,255,255,.06); margin: 8px 20px; }
 
         /* Main content */
-        .main-content { margin-left: var(--sidebar-width); min-height: 100vh; transition: margin .3s ease; }
+        .main-content { margin-left: var(--sidebar-width); min-width: 0; max-width: 100%; min-height: 100vh; transition: margin .3s ease; }
 
         /* Top bar */
         .top-bar { position: sticky; top: 0; z-index: 900; background: #fff; padding: 0 20px; height: var(--topbar-height); display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
@@ -46,7 +46,7 @@
         /* Cards & Tables */
         .card { border: none; border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,.04); margin-bottom: 16px; overflow: hidden; }
         .card-header { background: #fff; border-bottom: 1px solid #f0f0f0; font-weight: 600; font-size: 14px; padding: 14px 16px; }
-        .card-body { padding: 16px; }
+        .card-body { padding: 16px; overflow-x: auto; }
         .table { font-size: 13px; }
         .table th { border-top: none; font-size: 11px; text-transform: uppercase; color: #8a9bb5; font-weight: 600; letter-spacing: .5px; white-space: nowrap; }
         .table td { vertical-align: middle; }

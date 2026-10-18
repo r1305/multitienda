@@ -17,7 +17,7 @@ const HomePage = {
             <button :class="{active: mode==='delivery'}" @click="mode='delivery'; loadStores()">Delivery</button>
             <button :class="{active: mode==='pickup'}" @click="mode='pickup'; loadStores()">Recoger</button>
           </div>
-          <div v-if="businessTypes.length" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 12px">
+          <div v-if="businessTypes.length" class="chip-row">
             <button :style="chipStyle(!businessTypeId)" @click="selectBusinessType(null)">Todos</button>
             <button v-for="t in businessTypes" :key="t.id" :style="chipStyle(businessTypeId === t.id)" @click="selectBusinessType(t.id)">{{t.name}}</button>
           </div>
