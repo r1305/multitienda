@@ -448,6 +448,23 @@ async function notifyCustomerOrderOnWay(order) {
   await sendPushNotification(title, message, order.user_id, null, { order_id: String(order.id), unique_order_id: order.unique_order_id });
 }
 
+const CUSTOMER_ORDER_EVENTS = {
+  accepted: { title: 'Pedido aceptado', message: (o) => `La tienda aceptó tu pedido #${o.unique_order_id}` },
+  cancelled: { title: 'Pedido cancelado', message: (o) => `Tu pedido #${o.unique_order_id} fue cancelado` },
+  delivered: { title: 'Pedido entregado', message: (o) => `Tu pedido #${o.unique_order_id} fue entregado. ¡Gracias!` },
+  scheduled_confirmed: { title: 'Pedido programado confirmado', message: (o) => `La tienda confirmó tu pedido programado #${o.unique_order_id}` },
+};
+
+async function notifyCustomerOrderEvent(order, event) {
+  const def = CUSTOMER_ORDER_EVENTS[event];
+  if (!def || !order || !order.user_id) return;
+  const title = def.title;
+  const message = def.message(order);
+  const data = { order_id: order.id, unique_order_id: order.unique_order_id, type: `order_${event}`, recipient_role: 'customer' };
+  await saveNotification(order.user_id, title, message, data);
+  await sendPushNotification(title, message, order.user_id, null, { ...data, order_id: String(order.id) });
+}
+
 module.exports = {
   sendPushNotification,
   saveNotification,
@@ -461,4 +478,5 @@ module.exports = {
   notifyAdminNewDelivery,
   notifyCustomerDeliveryAccepted,
   notifyCustomerOrderOnWay,
+  notifyCustomerOrderEvent,
 };

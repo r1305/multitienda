@@ -4,7 +4,7 @@
 var body = `
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>All Categories (${typeof count !== 'undefined' ? count : 0})</span>
+        <span>All Categories (${esc(typeof count !== 'undefined' ? count : 0)})</span>
         <span class="text-muted" style="font-size:12px"><i class="fas fa-info-circle"></i> Categorias se gestionan desde el panel del Store Owner</span>
     </div>
     <div class="card-body p-0">
@@ -15,11 +15,11 @@ var body = `
 if (typeof categories !== 'undefined' && categories.length) {
   categories.forEach(function(c) {
     body += `<tr>
-      <td>${c.id}</td>
-      <td><strong>${c.name}</strong></td>
-      <td><small>${c.restaurant_name || 'Global'}</small></td>
-      <td>${c.items_count || 0}</td>
-      <td><span class="badge badge-${c.is_enabled ? 'success' : 'danger'}">${c.is_enabled ? 'Active' : 'Disabled'}</span></td>
+      <td>${esc(c.id)}</td>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td><small>${esc(c.restaurant_name || 'Global')}</small></td>
+      <td>${esc(c.items_count || 0)}</td>
+      <td><span class="badge badge-${esc(c.is_enabled ? 'success' : 'danger')}">${esc(c.is_enabled ? 'Active' : 'Disabled')}</span></td>
     </tr>`;
   });
 } else {

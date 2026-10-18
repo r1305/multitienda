@@ -5,8 +5,8 @@ var scripts = `
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
 let earningsChart = null;
-const storeId = ${typeof store !== 'undefined' ? store.id : 0};
-const today = '${today}';
+const storeId = ${esc(typeof store !== 'undefined' ? store.id : 0)};
+const today = '${esc(today)}';
 
 function loadChart(filter) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -47,12 +47,12 @@ function loadChart(filter) {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { callback: v => '${typeof currency !== "undefined" ? currency : "$"}' + v } },
+          y: { beginAtZero: true, ticks: { callback: v => '${esc(typeof currency !== "undefined" ? currency : "$")}' + v } },
           x: { grid: { display: false } }
         }
       }
     });
-    document.getElementById('totalEarnings').textContent = '${typeof currency !== "undefined" ? currency : "$"}' + data.total.toFixed(2);
+    document.getElementById('totalEarnings').textContent = '${esc(typeof currency !== "undefined" ? currency : "$")}' + data.total.toFixed(2);
     document.getElementById('orderCount').textContent = data.orderCount + ' pedidos';
   });
 }
@@ -73,8 +73,8 @@ if (typeof store !== 'undefined' && store) {
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px">
       <div>
-        <span style="font-size:15px;font-weight:600"><i class="fas fa-store mr-1"></i> ${store.name}</span>
-        <span id="totalEarnings" class="ml-2 badge badge-success" style="font-size:13px">${typeof currency !== 'undefined' ? currency : '$'}0.00</span>
+        <span style="font-size:15px;font-weight:600"><i class="fas fa-store mr-1"></i> ${esc(store.name)}</span>
+        <span id="totalEarnings" class="ml-2 badge badge-success" style="font-size:13px">${esc(typeof currency !== 'undefined' ? currency : '$')}0.00</span>
         <span id="orderCount" class="ml-1 badge badge-secondary" style="font-size:11px">0 pedidos</span>
       </div>
       <div class="d-flex flex-wrap" style="gap:6px">
@@ -85,9 +85,9 @@ if (typeof store !== 'undefined' && store) {
     </div>
     <div class="card-body">
       <div id="customRange" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-        <input type="date" id="dateFrom" class="form-control form-control-sm" style="width:auto" value="${today}">
+        <input type="date" id="dateFrom" class="form-control form-control-sm" style="width:auto" value="${esc(today)}">
         <span style="color:#888">a</span>
-        <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto" value="${today}">
+        <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto" value="${esc(today)}">
         <button class="btn btn-sm btn-success" onclick="loadChart('custom')"><i class="fas fa-search"></i> Buscar</button>
       </div>
       <div style="position:relative;height:300px">

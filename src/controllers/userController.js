@@ -128,7 +128,8 @@ exports.login = async (req, res) => {
     const defaultAddress = await getDefaultAddress(user);
     return res.status(201).json(await buildUserResponse(user, token, defaultAddress));
   } catch (err) {
-    res.status(500).json({ success: false, data: err.message });
+    console.error('[user]', err.message);
+    res.status(500).json({ success: false, data: 'Error interno del servidor' });
   }
 };
 
@@ -137,9 +138,14 @@ exports.loginWithOtp = async (req, res) => {
     const { SmsOtp } = require('../models');
     const { phone, otp, email, name, address } = req.body;
 
-    const otpRecord = await SmsOtp.findOne({ where: { phone } });
-    if (!otpRecord || String(otp) !== String(otpRecord.otp)) {
-      return res.status(201).json({ success: false, data: 'DONOTMATCH' });
+    if (!phone || typeof phone !== 'string') return res.status(201).json({ success: false, data: 'DONOTMATCH' });
+    // OTP con caducidad (5 min), límite de intentos por teléfono e IP y de un solo uso
+    const otpResult = await require('../helpers/otp').verifyOtp(SmsOtp, { phone }, otp, { identifier: phone, ip: req.ip, consume: true });
+    if (otpResult === 'blocked') {
+      return res.status(429).json({ success: false, data: 'TOO_MANY_ATTEMPTS' });
+    }
+    if (otpResult !== 'ok') {
+      return res.status(201).json({ success: false, data: otpResult === 'expired' ? 'OTP_EXPIRED' : 'DONOTMATCH' });
     }
 
     let user = await User.findOne({ where: { phone } });
@@ -169,7 +175,8 @@ exports.loginWithOtp = async (req, res) => {
     const defaultAddress = await getDefaultAddress(user);
     return res.json(await buildUserResponse(user, token, defaultAddress));
   } catch (err) {
-    res.status(500).json({ success: false, data: err.message });
+    console.error('[user]', err.message);
+    res.status(500).json({ success: false, data: 'Error interno del servidor' });
   }
 };
 
@@ -196,7 +203,8 @@ exports.register = async (req, res) => {
     const defaultAddress = await getDefaultAddress(user);
     return res.status(201).json(await buildUserResponse(user, token, defaultAddress));
   } catch (err) {
-    res.status(201).json({ success: false, data: err.message });
+    console.error('[user]', err.message);
+    res.status(201).json({ success: false, data: 'Error interno del servidor' });
   }
 };
 
@@ -236,7 +244,7 @@ exports.updateUserInfo = async (req, res) => {
 
     // Get wallet balance
     let walletBalance = 0;
-    try { const w = await Wallet.findOne({ where: { holder_id: user.id } }); if (w) walletBalance = parseFloat(w.balance); } catch(e) {}
+    try { const w = await Wallet.findOne({ where: { holder_type: 'App\\User', holder_id: user.id } }); if (w) walletBalance = parseFloat(w.balance); } catch(e) {}
 
     res.json({
       success: true,
@@ -246,7 +254,7 @@ exports.updateUserInfo = async (req, res) => {
     });
   } catch (err) {
     console.error('updateUserInfo error:', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 };
 

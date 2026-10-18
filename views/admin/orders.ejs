@@ -69,32 +69,32 @@ if (typeof orders !== 'undefined' && orders.length) {
       var dgSelect = '<option value="">Repartidor...</option>';
       deliveryGuys.forEach(function(dg) {
         var sel = o.delivery_guy_id == dg.id ? ' selected' : '';
-        dgSelect += '<option value="' + dg.id + '"' + sel + '>' + (dg.name || '') + '</option>';
+        dgSelect += '<option value="' + esc(dg.id) + '"' + sel + '>' + esc(dg.name || '') + '</option>';
       });
       assignHtml = `<form method="POST" action="/admin/order/assign-delivery" class="d-flex align-items-center mt-1" style="gap:4px;max-width:200px" onclick="event.stopPropagation()">
-        <input type="hidden" name="order_id" value="${o.id}">
+        <input type="hidden" name="order_id" value="${esc(o.id)}">
         <input type="hidden" name="return_to" value="orders">
         <select name="user_id" class="form-control form-control-sm" required style="min-width:110px">${dgSelect}</select>
         <button type="submit" class="btn btn-sm btn-warning" title="Asignar repartidor"><i class="fas fa-motorcycle"></i></button>
       </form>`;
       if (o.delivery_guy_name) {
-        assignHtml = '<small class="text-muted d-block">' + o.delivery_guy_name + '</small>' + assignHtml;
+        assignHtml = '<small class="text-muted d-block">' + esc(o.delivery_guy_name) + '</small>' + assignHtml;
       }
     } else if (o.delivery_guy_name) {
-      assignHtml = '<small class="text-muted">' + o.delivery_guy_name + '</small>';
+      assignHtml = '<small class="text-muted">' + esc(o.delivery_guy_name) + '</small>';
     }
     var sortDate = o.created_at ? new Date(o.created_at).toISOString() : "";
-    body += `<tr data-sort-date="${sortDate}">
-      <td><strong>${o.unique_order_id}</strong></td>
-      <td>${o.user_name || '-'}</td>
-      <td>${o.restaurant_name || '-'}</td>
-      <td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(o.total || 0).toFixed(2)}</td>
-      <td><span class="badge badge-${statusColors[o.orderstatus_id] || 'secondary'}">${statusNames[o.orderstatus_id] || 'Unknown'}</span></td>
-      <td><span class="text-nowrap" data-order-elapsed data-created="${o.created_at || ''}" data-status="${o.orderstatus_id}" data-updated="${o.updated_at || ''}">${elapsed}</span></td>
-      <td>${o.payment_mode || 'COD'}</td>
-      <td>${o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
+    body += `<tr data-sort-date="${esc(sortDate)}">
+      <td><strong>${esc(o.unique_order_id)}</strong></td>
+      <td>${esc(o.user_name || '-')}</td>
+      <td>${esc(o.restaurant_name || '-')}</td>
+      <td>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(o.total || 0).toFixed(2))}</td>
+      <td><span class="badge badge-${esc(statusColors[o.orderstatus_id] || 'secondary')}">${esc(statusNames[o.orderstatus_id] || 'Unknown')}</span></td>
+      <td><span class="text-nowrap" data-order-elapsed data-created="${esc(o.created_at || '')}" data-status="${esc(o.orderstatus_id)}" data-updated="${esc(o.updated_at || '')}">${esc(elapsed)}</span></td>
+      <td>${esc(o.payment_mode || 'COD')}</td>
+      <td>${esc(o.created_at ? new Date(o.created_at).toLocaleDateString() : '-')}</td>
       <td style="min-width:140px">
-        <a href="/admin/order/${o.unique_order_id}" class="btn btn-sm btn-outline-primary" title="Ver"><i class="fas fa-eye"></i></a>
+        <a href="/admin/order/${esc(o.unique_order_id)}" class="btn btn-sm btn-outline-primary" title="Ver"><i class="fas fa-eye"></i></a>
         ${assignHtml}
       </td>
     </tr>`;

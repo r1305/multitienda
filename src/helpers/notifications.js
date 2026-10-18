@@ -37,6 +37,12 @@ async function notifyCustomerOrderOnWay(order) {
   return enqueue('notifyCustomerOrderOnWay', { args: [order] });
 }
 
+async function notifyCustomerOrderEvent(order, event) {
+  const plain = order && typeof order.toJSON === 'function' ? order.toJSON() : order;
+  const slim = plain ? { id: plain.id, user_id: plain.user_id, unique_order_id: plain.unique_order_id } : plain;
+  return enqueue('notifyCustomerOrderEvent', { args: [slim, event] });
+}
+
 module.exports = {
   sendPushNotification,
   broadcastToRole,
@@ -48,4 +54,5 @@ module.exports = {
   notifyAdminNewDelivery,
   notifyCustomerDeliveryAccepted,
   notifyCustomerOrderOnWay,
+  notifyCustomerOrderEvent,
 };

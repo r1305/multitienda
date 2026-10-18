@@ -4,7 +4,7 @@
 var body = `
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:10px">
-        <span>Tiendas (${typeof count !== 'undefined' ? count : 0})</span>
+        <span>Tiendas (${esc(typeof count !== 'undefined' ? count : 0)})</span>
         <div class="d-flex align-items-center flex-wrap ml-auto" style="gap:10px">
             <div class="admin-list-search"><i class="fas fa-search"></i><input type="search" id="storesTableSearch" class="form-control form-control-sm" placeholder="Buscar nombre o dirección..." autocomplete="off"></div>
             <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newStoreModal"><i class="fas fa-plus"></i> Add Store</button>
@@ -18,17 +18,17 @@ var body = `
 
 if (typeof stores !== 'undefined' && stores.length) {
   stores.forEach(function(s) {
-    var img = s.image ? `<img src="${s.image}" width="50" height="37" style="object-fit:cover;border-radius:4px">` : '<span class="text-muted">-</span>';
+    var img = s.image ? `<img src="${esc(s.image)}" width="50" height="37" style="object-fit:cover;border-radius:4px">` : '<span class="text-muted">-</span>';
     var earnings = parseFloat(s.total_earnings || 0).toFixed(2);
     body += `<tr>
       <td>${img}</td>
-      <td><strong>${s.name}</strong><br><small class="text-muted">${s.address || ''}</small></td>
-      <td><span class="badge badge-${s.is_active ? 'success' : 'danger'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
-      <td><strong style="color:#28a745">${typeof currency !== 'undefined' ? currency : '$'}${earnings}</strong></td>
+      <td><strong>${esc(s.name)}</strong><br><small class="text-muted">${esc(s.address || '')}</small></td>
+      <td><span class="badge badge-${esc(!s.is_accepted ? 'secondary' : (s.is_active ? 'success' : 'danger'))}">${esc(!s.is_accepted ? 'Disabled' : (s.is_active ? 'Open' : 'Closed'))}</span></td>
+      <td><strong style="color:#28a745">${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(earnings)}</strong></td>
       <td>
-        <a href="/admin/store/edit/${s.id}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>
-        <a href="/admin/store/earnings/${s.id}" class="btn btn-sm btn-outline-success" title="Ganancias"><i class="fas fa-chart-line"></i></a>
-        <a href="/admin/store/disable/${s.id}" class="btn btn-sm btn-outline-warning" title="Toggle"><i class="fas fa-ban"></i></a>
+        <a href="/admin/store/edit/${esc(s.id)}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>
+        <a href="/admin/store/earnings/${esc(s.id)}" class="btn btn-sm btn-outline-success" title="Ganancias"><i class="fas fa-chart-line"></i></a>
+        <form method="POST" action="/admin/store/disable/${esc(s.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-warning" title="Toggle"><i class="fas fa-ban"></i></button></form>
       </td>
     </tr>`;
   });

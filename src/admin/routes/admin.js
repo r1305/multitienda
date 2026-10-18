@@ -5,6 +5,14 @@ const adminController = require('../controllers/adminController');
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
+const { createImageFileFilter } = require('../../helpers/uploadFilter');
+const escapeHtml = require('../../helpers/escapeHtml');
+const { authRateLimit } = require('../../middleware/rateLimit');
+
+router.use((req, res, next) => {
+  res.locals.esc = escapeHtml;
+  next();
+});
 
 // CSRF protection — mandatory in production
 const isProd = process.env.NODE_ENV === 'production';
@@ -15,18 +23,9 @@ try {
   if (isProd) console.error('[FATAL] csurf package not installed — CSRF protection disabled in production!');
 }
 
-const ALLOWED_IMG_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico'];
+const ALLOWED_IMG_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.ico'];
 
-function safeImageFileFilter(req, file, cb) {
-  const ext = path.extname(file.originalname).toLowerCase();
-  if (!ALLOWED_IMG_EXTS.includes(ext)) {
-    return cb(new Error('Only image files with allowed extensions are permitted'));
-  }
-  if (!file.mimetype.startsWith('image/')) {
-    return cb(new Error('Only image MIME types are allowed'));
-  }
-  cb(null, true);
-}
+const safeImageFileFilter = createImageFileFilter(ALLOWED_IMG_EXTS);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, '../../../public/uploads')),
@@ -82,8 +81,8 @@ const injectSettings = async (req, res, next) => {
 
 // Auth routes (no auth required, but CSRF protected)
 router.get('/auth/login', csrfProtection, authController.loginPage);
-router.post('/auth/login', csrfProtection, authController.login);
-router.get('/auth/logout', authController.logout);
+router.post('/auth/login', authRateLimit, csrfProtection, authController.login);
+router.post('/auth/logout', csrfProtection, authController.logout);
 
 // All admin routes require auth + CSRF + admin-only
 router.use('/admin', auth, adminOnly, csrfProtection, injectSettings);
@@ -239,17 +238,20 @@ router.post('/admin/order/accept', adminController.acceptOrder);
 router.post('/admin/order/assign-delivery', adminController.assignDelivery);
 router.post('/admin/order/reassign-delivery', adminController.reassignDelivery);
 
+// Acciones que modifican datos: solo POST con token CSRF
 // Stores
 router.get('/admin/stores', adminController.stores);
 router.get('/admin/store/edit/:id', adminController.editStore);
 router.post('/admin/store/edit/save', upload.single('image'), adminController.updateStore);
 router.post('/admin/store/new/save', upload.single('image'), adminController.createStore);
-router.get('/admin/store/disable/:id', adminController.disableStore);
-router.get('/admin/store/delete/:id', adminController.deleteStore);
+router.post('/admin/store/disable/:id', adminController.disableStore);
+router.post('/admin/store/delete/:id', adminController.deleteStore);
 router.get('/admin/store/earnings/:id', adminController.storeEarnings);
 
-// Items (view only)
+// Items
 router.get('/admin/items', adminController.items);
+router.get('/admin/item/edit/:id', adminController.editItem);
+router.post('/admin/item/edit/save', upload.single('image'), adminController.updateItem);
 
 // Item Categories (view only)
 router.get('/admin/item-categories', adminController.itemCategories);
@@ -263,12 +265,15 @@ router.get('/admin/users', adminController.users);
 router.get('/admin/user/edit/:id', adminController.editUser);
 router.post('/admin/user/edit/save', adminController.updateUser);
 router.post('/admin/user/new/save', adminController.createUser);
-router.get('/admin/user/ban/:id', adminController.banUser);
+router.post('/admin/user/ban/:id', adminController.banUser);
+router.post('/admin/user/add-money-to-wallet', adminController.addMoneyToWallet);
+router.post('/admin/user/substract-money-from-wallet', adminController.substractMoneyFromWallet);
+router.post('/admin/user/delete-address', adminController.deleteUserAddress);
 
 // Delivery Guys
 router.get('/admin/api/delivery-guys-locations', adminController.deliveryGuysLocations);
 router.get('/admin/delivery-guys', adminController.deliveryGuys);
-router.get('/admin/user/approve/:id', adminController.approveUser);
+router.post('/admin/user/approve/:id', adminController.approveUser);
 router.post('/admin/delivery-guy/commission/save', adminController.saveDeliveryCommission);
 router.get('/admin/delivery-guy/earnings/:id', adminController.deliveryGuyEarnings);
 
@@ -278,27 +283,45 @@ router.get('/admin/store-owner/:id/stores', adminController.storeOwnerStores);
 router.post('/admin/store-owner/:id/stores/save', adminController.updateStoreOwnerStores);
 
 
-// Coupons (view only)
+// Coupons
 router.get('/admin/coupons', adminController.coupons);
+router.get('/admin/coupon/edit/:id', adminController.editCoupon);
+router.post('/admin/coupon/new/save', adminController.createCoupon);
+router.post('/admin/coupon/edit/save', adminController.updateCoupon);
+router.post('/admin/coupon/delete/:id', adminController.deleteCoupon);
 
 // Pages
+router.get('/admin/pages', adminController.pages);
+router.get('/admin/page/edit/:id', adminController.editPage);
+router.post('/admin/page/new/save', adminController.createPage);
+router.post('/admin/page/edit/save', adminController.updatePage);
+router.post('/admin/page/delete/:id', adminController.deletePage);
+
+// Popular geo locations
+router.get('/admin/popular-geo-locations', adminController.popularGeoLocations);
+router.get('/admin/popular-geo-location/edit/:id', adminController.editPopularGeoLocation);
+router.post('/admin/popular-geo-location/new/save', adminController.createPopularGeoLocation);
+router.post('/admin/popular-geo-location/edit/save', adminController.updatePopularGeoLocation);
+router.post('/admin/popular-geo-location/disable/:id', adminController.disablePopularGeoLocation);
+router.post('/admin/popular-geo-location/delete/:id', adminController.deletePopularGeoLocation);
+router.post('/admin/popular-geo-location/make-default/:id', adminController.makeDefaultPopularGeoLocation);
 
 // Translations
 router.get('/admin/translations', adminController.translations);
 router.get('/admin/translation/edit/:id', adminController.editTranslation);
 router.post('/admin/translation/new/save', adminController.createTranslation);
 router.post('/admin/translation/edit/save', adminController.updateTranslation);
-router.get('/admin/translation/disable/:id', adminController.disableTranslation);
-router.get('/admin/translation/delete/:id', adminController.deleteTranslation);
-router.get('/admin/translation/make-default/:id', adminController.makeDefaultTranslation);
+router.post('/admin/translation/disable/:id', adminController.disableTranslation);
+router.post('/admin/translation/delete/:id', adminController.deleteTranslation);
+router.post('/admin/translation/make-default/:id', adminController.makeDefaultTranslation);
 
 // Promo Sliders
 router.get('/admin/promo-sliders', adminController.sliders);
 router.post('/admin/slider/create', upload.single('image'), adminController.createSlider);
 router.get('/admin/slider/edit/:id', adminController.editSlider);
 router.post('/admin/slider/edit/save', upload.single('image'), adminController.updateSlider);
-router.get('/admin/slider/disable/:id', adminController.disableSlider);
-router.get('/admin/slider/delete/:id', adminController.deleteSlider);
+router.post('/admin/slider/disable/:id', adminController.disableSlider);
+router.post('/admin/slider/delete/:id', adminController.deleteSlider);
 
 // Notifications
 router.get('/admin/notifications', adminController.notifications);
@@ -312,8 +335,8 @@ router.post('/admin/store-payout/save', adminController.updatePayout);
 // Category Slider
 router.get('/admin/store-category-slider', adminController.categorySlider);
 router.post('/admin/store-category-slider/new', upload.single('image'), adminController.createCategorySlide);
-router.get('/admin/store-category-slider/disable/:id', adminController.disableCategorySlide);
-router.get('/admin/store-category-slider/delete/:id', adminController.deleteCategorySlide);
+router.post('/admin/store-category-slider/disable/:id', adminController.disableCategorySlide);
+router.post('/admin/store-category-slider/delete/:id', adminController.deleteCategorySlide);
 
 // Settings
 router.get('/admin/settings', adminController.settings);
@@ -326,8 +349,8 @@ router.post('/admin/settings/upload-listing-image', upload.single('listingImage'
 router.get('/admin/payment-methods', adminController.paymentMethods);
 router.post('/admin/payment-method/new/save', adminController.createPaymentMethod);
 router.post('/admin/payment-method/edit/save', adminController.updatePaymentMethod);
-router.get('/admin/payment-method/toggle/:id', adminController.togglePaymentMethod);
-router.get('/admin/payment-method/delete/:id', adminController.deletePaymentMethod);
+router.post('/admin/payment-method/toggle/:id', adminController.togglePaymentMethod);
+router.post('/admin/payment-method/delete/:id', adminController.deletePaymentMethod);
 
 // Clean data
 router.post('/admin/clean-data', adminController.cleanData);

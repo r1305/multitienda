@@ -4,7 +4,7 @@
 var body = `
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Addon Categories (${typeof count !== 'undefined' ? count : 0})</span>
+        <span>Addon Categories (${esc(typeof count !== 'undefined' ? count : 0)})</span>
         <span class="text-muted" style="font-size:12px"><i class="fas fa-info-circle"></i> Addons se gestionan desde el panel del Store Owner</span>
     </div>
     <div class="card-body">
@@ -15,12 +15,12 @@ var body = `
 if (typeof addonCategories !== 'undefined' && addonCategories.length) {
   addonCategories.forEach(function(ac) {
     body += `<tr>
-      <td>${ac.id}</td>
-      <td><strong>${ac.name}</strong></td>
-      <td><small>${ac.restaurant_name || 'Global'}</small></td>
-      <td>${ac.type == 'SINGLE' ? 'Single' : 'Multiple'}</td>
-      <td>${ac.addons_count || 0}</td>
-      <td><a href="/admin/addon-category/edit/${ac.id}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-eye"></i></a></td>
+      <td>${esc(ac.id)}</td>
+      <td><strong>${esc(ac.name)}</strong></td>
+      <td><small>${esc(ac.restaurant_name || 'Global')}</small></td>
+      <td>${esc(ac.type == 'SINGLE' ? 'Single' : 'Multiple')}</td>
+      <td>${esc(ac.addons_count || 0)}</td>
+      <td><a href="/admin/addon-category/edit/${esc(ac.id)}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-eye"></i></a></td>
     </tr>`;
   });
 } else {

@@ -1,34 +1,40 @@
 const { sequelize } = require('../../models');
 const { formatOrderElapsed } = require('../../helpers/orderDuration');
 const crypto = require('crypto');
+const rules = require('../../helpers/orderRules');
+const states = require('../../helpers/orderStates');
+const { cancelOrderWithRefund } = require('../../helpers/orderCancel');
+const { emitOrderEvent } = require('../../helpers/orderEvents');
+const { releaseDueScheduledOrders } = require('../../helpers/scheduledOrders');
+const { walletDeposit, walletWithdraw } = require('../../helpers/orderWallet');
 
 async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
-  const [orders] = await sequelize.query(
-    'SELECT * FROM orders WHERE id = ? LIMIT 1',
-    { replacements: [orderId] }
-  );
-  const order = orders[0];
-  if (!order) throw new Error('Order not found');
+  const id = rules.toPositiveId(orderId);
+  const uid = rules.toPositiveId(deliveryUserId);
+  if (!id || !uid) throw new Error('Datos de asignación inválidos');
 
-  try {
-    await sequelize.query(
-      'UPDATE orders SET delivery_guy_id = ?, orderstatus_id = 3 WHERE id = ?',
-      { replacements: [deliveryUserId, orderId] }
+  const order = await sequelize.transaction(async (t) => {
+    const [guys] = await sequelize.query(
+      "SELECT u.id FROM users u INNER JOIN model_has_roles mr ON mr.model_id = u.id INNER JOIN roles r ON r.id = mr.role_id WHERE u.id = ? AND u.is_active = 1 AND r.name = 'Delivery Guy' LIMIT 1",
+      { replacements: [uid], transaction: t }
     );
-  } catch (_) {
-    await sequelize.query('UPDATE orders SET orderstatus_id = 3 WHERE id = ?', {
-      replacements: [orderId],
-    });
-  }
+    if (!guys.length) throw new Error('El repartidor no existe o no está activo');
 
-  await sequelize.query('DELETE FROM accept_deliveries WHERE order_id = ?', { replacements: [orderId] });
-  await sequelize.query(
-    'INSERT INTO accept_deliveries (order_id, user_id) VALUES (?, ?)',
-    { replacements: [orderId, deliveryUserId] }
-  );
+    const [orders] = await sequelize.query('SELECT * FROM orders WHERE id = ? LIMIT 1 FOR UPDATE', { replacements: [id], transaction: t });
+    const found = orders[0];
+    if (!found) throw new Error('Order not found');
+
+    // Reasignar (ya en estado 3) no cambia el estado; asignar desde 1 o 2 pasa a 3 con la máquina de estados
+    if (Number(found.orderstatus_id) !== states.STATUS.ASSIGNED) {
+      await states.transition(found, [states.STATUS.PENDING, states.STATUS.ACCEPTED], states.STATUS.ASSIGNED, 'admin', t);
+    }
+    await sequelize.query('DELETE FROM accept_deliveries WHERE order_id = ?', { replacements: [id], transaction: t });
+    await sequelize.query('INSERT INTO accept_deliveries (order_id, user_id) VALUES (?, ?)', { replacements: [id, uid], transaction: t });
+    return found;
+  });
 
   const { notifyDeliveryOrderAssigned } = require('../../helpers/notifications');
-  const pushResult = await notifyDeliveryOrderAssigned(order, deliveryUserId);
+  const pushResult = await notifyDeliveryOrderAssigned(order, uid);
   return { order, pushResult };
 }
 
@@ -143,6 +149,8 @@ exports.dashboard = async (req, res) => {
 exports.orders = async (req, res) => {
   let orders = [];
   let deliveryGuys = [];
+
+  await releaseDueScheduledOrders();
 
   try {
     const [rows] = await sequelize.query(`
@@ -260,25 +268,28 @@ exports.viewOrder = async (req, res) => {
 
 exports.cancelOrder = async (req, res) => {
   try {
-    await sequelize.query('UPDATE orders SET orderstatus_id = 6 WHERE id = ?', { replacements: [req.body.order_id] });
+    const { order } = await cancelOrderWithRefund({ orderId: req.body.order_id, actor: 'admin' });
+    await emitOrderEvent('cancelled', order);
     req.flash('success', 'Order cancelled');
-  } catch (err) { req.flash('error', 'Error cancelling order'); }
+  } catch (err) {
+    if (!(err instanceof states.OrderStateError)) console.error('admin cancelOrder:', err.message);
+    req.flash('error', err instanceof states.OrderStateError ? err.message : 'Error cancelling order');
+  }
   res.redirect('/admin/orders');
 };
 
 exports.acceptOrder = async (req, res) => {
   try {
-    await sequelize.query('UPDATE orders SET orderstatus_id = 2 WHERE id = ?', { replacements: [req.body.id] });
-
-    // Notify delivery guys
-    const [orders] = await sequelize.query('SELECT * FROM orders WHERE id = ?', { replacements: [req.body.id] });
-    if (orders[0]) {
-      const { notifyDeliveryNewOrder } = require('../../helpers/notifications');
-      await notifyDeliveryNewOrder(orders[0]);
-    }
-
+    const [orders] = await sequelize.query('SELECT id, user_id, unique_order_id, delivery_type FROM orders WHERE id = ?', { replacements: [req.body.id] });
+    if (!orders[0]) throw new states.OrderStateError('Order not found', 404);
+    await states.transition(orders[0], [states.STATUS.PENDING], states.STATUS.ACCEPTED, 'admin');
+    // Avisa al cliente y, si es entrega a domicilio, a los repartidores
+    await emitOrderEvent('accepted', orders[0]);
     req.flash('success', 'Order accepted');
-  } catch (err) { req.flash('error', 'Error accepting order'); }
+  } catch (err) {
+    if (!(err instanceof states.OrderStateError)) console.error('admin acceptOrder:', err.message);
+    req.flash('error', err instanceof states.OrderStateError ? err.message : 'Error accepting order');
+  }
   res.redirect('/admin/orders');
 };
 
@@ -298,7 +309,7 @@ exports.assignDelivery = async (req, res) => {
     return res.redirect('/admin/order/' + (order.unique_order_id || order.id));
   } catch (err) {
     console.error(err);
-    req.flash('error', 'Error al asignar repartidor');
+    req.flash('error', err instanceof states.OrderStateError ? err.message : 'Error al asignar repartidor');
     if (req.body.return_to === 'orders') return res.redirect('/admin/orders');
     res.redirect('/admin/orders');
   }
@@ -317,7 +328,7 @@ exports.reassignDelivery = async (req, res) => {
     return res.redirect('/admin/order/' + (order.unique_order_id || order.id));
   } catch (err) {
     console.error(err);
-    req.flash('error', 'Error al reasignar repartidor');
+    req.flash('error', err instanceof states.OrderStateError ? err.message : 'Error al reasignar repartidor');
     res.redirect('/admin/orders');
   }
 };
@@ -383,7 +394,8 @@ exports.updateStore = async (req, res) => {
 
 exports.disableStore = async (req, res) => {
   try {
-    await sequelize.query('UPDATE restaurants SET is_active = IF(is_active=1,0,1) WHERE id = ?', { replacements: [req.params.id] });
+    // El admin habilita/deshabilita con is_accepted; is_active es "abierta/cerrada" y lo controla el dueño
+    await sequelize.query('UPDATE restaurants SET is_accepted = IF(is_accepted=1,0,1), updated_at = NOW() WHERE id = ?', { replacements: [req.params.id] });
     req.flash('success', 'Store status toggled');
   } catch (err) { req.flash('error', 'Error toggling store'); }
   res.redirect('/admin/stores');
@@ -676,6 +688,52 @@ exports.updateUser = async (req, res) => {
     req.flash('success', 'User updated');
   } catch (err) { console.error(err); req.flash('error', 'Error updating user'); }
   res.redirect('/admin/users');
+};
+
+const MAX_AJUSTE_BILLETERA = 100000;
+
+async function ajustarBilletera(req, res, tipo) {
+  const userId = rules.toPositiveId(req.body.user_id);
+  const destino = userId ? `/admin/user/edit/${userId}` : '/admin/users';
+  try {
+    if (!userId) throw new rules.OrderValidationError('Usuario inválido');
+    const esDeposito = tipo === 'deposit';
+    const monto = rules.toMoney(esDeposito ? req.body.add_amount : req.body.substract_amount);
+    if (!(monto > 0) || monto > MAX_AJUSTE_BILLETERA) {
+      throw new rules.OrderValidationError(`El monto debe ser mayor que 0 y no superar ${MAX_AJUSTE_BILLETERA}`);
+    }
+    const descripcion = String((esDeposito ? req.body.add_amount_description : req.body.substract_amount_description) || '').slice(0, 255)
+      || (esDeposito ? 'Recarga del administrador' : 'Descuento del administrador');
+    await sequelize.transaction(async (t) => {
+      const [existe] = await sequelize.query('SELECT id FROM users WHERE id = ? LIMIT 1', { replacements: [userId], transaction: t });
+      if (!existe.length) throw new rules.OrderValidationError('El usuario no existe');
+      if (esDeposito) await walletDeposit(t, userId, monto, descripcion);
+      else await walletWithdraw(t, userId, monto, descripcion);
+    });
+    req.flash('success', esDeposito ? 'Saldo agregado a la billetera' : 'Saldo descontado de la billetera');
+  } catch (err) {
+    if (!(err instanceof rules.OrderValidationError)) console.error('admin ajustarBilletera:', err.message);
+    req.flash('error', err instanceof rules.OrderValidationError ? err.message : 'Error al actualizar la billetera');
+  }
+  res.redirect(destino);
+}
+
+exports.addMoneyToWallet = (req, res) => ajustarBilletera(req, res, 'deposit');
+exports.substractMoneyFromWallet = (req, res) => ajustarBilletera(req, res, 'withdraw');
+
+exports.deleteUserAddress = async (req, res) => {
+  const userId = rules.toPositiveId(req.body.user_id);
+  const addressId = rules.toPositiveId(req.body.address_id);
+  try {
+    if (!userId || !addressId) throw new Error('Datos inválidos');
+    // Se filtra por user_id para no borrar direcciones de otro usuario
+    await sequelize.query('DELETE FROM addresses WHERE id = ? AND user_id = ?', { replacements: [addressId, userId] });
+    req.flash('success', 'Dirección eliminada');
+  } catch (err) {
+    console.error('admin deleteUserAddress:', err.message);
+    req.flash('error', 'Error al eliminar la dirección');
+  }
+  res.redirect(userId ? `/admin/user/edit/${userId}` : '/admin/users');
 };
 
 exports.banUser = async (req, res) => {
@@ -1495,43 +1553,46 @@ exports.cleanData = async (req, res) => {
     const [adminUser] = await sequelize.query("SELECT model_id FROM model_has_roles WHERE role_id = 1 LIMIT 1");
     const adminId = adminUser[0].model_id;
 
-    // Clean all data tables (preserve superadmin user, roles, settings)
-    await sequelize.query('DELETE FROM chats');
-    await sequelize.query('DELETE FROM notifications');
-    await sequelize.query('DELETE FROM order_item_addons');
-    await sequelize.query('DELETE FROM orderitems');
-    await sequelize.query('DELETE FROM orders');
-    await sequelize.query('DELETE FROM accept_deliveries');
-    await sequelize.query('DELETE FROM delivery_earnings');
-    await sequelize.query('DELETE FROM delivery_ignored_orders');
-    await sequelize.query('DELETE FROM ratings');
-    await sequelize.query('DELETE FROM addon_category_item');
-    await sequelize.query('DELETE FROM addons');
-    await sequelize.query('DELETE FROM addon_categories');
-    await sequelize.query('DELETE FROM items');
-    await sequelize.query('DELETE FROM item_categories');
-    await sequelize.query('DELETE FROM restaurants');
-    await sequelize.query('DELETE FROM restaurant_user');
-    await sequelize.query('DELETE FROM coupons');
-    await sequelize.query('DELETE FROM addresses');
-    await sequelize.query('DELETE FROM wallets');
-    await sequelize.query('DELETE FROM transactions');
-    await sequelize.query('DELETE FROM push_tokens');
-    await sequelize.query('DELETE FROM promo_sliders');
-    await sequelize.query('DELETE FROM delivery_guy_details');
-    await sequelize.query('DELETE FROM password_reset_otps');
-    await sequelize.query('DELETE FROM sms_otps');
-    await sequelize.query('DELETE FROM model_has_roles WHERE model_id != ?', { replacements: [adminId] });
-    await sequelize.query('DELETE FROM users WHERE id != ?', { replacements: [adminId] });
+    // Limpia todas las tablas de datos en una sola transacción (conserva superadmin, roles y ajustes)
+    await sequelize.transaction(async (t) => {
+      await sequelize.query('DELETE FROM chats', { transaction: t });
+      await sequelize.query('DELETE FROM notifications', { transaction: t });
+      await sequelize.query('DELETE FROM order_item_addons', { transaction: t });
+      await sequelize.query('DELETE FROM orderitems', { transaction: t });
+      await sequelize.query('DELETE FROM orders', { transaction: t });
+      await sequelize.query('DELETE FROM accept_deliveries', { transaction: t });
+      await sequelize.query('DELETE FROM delivery_earnings', { transaction: t });
+      await sequelize.query('DELETE FROM delivery_ignored_orders', { transaction: t });
+      await sequelize.query('DELETE FROM ratings', { transaction: t });
+      await sequelize.query('DELETE FROM addon_category_item', { transaction: t });
+      await sequelize.query('DELETE FROM addons', { transaction: t });
+      await sequelize.query('DELETE FROM addon_categories', { transaction: t });
+      await sequelize.query('DELETE FROM items', { transaction: t });
+      await sequelize.query('DELETE FROM item_categories', { transaction: t });
+      await sequelize.query('DELETE FROM restaurants', { transaction: t });
+      await sequelize.query('DELETE FROM restaurant_user', { transaction: t });
+      await sequelize.query('DELETE FROM coupons', { transaction: t });
+      await sequelize.query('DELETE FROM addresses', { transaction: t });
+      await sequelize.query('DELETE FROM wallets', { transaction: t });
+      await sequelize.query('DELETE FROM transactions', { transaction: t });
+      await sequelize.query('DELETE FROM push_tokens', { transaction: t });
+      await sequelize.query('DELETE FROM promo_sliders', { transaction: t });
+      await sequelize.query('DELETE FROM delivery_guy_details', { transaction: t });
+      await sequelize.query('DELETE FROM password_reset_otps', { transaction: t });
+      await sequelize.query('DELETE FROM sms_otps', { transaction: t });
+      await sequelize.query('DELETE FROM model_has_roles WHERE model_id != ?', { replacements: [adminId], transaction: t });
+      await sequelize.query('DELETE FROM users WHERE id != ?', { replacements: [adminId], transaction: t });
+    });
 
-    // Clean uploaded images
+    // Borra los archivos subidos (solo archivos; conserva .gitkeep)
     const fs = require('fs');
     const path = require('path');
-    const uploadsDir = path.join(__dirname, '../../public/uploads');
+    const uploadsDir = path.join(__dirname, '../../../public/uploads');
     if (fs.existsSync(uploadsDir)) {
-      const files = fs.readdirSync(uploadsDir);
-      for (const file of files) {
-        if (file !== '.gitkeep') fs.unlinkSync(path.join(uploadsDir, file));
+      for (const file of fs.readdirSync(uploadsDir)) {
+        if (file === '.gitkeep') continue;
+        const full = path.join(uploadsDir, file);
+        if (fs.lstatSync(full).isFile()) fs.unlinkSync(full);
       }
     }
 

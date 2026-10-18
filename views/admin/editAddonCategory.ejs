@@ -8,7 +8,7 @@ if (typeof addonCategory !== 'undefined' && addonCategory) {
   var addonsHtml = '';
   if (typeof addons !== 'undefined' && addons.length) {
     addons.forEach(function(a) {
-      addonsHtml += '<tr><td><strong>'+a.name+'</strong></td><td>'+(typeof currency !== 'undefined' ? currency : '$')+parseFloat(a.price).toFixed(2)+'</td><td><span class="badge badge-'+(a.is_active?'success':'danger')+'">'+(a.is_active?'Active':'Inactive')+'</span></td></tr>';
+      addonsHtml += '<tr><td><strong>'+esc(a.name)+'</strong></td><td>'+esc(typeof currency !== 'undefined' ? currency : '$')+parseFloat(a.price).toFixed(2)+'</td><td><span class="badge badge-'+(a.is_active?'success':'danger')+'">'+(a.is_active?'Active':'Inactive')+'</span></td></tr>';
     });
   } else {
     addonsHtml = '<tr><td colspan="3" class="text-center text-muted py-3">No addons yet</td></tr>';
@@ -16,9 +16,9 @@ if (typeof addonCategory !== 'undefined' && addonCategory) {
 
   body = '<div class="mb-3"><a href="/admin/addon-categories" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back</a></div>' +
   '<div class="row"><div class="col-md-4"><div class="card"><div class="card-header">Addon Category Info</div><div class="card-body">' +
-  '<p><strong>Name:</strong> '+ac.name+'</p>' +
+  '<p><strong>Name:</strong> '+esc(ac.name)+'</p>' +
   '<p><strong>Type:</strong> '+(ac.type === 'SINGLE' ? 'Single' : 'Multiple')+'</p>' +
-  '<p><strong>Tienda:</strong> '+(ac.restaurant_name || 'Global')+'</p>' +
+  '<p><strong>Tienda:</strong> '+esc(ac.restaurant_name || 'Global')+'</p>' +
   '</div></div></div>' +
   '<div class="col-md-8"><div class="card"><div class="card-header">Addons ('+((typeof addons !== 'undefined') ? addons.length : 0)+')</div><div class="card-body p-0">' +
   '<table class="table table-hover mb-0"><thead><tr><th style="text-align:left">Name</th><th style="text-align:left">Price</th><th style="text-align:left">Status</th></tr></thead><tbody>'+addonsHtml+'</tbody></table></div></div></div></div>';

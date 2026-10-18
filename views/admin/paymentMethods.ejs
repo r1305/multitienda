@@ -15,24 +15,24 @@ var body = `
 if (typeof gateways !== 'undefined' && gateways.length) {
   gateways.forEach(function(gw) {
     body += `<tr>
-      <td><strong>${gw.name}</strong></td>
-      <td>${gw.account_number || '-'}</td>
-      <td>${gw.phone_number || '-'}</td>
-      <td><span class="badge badge-${gw.is_active ? 'success' : 'danger'}">${gw.is_active ? 'Activo' : 'Inactivo'}</span></td>
+      <td><strong>${esc(gw.name)}</strong></td>
+      <td>${esc(gw.account_number || '-')}</td>
+      <td>${esc(gw.phone_number || '-')}</td>
+      <td><span class="badge badge-${esc(gw.is_active ? 'success' : 'danger')}">${esc(gw.is_active ? 'Activo' : 'Inactivo')}</span></td>
       <td>
-        <button class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#editPay${gw.id}"><i class="fas fa-edit"></i></button>
-        <a href="/admin/payment-method/toggle/${gw.id}" class="btn btn-sm btn-outline-warning"><i class="fas fa-power-off"></i></a>
-        <a href="/admin/payment-method/delete/${gw.id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar?')"><i class="fas fa-trash"></i></a>
+        <button class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#editPay${esc(gw.id)}"><i class="fas fa-edit"></i></button>
+        <form method="POST" action="/admin/payment-method/toggle/${esc(gw.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-warning"><i class="fas fa-power-off"></i></button></form>
+        <form method="POST" action="/admin/payment-method/delete/${esc(gw.id)}" class="d-inline" onsubmit="return confirm('Eliminar?')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
       </td>
     </tr>
-    <div class="modal fade" id="editPay${gw.id}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <div class="modal fade" id="editPay${esc(gw.id)}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
       <form method="POST" action="/admin/payment-method/edit/save">
-        <input type="hidden" name="id" value="${gw.id}">
+        <input type="hidden" name="id" value="${esc(gw.id)}">
         <div class="modal-header"><h5>Editar Metodo</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
         <div class="modal-body">
-          <div class="form-group"><label>Nombre *</label><input type="text" name="name" class="form-control" value="${gw.name}" required></div>
-          <div class="form-group"><label>Nro de Cuenta</label><input type="text" name="account_number" class="form-control" value="${gw.account_number || ''}"></div>
-          <div class="form-group"><label>Nro de Celular</label><input type="text" name="phone_number" class="form-control" value="${gw.phone_number || ''}"></div>
+          <div class="form-group"><label>Nombre *</label><input type="text" name="name" class="form-control" value="${esc(gw.name)}" required></div>
+          <div class="form-group"><label>Nro de Cuenta</label><input type="text" name="account_number" class="form-control" value="${esc(gw.account_number || '')}"></div>
+          <div class="form-group"><label>Nro de Celular</label><input type="text" name="phone_number" class="form-control" value="${esc(gw.phone_number || '')}"></div>
         </div>
         <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar</button></div>
       </form>

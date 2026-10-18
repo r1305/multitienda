@@ -27,11 +27,11 @@ var body = `
 if (typeof pages !== 'undefined' && pages.length) {
   pages.forEach(function(p) {
     body += `<tr>
-      <td><strong>${p.name}</strong></td>
-      <td><code>${p.slug}</code></td>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td><code>${esc(p.slug)}</code></td>
       <td>
-        <a href="/admin/page/edit/${p.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
-        <a href="/admin/page/delete/${p.id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete?')"><i class="fas fa-trash"></i></a>
+        <a href="/admin/page/edit/${esc(p.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+        <form method="POST" action="/admin/page/delete/${esc(p.id)}" class="d-inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
       </td>
     </tr>`;
   });

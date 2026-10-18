@@ -11,13 +11,13 @@ var body = `
 if (typeof payouts !== 'undefined' && payouts.length) {
   payouts.forEach(function(p) {
     body += `<tr>
-      <td>${p.id}</td>
-      <td>${p.restaurant_name || '-'}</td>
-      <td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(p.amount || 0).toFixed(2)}</td>
-      <td><span class="badge badge-${p.status == 'completed' ? 'success' : p.status == 'pending' ? 'warning' : 'secondary'}">${p.status || 'pending'}</span></td>
-      <td>${p.transaction_id || '-'}</td>
-      <td>${p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}</td>
-      <td><a href="/admin/store-payout/${p.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+      <td>${esc(p.id)}</td>
+      <td>${esc(p.restaurant_name || '-')}</td>
+      <td>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(p.amount || 0).toFixed(2))}</td>
+      <td><span class="badge badge-${esc(p.status == 'completed' ? 'success' : p.status == 'pending' ? 'warning' : 'secondary')}">${esc(p.status || 'pending')}</span></td>
+      <td>${esc(p.transaction_id || '-')}</td>
+      <td>${esc(p.created_at ? new Date(p.created_at).toLocaleDateString() : '-')}</td>
+      <td><a href="/admin/store-payout/${esc(p.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
     </tr>`;
   });
 } else {

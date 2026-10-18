@@ -96,7 +96,7 @@ function legacyPathRedirectMiddleware(app) {
     const needsRedirect = LEGACY_PREFIXES.some((pre) => p === pre || p.startsWith(`${pre}/`));
     if (needsRedirect) {
       const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-      return res.redirect(301, `${base}${p}${qs}`);
+      return res.redirect(302, `${base}${p}${qs}`);
     }
     next();
   });

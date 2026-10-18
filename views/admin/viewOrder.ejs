@@ -9,7 +9,7 @@ if (typeof order !== 'undefined' && order) {
   var itemsHtml = '';
   if (typeof orderitems !== 'undefined' && orderitems.length) {
     orderitems.forEach(function(item) {
-      itemsHtml += `<tr><td>${item.name}</td><td>${item.quantity}</td><td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(item.price||0).toFixed(2)}</td><td>${typeof currency !== 'undefined' ? currency : '$'}${(parseFloat(item.price||0)*parseInt(item.quantity||1)).toFixed(2)}</td></tr>`;
+      itemsHtml += `<tr><td>${esc(item.name)}</td><td>${esc(item.quantity)}</td><td>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(item.price||0).toFixed(2))}</td><td>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc((parseFloat(item.price||0)*parseInt(item.quantity||1)).toFixed(2))}</td></tr>`;
     });
   }
 
@@ -17,7 +17,7 @@ if (typeof order !== 'undefined' && order) {
   if (order.orderstatus_id != 5 && order.orderstatus_id != 6) {
     var acceptBtn = '';
     if (order.orderstatus_id == 1 || order.orderstatus_id == 11) {
-      acceptBtn = `<div class="col-md-6"><form method="POST" action="/admin/order/accept"><input type="hidden" name="id" value="${order.id}"><button class="btn btn-success btn-block"><i class="fas fa-check"></i> Accept Order</button></form></div>`;
+      acceptBtn = `<div class="col-md-6"><form method="POST" action="/admin/order/accept"><input type="hidden" name="id" value="${esc(order.id)}"><button class="btn btn-success btn-block"><i class="fas fa-check"></i> Accept Order</button></form></div>`;
     }
     var deliveryForm = '';
     var assignableStatus = [1, 2, 3, 4, 7, 10, 11].indexOf(order.orderstatus_id) >= 0;
@@ -26,17 +26,17 @@ if (typeof order !== 'undefined' && order) {
       if (typeof deliveryGuys !== 'undefined') {
         deliveryGuys.forEach(function(dg) {
           var sel = order.delivery_guy_id == dg.id ? ' selected' : '';
-          dgOptions += `<option value="${dg.id}"${sel}>${dg.name} (${dg.phone || ''})</option>`;
+          dgOptions += `<option value="${esc(dg.id)}"${esc(sel)}>${esc(dg.name)} (${esc(dg.phone || '')})</option>`;
         });
       }
       var assignLabel = order.delivery_guy_id ? 'Reasignar repartidor' : 'Asignar repartidor';
       var assignAction = order.delivery_guy_id ? '/admin/order/reassign-delivery' : '/admin/order/assign-delivery';
-      deliveryForm = `<hr><form method="POST" action="${assignAction}"><input type="hidden" name="order_id" value="${order.id}"><div class="form-group"><label>${assignLabel}</label><select name="user_id" class="form-control" required>${dgOptions}</select></div><button class="btn btn-warning"><i class="fas fa-motorcycle"></i> ${order.delivery_guy_id ? 'Reasignar' : 'Asignar'}</button></form>`;
+      deliveryForm = `<hr><form method="POST" action="${esc(assignAction)}"><input type="hidden" name="order_id" value="${esc(order.id)}"><div class="form-group"><label>${esc(assignLabel)}</label><select name="user_id" class="form-control" required>${dgOptions}</select></div><button class="btn btn-warning"><i class="fas fa-motorcycle"></i> ${esc(order.delivery_guy_id ? 'Reasignar' : 'Asignar')}</button></form>`;
     }
     actionsHtml = `
     <div class="card"><div class="card-header">Actions</div><div class="card-body">
       <div class="row">${acceptBtn}
-        <div class="col-md-6"><form method="POST" action="/admin/order/cancel"><input type="hidden" name="order_id" value="${order.id}"><select name="refund_type" class="form-control mb-2"><option value="NOREFUND">No Refund</option><option value="FULL">Full Refund</option><option value="HALF">Half Refund</option></select><button class="btn btn-danger btn-block"><i class="fas fa-times"></i> Cancel Order</button></form></div>
+        <div class="col-md-6"><form method="POST" action="/admin/order/cancel"><input type="hidden" name="order_id" value="${esc(order.id)}"><select name="refund_type" class="form-control mb-2"><option value="NOREFUND">No Refund</option><option value="FULL">Full Refund</option><option value="HALF">Half Refund</option></select><button class="btn btn-danger btn-block"><i class="fas fa-times"></i> Cancel Order</button></form></div>
       </div>${deliveryForm}
     </div></div>`;
   }
@@ -47,37 +47,37 @@ if (typeof order !== 'undefined' && order) {
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
           <span>Order Details</span>
-          <span class="badge badge-${statusBadge} p-2">${statusNames[order.orderstatus_id] || 'Unknown'}</span>
+          <span class="badge badge-${statusBadge} p-2">${esc(statusNames[order.orderstatus_id] || 'Unknown')}</span>
         </div>
         <div class="card-body">
           <table class="table table-sm">
             <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
             <tbody>${itemsHtml}</tbody>
             <tfoot>
-              <tr><th colspan="3" class="text-right">Subtotal:</th><td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.sub_total || order.total || 0).toFixed(2)}</td></tr>
-              ${order.coupon_amount ? `<tr><td colspan="3" class="text-right">Coupon:</td><td>-${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.coupon_amount).toFixed(2)}</td></tr>` : ''}
-              ${order.tax_amount ? `<tr><td colspan="3" class="text-right">Tax:</td><td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.tax_amount).toFixed(2)}</td></tr>` : ''}
-              ${order.delivery_charge ? `<tr><td colspan="3" class="text-right">Delivery:</td><td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.delivery_charge).toFixed(2)}</td></tr>` : ''}
-              <tr><th colspan="3" class="text-right">Total:</th><th>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(order.total || 0).toFixed(2)}</th></tr>
+              <tr><th colspan="3" class="text-right">Subtotal:</th><td>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(order.sub_total || order.total || 0).toFixed(2))}</td></tr>
+              ${order.coupon_amount ? `<tr><td colspan="3" class="text-right">Coupon:</td><td>-${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(order.coupon_amount).toFixed(2))}</td></tr>` : ''}
+              ${order.tax_amount ? `<tr><td colspan="3" class="text-right">Tax:</td><td>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(order.tax_amount).toFixed(2))}</td></tr>` : ''}
+              ${order.delivery_charge ? `<tr><td colspan="3" class="text-right">Delivery:</td><td>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(order.delivery_charge).toFixed(2))}</td></tr>` : ''}
+              <tr><th colspan="3" class="text-right">Total:</th><th>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(order.total || 0).toFixed(2))}</th></tr>
             </tfoot>
           </table>
-          ${order.order_comment ? `<p><strong>Comment:</strong> ${order.order_comment}</p>` : ''}
+          ${order.order_comment ? `<p><strong>Comment:</strong> ${esc(order.order_comment)}</p>` : ''}
         </div>
       </div>
       ${actionsHtml}
     </div>
     <div class="col-md-4">
       <div class="card"><div class="card-header">Customer Info</div><div class="card-body">
-        <p><strong>Name:</strong> ${order.user_name || '-'}</p>
-        <p><strong>Phone:</strong> ${order.user_phone || '-'}</p>
-        <p><strong>Address:</strong> ${order.address || '-'}</p>
+        <p><strong>Name:</strong> ${esc(order.user_name || '-')}</p>
+        <p><strong>Phone:</strong> ${esc(order.user_phone || '-')}</p>
+        <p><strong>Address:</strong> ${esc(order.address || '-')}</p>
       </div></div>
       <div class="card"><div class="card-header">Store Info</div><div class="card-body">
-        <p><strong>Store:</strong> ${order.restaurant_name || '-'}</p>
-        <p><strong>Payment:</strong> ${order.payment_mode || 'COD'}</p>
-        <p><strong>Delivery Type:</strong> ${order.delivery_type == 1 ? 'Delivery' : 'Self Pickup'}</p>
-        <p><strong>Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString() : '-'}</p>
-        <p><strong>Tiempo en curso:</strong> ${typeof formatOrderElapsed === 'function' ? formatOrderElapsed(order.created_at, order.orderstatus_id, order.updated_at) : '-'}</p>
+        <p><strong>Store:</strong> ${esc(order.restaurant_name || '-')}</p>
+        <p><strong>Payment:</strong> ${esc(order.payment_mode || 'COD')}</p>
+        <p><strong>Delivery Type:</strong> ${esc(order.delivery_type == 1 ? 'Delivery' : 'Self Pickup')}</p>
+        <p><strong>Date:</strong> ${esc(order.created_at ? new Date(order.created_at).toLocaleString() : '-')}</p>
+        <p><strong>Tiempo en curso:</strong> ${esc(typeof formatOrderElapsed === 'function' ? formatOrderElapsed(order.created_at, order.orderstatus_id, order.updated_at) : '-')}</p>
       </div></div>
     </div>
   </div>`;

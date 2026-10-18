@@ -25,14 +25,14 @@ var body = `
 
 if (typeof categories !== 'undefined' && categories.length) {
   categories.forEach(function(c) {
-    var img = c.image ? `<img src="${c.image}" width="50" height="50" style="object-fit:cover;border-radius:4px">` : '-';
+    var img = c.image ? `<img src="${esc(c.image)}" width="50" height="50" style="object-fit:cover;border-radius:4px">` : '-';
     body += `<tr>
       <td>${img}</td>
-      <td><strong>${c.name}</strong></td>
-      <td><span class="badge badge-${c.is_active ? 'success' : 'danger'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td><span class="badge badge-${esc(c.is_active ? 'success' : 'danger')}">${esc(c.is_active ? 'Active' : 'Inactive')}</span></td>
       <td>
-        <a href="/admin/store-category-slider/disable/${c.id}" class="btn btn-sm btn-outline-warning"><i class="fas fa-ban"></i></a>
-        <a href="/admin/store-category-slider/delete/${c.id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete?')"><i class="fas fa-trash"></i></a>
+        <form method="POST" action="/admin/store-category-slider/disable/${esc(c.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-warning"><i class="fas fa-ban"></i></button></form>
+        <form method="POST" action="/admin/store-category-slider/delete/${esc(c.id)}" class="d-inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
       </td>
     </tr>`;
   });

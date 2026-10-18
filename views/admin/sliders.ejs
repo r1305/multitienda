@@ -7,18 +7,18 @@ var slidersHtml = '';
 if (typeof editSlider !== 'undefined' && editSlider) {
   slidersHtml += `
   <div class="card mb-3" style="border:2px solid var(--primary)">
-    <div class="card-header">Editar Slider: <strong>${editSlider.name}</strong></div>
+    <div class="card-header">Editar Slider: <strong>${esc(editSlider.name)}</strong></div>
     <div class="card-body">
       <form method="POST" action="/admin/slider/edit/save" enctype="multipart/form-data">
-        <input type="hidden" name="id" value="${editSlider.id}">
+        <input type="hidden" name="id" value="${esc(editSlider.id)}">
         <div class="row">
           <div class="col-md-6">
-            <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" value="${editSlider.name}" required></div>
-            <div class="form-group"><label>Image</label><input type="file" name="image" class="form-control-file" accept="image/*">${editSlider.image ? `<img src="${editSlider.image}" width="120" class="mt-2" style="border-radius:6px">` : ''}</div>
+            <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" value="${esc(editSlider.name)}" required></div>
+            <div class="form-group"><label>Image</label><input type="file" name="image" class="form-control-file" accept="image/*">${editSlider.image ? `<img src="${esc(editSlider.image)}" width="120" class="mt-2" style="border-radius:6px">` : ''}</div>
           </div>
           <div class="col-md-6">
-            <div class="form-group"><label>Position</label><select name="position_id" class="form-control"><option value="0" ${editSlider.position_id==0?'selected':''}>Main</option><option value="1" ${editSlider.position_id==1?'selected':''}>Top</option><option value="2" ${editSlider.position_id==2?'selected':''}>Bottom</option></select></div>
-            <div class="form-group"><label>Size</label><select name="size" class="form-control"><option value="0" ${editSlider.size==0?'selected':''}>Default</option><option value="1" ${editSlider.size==1?'selected':''}>Small</option><option value="2" ${editSlider.size==2?'selected':''}>Large</option></select></div>
+            <div class="form-group"><label>Position</label><select name="position_id" class="form-control"><option value="0" ${esc(editSlider.position_id==0?'selected':'')}>Main</option><option value="1" ${esc(editSlider.position_id==1?'selected':'')}>Top</option><option value="2" ${esc(editSlider.position_id==2?'selected':'')}>Bottom</option></select></div>
+            <div class="form-group"><label>Size</label><select name="size" class="form-control"><option value="0" ${esc(editSlider.size==0?'selected':'')}>Default</option><option value="1" ${esc(editSlider.size==1?'selected':'')}>Small</option><option value="2" ${esc(editSlider.size==2?'selected':'')}>Large</option></select></div>
           </div>
         </div>
         <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
@@ -33,8 +33,8 @@ if (typeof sliders !== 'undefined' && sliders.length) {
     var slidesHtml = '';
     if (s.slides && s.slides.length) {
       s.slides.forEach(function(slide) {
-        var imgTag = slide.image ? `<img src="${slide.image}" class="img-fluid rounded" style="max-height:100px">` : '';
-        slidesHtml += `<div class="col-md-3 mb-2">${imgTag}<small class="d-block mt-1">${slide.name || 'Slide'}</small></div>`;
+        var imgTag = slide.image ? `<img src="${esc(slide.image)}" class="img-fluid rounded" style="max-height:100px">` : '';
+        slidesHtml += `<div class="col-md-3 mb-2">${imgTag}<small class="d-block mt-1">${esc(slide.name || 'Slide')}</small></div>`;
       });
     } else {
       slidesHtml = '<div class="col-12"><p class="text-muted">No slides yet</p></div>';
@@ -42,10 +42,10 @@ if (typeof sliders !== 'undefined' && sliders.length) {
     slidersHtml += `
     <div class="card mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <span><strong>${s.name}</strong></span>
+        <span><strong>${esc(s.name)}</strong></span>
         <div>
-          <a href="/admin/slider/edit/${s.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
-          <a href="/admin/slider/delete/${s.id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar slider?')"><i class="fas fa-trash"></i></a>
+          <a href="/admin/slider/edit/${esc(s.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+          <form method="POST" action="/admin/slider/delete/${esc(s.id)}" class="d-inline" onsubmit="return confirm('Eliminar slider?')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
         </div>
       </div>
       <div class="card-body"><div class="row">${slidesHtml}</div></div>
@@ -58,7 +58,7 @@ if (typeof sliders !== 'undefined' && sliders.length) {
 var body = `
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Promo Sliders (${typeof count !== 'undefined' ? count : 0})</span>
+        <span>Promo Sliders (${esc(typeof count !== 'undefined' ? count : 0)})</span>
         <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newSliderModal"><i class="fas fa-plus"></i> New Slider</button>
     </div>
     <div class="card-body">${slidersHtml}</div>

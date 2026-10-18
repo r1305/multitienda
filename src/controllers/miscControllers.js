@@ -1,6 +1,10 @@
 const { Setting, Location, Address, Coupon, PushToken, Order, Orderitem, OrderItemAddon, Translation, Page, RestaurantCategory, RestaurantCategorySlider, SmsOtp, PasswordResetOtp, User, Rating, Restaurant, DeliveryGuyDetail, AcceptDelivery, sequelize } = require('../models');
-const { Op } = require('sequelize');
+const { Op, QueryTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
+const otpHelper = require('../helpers/otp');
+const states = require('../helpers/orderStates');
+const { emitOrderEvent } = require('../helpers/orderEvents');
+const { releaseDueScheduledOrders } = require('../helpers/scheduledOrders');
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 const PUBLIC_SETTINGS_KEYS = [
@@ -35,10 +39,12 @@ exports.getSettings = async (req, res) => {
 
 exports.getSettingByKey = async (req, res) => {
   try {
-    const s = await Setting.findOne({ where: { key: req.params.key } });
+    const key = String(req.params.key || '');
+    if (!PUBLIC_SETTINGS_KEYS.includes(key)) return res.status(404).json(null);
+    const s = await Setting.findOne({ where: { key } });
     res.json(s ? s.value : null);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -59,7 +65,8 @@ exports.popularLocations = async (req, res) => {
     const locations = await Location.findAll({ where: { is_primary: true } });
     res.json(locations);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[misc]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -70,7 +77,8 @@ exports.popularGeoLocations = async (req, res) => {
     const result = places.map(p => ({ ...p.toJSON(), is_default: p.is_default ? 1 : 0, is_primary: p.is_default ? 1 : 0 }));
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[misc]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -91,7 +99,8 @@ exports.getAddresses = async (req, res) => {
     const addresses = await Address.findAll({ where: { user_id: req.user.id } });
     res.json(addresses);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[misc]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -101,7 +110,8 @@ exports.saveAddress = async (req, res) => {
     const addr = await Address.create({ user_id: req.user.id, address, house, tag, latitude, longitude });
     res.json(addr);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[misc]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -110,7 +120,8 @@ exports.deleteAddress = async (req, res) => {
     await Address.destroy({ where: { id: req.body.address_id, user_id: req.user.id } });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[misc]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -119,7 +130,8 @@ exports.setDefaultAddress = async (req, res) => {
     await req.user.update({ default_address_id: req.body.address_id });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[misc]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -127,22 +139,15 @@ exports.setDefaultAddress = async (req, res) => {
 exports.applyCoupon = async (req, res) => {
   try {
     const code = req.body.code || req.body.coupon;
-    if (!code) return res.json({ success: false, message: 'No coupon code provided' });
-    const coupon = await Coupon.findOne({ where: { code: code.toUpperCase() } });
-    if (!coupon) return res.json({ success: false, message: 'Cupón inválido' });
-    // Check max uses
-    if (coupon.max_count > 0 && coupon.count >= coupon.max_count) return res.json({ success: false, message: 'Cupón agotado' });
-    // Check min subtotal
-    const subtotal = parseFloat(req.body.subtotal || 0);
-    if (coupon.min_sub_total > 0 && subtotal < parseFloat(coupon.min_sub_total)) return res.json({ success: false, message: 'Pedido mínimo: ' + parseFloat(coupon.min_sub_total).toFixed(2) });
-    // Check max uses per user
-    if (coupon.max_count_per_user > 0 && req.user) {
-      const [userUses] = await sequelize.query('SELECT COUNT(*) as cnt FROM orders WHERE user_id = ? AND coupon_name = ?', { replacements: [req.user.id, coupon.code] });
-      if (userUses[0] && parseInt(userUses[0].cnt) >= coupon.max_count_per_user) return res.json({ success: false, message: 'Ya usaste este cupón el máximo de veces permitido' });
-    }
-    // Check restaurant match
-    if (coupon.restaurant_id && req.body.restaurant_id && Number(coupon.restaurant_id) !== Number(req.body.restaurant_id)) return res.json({ success: false, message: 'Cupón no válido para esta tienda' });
-    res.json({ success: true, coupon });
+    if (!code || typeof code !== 'string') return res.json({ success: false, message: 'No coupon code provided' });
+    const { checkCoupon } = require('../helpers/orderCatalog');
+    const result = await checkCoupon(code, {
+      subTotal: parseFloat(req.body.subtotal || 0),
+      restaurantId: req.body.restaurant_id,
+      userId: req.user ? req.user.id : null,
+    });
+    if (!result.ok) return res.json({ success: false, message: result.message });
+    res.json({ success: true, coupon: result.coupon, discount_amount: result.amount });
   } catch (err) {
     console.error('applyCoupon error:', err.message);
     res.status(500).json({ success: false, message: 'Error al validar cupón' });
@@ -195,8 +200,8 @@ exports.updateAppTokenForUser = async (req, res) => {
 exports.getUserNotifications = async (req, res) => {
   try {
     const [notifications] = await sequelize.query(
-      'SELECT * FROM notifications WHERE notifiable_id = ? ORDER BY created_at DESC LIMIT 20',
-      { replacements: [req.user.id] }
+      'SELECT * FROM notifications WHERE notifiable_id = ? AND notifiable_type = ? ORDER BY created_at DESC LIMIT 20',
+      { replacements: [req.user.id, 'App\\User'] }
     );
     res.json(notifications);
   } catch (err) {
@@ -206,7 +211,7 @@ exports.getUserNotifications = async (req, res) => {
 
 exports.markAllNotificationsRead = async (req, res) => {
   try {
-    await sequelize.query('UPDATE notifications SET read_at = NOW() WHERE notifiable_id = ? AND read_at IS NULL', { replacements: [req.user.id] });
+    await sequelize.query('UPDATE notifications SET read_at = NOW() WHERE notifiable_id = ? AND notifiable_type = ? AND read_at IS NULL', { replacements: [req.user.id, 'App\\User'] });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -215,7 +220,7 @@ exports.markAllNotificationsRead = async (req, res) => {
 
 exports.markOneNotificationRead = async (req, res) => {
   try {
-    await sequelize.query('UPDATE notifications SET read_at = NOW() WHERE id = ?', { replacements: [req.body.id] });
+    await sequelize.query('UPDATE notifications SET read_at = NOW() WHERE id = ? AND notifiable_id = ? AND notifiable_type = ?', { replacements: [req.body.id, req.user.id, 'App\\User'] });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -298,10 +303,13 @@ exports.getAllRestaurantsCategories = async (req, res) => {
 };
 
 // ─── SMS / OTP ────────────────────────────────────────────────────────────────
+// PENDIENTE: el envío real del OTP (SMS/correo) no está integrado; el proyecto no tiene ningún canal configurado.
+// El código se guarda con caducidad de 5 minutos pero no se entrega al usuario ni se devuelve en la respuesta.
 exports.sendOtp = async (req, res) => {
   try {
-    const otp = require('crypto').randomInt(100000, 999999).toString();
-    await SmsOtp.upsert({ phone: req.body.phone, otp });
+    const phone = req.body && req.body.phone;
+    if (!phone || typeof phone !== 'string') return res.status(400).json({ success: false });
+    await otpHelper.issueOtp(SmsOtp, { phone });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -310,13 +318,11 @@ exports.sendOtp = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
   try {
-    const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
-    const record = await SmsOtp.findOne({ where: { phone: req.body.phone } });
-    if (!record) return res.json({ success: false });
-    if (record.created_at && Date.now() - new Date(record.created_at).getTime() > OTP_TTL_MS) {
-      return res.json({ success: false, message: 'OTP expired' });
-    }
-    res.json({ success: String(record.otp) === String(req.body.otp) });
+    const phone = req.body && req.body.phone;
+    const result = await otpHelper.verifyOtp(SmsOtp, { phone }, req.body && req.body.otp, { identifier: phone, ip: req.ip });
+    if (result === 'blocked') return res.status(429).json({ success: false, message: 'Demasiados intentos. Intenta de nuevo más tarde.' });
+    if (result === 'expired') return res.json({ success: false, message: 'OTP expired' });
+    res.json({ success: result === 'ok' });
   } catch (err) {
     res.status(500).json({ success: false });
   }
@@ -324,8 +330,9 @@ exports.verifyOtp = async (req, res) => {
 
 exports.generateOtpForLogin = async (req, res) => {
   try {
-    const otp = require('crypto').randomInt(100000, 999999).toString();
-    await SmsOtp.upsert({ phone: req.body.phone, otp });
+    const phone = req.body && req.body.phone;
+    if (!phone || typeof phone !== 'string') return res.status(400).json({ success: false });
+    await otpHelper.issueOtp(SmsOtp, { phone });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -333,10 +340,12 @@ exports.generateOtpForLogin = async (req, res) => {
 };
 
 // ─── Password Reset ───────────────────────────────────────────────────────────
+// PENDIENTE: igual que el OTP por SMS, falta integrar el envío del correo de recuperación.
 exports.sendPasswordResetMail = async (req, res) => {
   try {
-    const otp = require('crypto').randomInt(100000, 999999).toString();
-    await PasswordResetOtp.upsert({ email: req.body.email, otp });
+    const email = req.body && req.body.email;
+    if (!email || typeof email !== 'string') return res.status(400).json({ success: false });
+    await otpHelper.issueOtp(PasswordResetOtp, { email });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -345,13 +354,11 @@ exports.sendPasswordResetMail = async (req, res) => {
 
 exports.verifyPasswordResetOtp = async (req, res) => {
   try {
-    const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
-    const record = await PasswordResetOtp.findOne({ where: { email: req.body.email } });
-    if (!record) return res.json({ success: false });
-    if (record.created_at && Date.now() - new Date(record.created_at).getTime() > OTP_TTL_MS) {
-      return res.json({ success: false, message: 'OTP expired' });
-    }
-    res.json({ success: String(record.otp) === String(req.body.otp) });
+    const email = req.body && req.body.email;
+    const result = await otpHelper.verifyOtp(PasswordResetOtp, { email }, req.body && req.body.otp, { identifier: email, ip: req.ip });
+    if (result === 'blocked') return res.status(429).json({ success: false, message: 'Demasiados intentos. Intenta de nuevo más tarde.' });
+    if (result === 'expired') return res.json({ success: false, message: 'OTP expired' });
+    res.json({ success: result === 'ok' });
   } catch (err) {
     res.status(500).json({ success: false });
   }
@@ -359,24 +366,20 @@ exports.verifyPasswordResetOtp = async (req, res) => {
 
 exports.changeUserPassword = async (req, res) => {
   try {
-    const { email, password, otp } = req.body;
-    if (!password || password.length < 8) {
+    const { email, password, otp } = req.body || {};
+    if (!email || typeof email !== 'string') return res.json({ success: false });
+    if (!password || typeof password !== 'string' || password.length < 8) {
       return res.json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
     }
     if (!otp) return res.json({ success: false, message: 'OTP requerido' });
-    const otpRecord = await PasswordResetOtp.findOne({ where: { email } });
-    if (!otpRecord) return res.json({ success: false, message: 'Solicita un OTP primero' });
-    const OTP_TTL_MS = 5 * 60 * 1000;
-    if (otpRecord.created_at && Date.now() - new Date(otpRecord.created_at).getTime() > OTP_TTL_MS) {
-      return res.json({ success: false, message: 'OTP expirado' });
-    }
-    if (String(otpRecord.otp) !== String(otp)) {
-      return res.json({ success: false, message: 'OTP inválido' });
-    }
+    const result = await otpHelper.verifyOtp(PasswordResetOtp, { email }, otp, { identifier: email, ip: req.ip, consume: true });
+    if (result === 'blocked') return res.status(429).json({ success: false, message: 'Demasiados intentos. Intenta de nuevo más tarde.' });
+    if (result === 'missing') return res.json({ success: false, message: 'Solicita un OTP primero' });
+    if (result === 'expired') return res.json({ success: false, message: 'OTP expirado' });
+    if (result !== 'ok') return res.json({ success: false, message: 'OTP inválido' });
     const user = await User.findOne({ where: { email } });
     if (!user) return res.json({ success: false });
     await user.update({ password: await bcrypt.hash(password, 10) });
-    await otpRecord.destroy();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -393,12 +396,46 @@ exports.getRatableOrder = async (req, res) => {
   }
 };
 
+function parseScore(v, { required }) {
+  if (v === undefined || v === null || v === '' || Number(v) === 0) return required ? NaN : null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 && n <= 5 ? n : NaN;
+}
+
+function cleanReview(v) {
+  if (typeof v !== 'string') return null;
+  const t = v.trim();
+  return t ? t.slice(0, 1000) : null;
+}
+
+// Califica un pedido: solo el cliente dueño, pedido entregado (5), una sola vez y notas entre 1 y 5.
 exports.rateOrder = async (req, res) => {
   try {
-    const { order_id, rating_store, rating_delivery, review_store, review_delivery } = req.body;
-    const order = await Order.findByPk(order_id);
-    if (!order) return res.json({ success: false });
-    await Rating.create({ order_id, user_id: req.user.id, restaurant_id: order.restaurant_id, rating_store, rating_delivery, review_store, review_delivery });
+    const { order_id, rating_store, rating_delivery, review_store, review_delivery } = req.body || {};
+    const orderId = toOrderId(order_id);
+    if (!orderId) return res.status(400).json({ success: false, message: 'Pedido inválido' });
+    const store = parseScore(rating_store, { required: true });
+    const delivery = parseScore(rating_delivery, { required: false });
+    if (Number.isNaN(store) || Number.isNaN(delivery)) {
+      return res.status(400).json({ success: false, message: 'La calificación debe estar entre 1 y 5' });
+    }
+
+    const outcome = await sequelize.transaction(async (t) => {
+      const order = await Order.findOne({ where: { id: orderId, user_id: req.user.id }, transaction: t, lock: t.LOCK.UPDATE });
+      if (!order) return { status: 404, message: 'Pedido no encontrado' };
+      if (Number(order.orderstatus_id) !== 5) return { status: 409, message: 'Solo puedes calificar pedidos entregados' };
+      const previous = await Rating.findOne({ where: { order_id: orderId }, transaction: t });
+      if (previous) return { status: 409, message: 'Este pedido ya fue calificado' };
+      const deliveryId = await getAssignedDeliveryId(orderId, t);
+      await Rating.create({
+        order_id: orderId, user_id: req.user.id, restaurant_id: order.restaurant_id, delivery_id: deliveryId,
+        rating_store: store, rating_delivery: delivery,
+        review_store: cleanReview(review_store), review_delivery: cleanReview(review_delivery),
+      }, { transaction: t });
+      return { status: 200 };
+    });
+
+    if (outcome.status !== 200) return res.status(outcome.status).json({ success: false, message: outcome.message });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -417,6 +454,31 @@ exports.getRatingAndReview = async (req, res) => {
 };
 
 // ─── Delivery ─────────────────────────────────────────────────────────────────
+function withoutDeliveryPin(o) {
+  const obj = o && typeof o.toJSON === 'function' ? o.toJSON() : { ...o };
+  delete obj.delivery_pin;
+  return obj;
+}
+
+function toOrderId(v) {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+async function getAssignedDeliveryId(orderId, transaction) {
+  const rows = await sequelize.query(
+    'SELECT user_id FROM accept_deliveries WHERE order_id = ? ORDER BY id DESC LIMIT 1',
+    { replacements: [orderId], type: QueryTypes.SELECT, transaction }
+  );
+  return rows[0] ? Number(rows[0].user_id) : null;
+}
+
+async function getOrderParticipants(orderId) {
+  const order = await Order.findByPk(orderId, { attributes: ['id', 'user_id', 'unique_order_id', 'orderstatus_id'] });
+  if (!order) return null;
+  return { order, customerId: Number(order.user_id), deliveryId: await getAssignedDeliveryId(orderId) };
+}
+
 exports.deliveryLogin = async (req, res) => {
   try {
     const { generateToken } = require('../middleware/auth');
@@ -472,12 +534,25 @@ exports.deliveryRegister = async (req, res) => {
   }
 };
 
+// Campos del pedido que el repartidor necesita; se excluyen PIN, pago, cupón, impuestos y datos internos.
+const DELIVERY_ORDER_ATTRS = [
+  'id', 'unique_order_id', 'restaurant_id', 'orderstatus_id', 'total', 'sub_total', 'delivery_charge',
+  'restaurant_charge', 'coupon_amount', 'tip_amount', 'payment_mode', 'payable', 'cash_change_amount',
+  'address', 'location', 'delivery_type', 'distance', 'order_comment',
+  'is_scheduled', 'schedule_date', 'schedule_slot', 'created_at',
+];
+const DELIVERY_RESTAURANT_ATTRS = ['id', 'name', 'latitude', 'longitude', 'image', 'address'];
+const DELIVERY_ITEM_ATTRS = ['id', 'order_id', 'item_id', 'name', 'quantity', 'price'];
+
 exports.getDeliveryOrders = async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
     const userId = req.user.id;
     const cache = require('../helpers/cache');
     const { getDistance } = require('../helpers/utils');
+
+    // Libera programados cuya hora llegó (sin timers)
+    await releaseDueScheduledOrders();
 
     let maxRadius = 10;
     const radiusCached = await cache.get('settings:deliveryRadius');
@@ -497,9 +572,10 @@ exports.getDeliveryOrders = async (req, res) => {
 
     const orders = await Order.findAll({
       where: { orderstatus_id: 2, delivery_type: 1 },
+      attributes: DELIVERY_ORDER_ATTRS,
       include: [
-        { association: 'restaurant', attributes: ['id', 'name', 'latitude', 'longitude', 'image', 'address'] },
-        { association: 'orderitems', attributes: ['id', 'order_id', 'item_id', 'name', 'quantity', 'price'] },
+        { association: 'restaurant', attributes: DELIVERY_RESTAURANT_ATTRS },
+        { association: 'orderitems', attributes: DELIVERY_ITEM_ATTRS },
       ],
       order: [['id', 'DESC']],
       limit: parseInt(process.env.DELIVERY_ORDERS_LIMIT || '50', 10),
@@ -514,7 +590,7 @@ exports.getDeliveryOrders = async (req, res) => {
       return dist <= maxRadius;
     });
 
-    res.json(filtered);
+    res.json(filtered.map(withoutDeliveryPin));
   } catch (err) {
     console.error('getDeliveryOrders error:', err.message);
     res.status(500).json([]);
@@ -523,9 +599,22 @@ exports.getDeliveryOrders = async (req, res) => {
 
 exports.getSingleDeliveryOrder = async (req, res) => {
   try {
-    const order = await Order.findByPk(req.body.order_id, { include: [{ association: 'restaurant' }, { association: 'orderitems', include: [{ association: 'order_item_addons' }] }] });
+    const orderId = toOrderId(req.body.order_id);
+    if (!orderId) return res.json(null);
+    const order = await Order.findByPk(orderId, {
+      attributes: DELIVERY_ORDER_ATTRS,
+      include: [
+        { association: 'restaurant', attributes: DELIVERY_RESTAURANT_ATTRS },
+        { association: 'orderitems', attributes: DELIVERY_ITEM_ATTRS, include: [{ association: 'order_item_addons' }] },
+      ],
+    });
     if (!order) return res.json(null);
-    const result = order.toJSON();
+    const assignedId = await getAssignedDeliveryId(orderId);
+    const isAvailable = !assignedId && Number(order.orderstatus_id) === 2 && Number(order.delivery_type) === 1;
+    if (assignedId !== Number(req.user.id) && !isAvailable) {
+      return res.status(403).json(null);
+    }
+    const result = withoutDeliveryPin(order);
     if (result.orderitems && result.orderitems.length) {
       for (let oi of result.orderitems) {
         if (!oi.name && oi.item_id) {
@@ -557,10 +646,17 @@ exports.setDeliveryGuyGpsLocation = async (req, res) => {
 
 exports.getDeliveryGuyGpsLocation = async (req, res) => {
   try {
-    let userId = req.body.delivery_guy_id;
-    if (!userId && req.body.order_id) {
-      const accept = await AcceptDelivery.findOne({ where: { order_id: req.body.order_id }, attributes: ['user_id'] });
-      if (accept) userId = accept.user_id;
+    const me = Number(req.user.id);
+    let userId = null;
+    const orderId = toOrderId(req.body.order_id);
+    if (orderId) {
+      const p = await getOrderParticipants(orderId);
+      if (!p || !p.deliveryId) return res.json(null);
+      if (me !== p.customerId && me !== p.deliveryId) return res.status(403).json(null);
+      if (me === p.customerId && ![3, 4].includes(Number(p.order.orderstatus_id))) return res.json(null);
+      userId = p.deliveryId;
+    } else if (toOrderId(req.body.delivery_guy_id) === me) {
+      userId = me;
     }
     if (!userId) return res.json(null);
     const gps = require('../helpers/gps');
@@ -572,20 +668,32 @@ exports.getDeliveryGuyGpsLocation = async (req, res) => {
 
 exports.acceptToDeliver = async (req, res) => {
   try {
-    const result = await sequelize.transaction(async (t) => {
-      const existing = await AcceptDelivery.findOne({ where: { order_id: req.body.order_id }, transaction: t, lock: true });
-      if (existing) return null;
-      await AcceptDelivery.create({ order_id: req.body.order_id, user_id: req.user.id }, { transaction: t });
-      await Order.update({ orderstatus_id: 3 }, { where: { id: req.body.order_id }, transaction: t });
+    const orderId = toOrderId(req.body.order_id);
+    if (!orderId) return res.status(400).json({ success: false, message: 'Pedido inválido' });
+    // La transición 2 -> 3 es condicional (un solo ganador); la comprobación previa evita un segundo INSERT en accept_deliveries.
+    // Pendiente manual: UNIQUE(order_id) en accept_deliveries como defensa adicional.
+    const accepted = await sequelize.transaction(async (t) => {
+      const existing = await AcceptDelivery.findOne({ where: { order_id: orderId }, transaction: t, lock: true });
+      if (existing) return false;
+      try {
+        await states.transition(orderId, [states.STATUS.ACCEPTED], states.STATUS.ASSIGNED, 'delivery', t, { where: { delivery_type: 1 } });
+      } catch (err) {
+        if (err instanceof states.OrderStateError) return false;
+        throw err;
+      }
+      await AcceptDelivery.create({ order_id: orderId, user_id: req.user.id }, { transaction: t });
       return true;
     });
-    if (result === null) return res.json({ success: false, message: 'Already accepted' });
+    if (!accepted) return res.status(409).json({ success: false, message: 'El pedido ya fue tomado o no está disponible' });
 
-    // Notify customer
-    const order = await Order.findByPk(req.body.order_id);
+    const order = await Order.findByPk(orderId);
     if (order) {
-      const { notifyCustomerDeliveryAccepted } = require('../helpers/notifications');
-      await notifyCustomerDeliveryAccepted(order);
+      try {
+        const { notifyCustomerDeliveryAccepted } = require('../helpers/notifications');
+        await notifyCustomerDeliveryAccepted(order);
+      } catch (nErr) {
+        console.error('acceptToDeliver notify error:', nErr.message);
+      }
     }
 
     res.json({ success: true });
@@ -605,13 +713,28 @@ exports.ignoreOrder = async (req, res) => {
 
 exports.pickedupOrder = async (req, res) => {
   try {
-    await Order.update({ orderstatus_id: 4 }, { where: { id: req.body.order_id } });
+    const orderId = toOrderId(req.body.order_id);
+    if (!orderId) return res.status(400).json({ success: false, message: 'Pedido inválido' });
+    const notAllowed = { success: false, message: 'El pedido no está asignado a ti o no está listo para recoger' };
+    try {
+      await sequelize.transaction(async (t) => {
+        const assignedId = await getAssignedDeliveryId(orderId, t);
+        if (assignedId !== Number(req.user.id)) throw new states.OrderStateError(notAllowed.message);
+        await states.transition(orderId, [states.STATUS.ASSIGNED], states.STATUS.PICKED_UP, 'delivery', t);
+      });
+    } catch (err) {
+      if (err instanceof states.OrderStateError) return res.status(409).json(notAllowed);
+      throw err;
+    }
 
-    // Notify customer order is on the way
-    const order = await Order.findByPk(req.body.order_id);
+    const order = await Order.findByPk(orderId);
     if (order) {
-      const { notifyCustomerOrderOnWay } = require('../helpers/notifications');
-      await notifyCustomerOrderOnWay(order);
+      try {
+        const { notifyCustomerOrderOnWay } = require('../helpers/notifications');
+        await notifyCustomerOrderOnWay(order);
+      } catch (nErr) {
+        console.error('pickedupOrder notify error:', nErr.message);
+      }
     }
 
     res.json({ success: true });
@@ -622,35 +745,47 @@ exports.pickedupOrder = async (req, res) => {
 
 exports.deliverOrder = async (req, res) => {
   try {
-    await Order.update({ orderstatus_id: 5 }, { where: { id: req.body.order_id } });
+    const orderId = toOrderId(req.body.order_id);
+    if (!orderId) return res.status(400).json({ success: false, message: 'Pedido inválido' });
+    const { computeDeliveryEarning } = require('../helpers/orderRules');
+    const pinSetting = await Setting.findOne({ where: { key: 'enableDeliveryPin' }, attributes: ['value'] });
+    const pinRequired = !!pinSetting && String(pinSetting.value) === 'true';
 
-    // Calculate and save delivery earning
-    const order = await Order.findByPk(req.body.order_id);
-    const [dgDetails] = await sequelize.query('SELECT commission_type, fixed_commission, commission_rate, percentage_base, dynamic_base_distance, dynamic_base_price, dynamic_price_per_km FROM delivery_guy_details WHERE user_id = ?', { replacements: [req.user.id] });
-    if (dgDetails[0] && order) {
-      let earning = 0;
-      const dg = dgDetails[0];
-      if (dg.commission_type === 'percentage') {
-        const base = dg.percentage_base === 'delivery_charge' ? parseFloat(order.delivery_charge || 0) : parseFloat(order.sub_total || order.total);
-        earning = base * parseFloat(dg.commission_rate) / 100;
-      } else if (dg.commission_type === 'dynamic') {
-        const distance = parseFloat(order.distance || 0);
-        const baseDist = parseFloat(dg.dynamic_base_distance || 0);
-        const basePrice = parseFloat(dg.dynamic_base_price || 0);
-        const pricePerKm = parseFloat(dg.dynamic_price_per_km || 0);
-        if (distance <= baseDist) {
-          earning = basePrice;
-        } else {
-          earning = basePrice + (distance - baseDist) * pricePerKm;
-        }
-      } else {
-        earning = parseFloat(dg.fixed_commission || 0);
+    const outcome = await sequelize.transaction(async (t) => {
+      const order = await Order.findByPk(orderId, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!order || Number(order.orderstatus_id) !== 4) return { status: 409 };
+      const assignedId = await getAssignedDeliveryId(orderId, t);
+      if (assignedId !== Number(req.user.id)) return { status: 409 };
+      if (pinRequired && order.delivery_pin) {
+        const given = String(req.body.delivery_pin || req.body.pin || '').trim();
+        if (given !== String(order.delivery_pin)) return { status: 400, message: 'PIN de entrega incorrecto' };
       }
+
+      try {
+        await states.transition(order, [states.STATUS.PICKED_UP], states.STATUS.DELIVERED, 'delivery', t);
+      } catch (err) {
+        if (err instanceof states.OrderStateError) return { status: 409 };
+        throw err;
+      }
+
+      const dgDetails = await sequelize.query(
+        'SELECT commission_type, fixed_commission, commission_rate, percentage_base, dynamic_base_distance, dynamic_base_price, dynamic_price_per_km FROM delivery_guy_details WHERE user_id = ? LIMIT 1',
+        { replacements: [req.user.id], type: QueryTypes.SELECT, transaction: t }
+      );
+      const earning = computeDeliveryEarning(dgDetails[0], order);
       if (earning > 0) {
-        await sequelize.query('INSERT INTO delivery_earnings (user_id, order_id, amount, commission_type) VALUES (?,?,?,?)', { replacements: [req.user.id, order.id, Math.round(earning * 100) / 100, dg.commission_type || 'fixed'] });
+        // Pendiente manual: UNIQUE(order_id) en delivery_earnings; mientras tanto el NOT EXISTS evita el doble pago
+        await sequelize.query(
+          'INSERT INTO delivery_earnings (user_id, order_id, amount, commission_type) SELECT ?, ?, ?, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM delivery_earnings WHERE order_id = ?)',
+          { replacements: [req.user.id, orderId, earning, dgDetails[0].commission_type || 'fixed', orderId], transaction: t }
+        );
       }
-    }
+      return { status: 200, order };
+    });
 
+    if (outcome.status === 409) return res.status(409).json({ success: false, message: 'El pedido no está asignado a ti o no está en camino' });
+    if (outcome.status !== 200) return res.status(outcome.status).json({ success: false, message: outcome.message });
+    await emitOrderEvent('delivered', outcome.order);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -712,8 +847,12 @@ exports.updateDeliveryUserInfo = async (req, res) => {
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 exports.deliveryCustomerChat = async (req, res) => {
   try {
-    const { order_id } = req.body;
-    const [messages] = await sequelize.query('SELECT * FROM chats WHERE order_id = ? ORDER BY created_at ASC', { replacements: [order_id] });
+    const orderId = toOrderId(req.body.order_id);
+    if (!orderId) return res.json([]);
+    const p = await getOrderParticipants(orderId);
+    const me = Number(req.user.id);
+    if (!p || (me !== p.customerId && me !== p.deliveryId)) return res.status(403).json([]);
+    const messages = await sequelize.query('SELECT * FROM chats WHERE order_id = ? ORDER BY created_at ASC', { replacements: [orderId], type: QueryTypes.SELECT });
     res.json(messages);
   } catch (err) {
     res.status(500).json([]);
@@ -722,58 +861,42 @@ exports.deliveryCustomerChat = async (req, res) => {
 
 exports.sendChatMessage = async (req, res) => {
   try {
-    const { order_id, message } = req.body;
+    const orderId = toOrderId(req.body.order_id);
+    const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+    if (!orderId || !message) return res.status(400).json({ success: false, message: 'Mensaje inválido' });
+    if (message.length > 1000) return res.status(400).json({ success: false, message: 'El mensaje es demasiado largo' });
+
+    const p = await getOrderParticipants(orderId);
     const senderId = Number(req.user.id);
-    await sequelize.query('INSERT INTO chats (order_id, sender_id, message, created_at) VALUES (?, ?, ?, NOW())', { replacements: [order_id, senderId, message] });
+    if (!p || (senderId !== p.customerId && senderId !== p.deliveryId)) {
+      return res.status(403).json({ success: false, message: 'No participas en este pedido' });
+    }
 
-    const order = await Order.findByPk(order_id);
-    if (order) {
+    await sequelize.query('INSERT INTO chats (order_id, sender_id, message, created_at) VALUES (?, ?, ?, NOW())', { replacements: [orderId, senderId, message] });
+
+    let recipientId = null;
+    let title = null;
+    let recipientRole = null;
+    if (senderId === p.customerId && p.deliveryId) {
+      recipientId = p.deliveryId;
+      recipientRole = 'delivery';
+      title = 'Nuevo mensaje del cliente';
+    } else if (senderId === p.deliveryId) {
+      recipientId = p.customerId;
+      recipientRole = 'customer';
+      title = 'Mensaje del repartidor';
+    }
+
+    if (recipientId && title) {
       const impl = require('../helpers/notifications.impl');
-      const orderIdNum = Number(order_id);
-      const accept = await AcceptDelivery.findOne({ where: { order_id: orderIdNum } });
-      const customerId = Number(order.user_id);
-      let deliveryId = accept ? Number(accept.user_id) : null;
-      if (!deliveryId) {
-        const [rows] = await sequelize.query(
-          'SELECT user_id FROM accept_deliveries WHERE order_id = ? LIMIT 1',
-          { replacements: [orderIdNum] }
-        );
-        if (rows[0]) deliveryId = Number(rows[0].user_id);
-      }
-
-      let recipientId = null;
-      let title = null;
-      let recipientRole = null;
-      if (senderId === customerId && deliveryId) {
-        recipientId = deliveryId;
-        recipientRole = 'delivery';
-        title = 'Nuevo mensaje del cliente';
-      } else if (deliveryId && senderId === deliveryId) {
-        recipientId = customerId;
-        recipientRole = 'customer';
-        title = 'Mensaje del repartidor';
-      } else if (senderId !== customerId && customerId) {
-        const [dg] = await sequelize.query(
-          'SELECT id FROM delivery_guy_details WHERE user_id = ? LIMIT 1',
-          { replacements: [senderId] }
-        );
-        if (dg.length) {
-          recipientId = customerId;
-          recipientRole = 'customer';
-          title = 'Mensaje del repartidor';
-        }
-      }
-
-      if (recipientId && title) {
-        const chatData = {
-          order_id: orderIdNum,
-          unique_order_id: order.unique_order_id,
-          type: 'chat',
-          recipient_role: recipientRole,
-        };
-        await impl.saveNotification(recipientId, title, message, chatData);
-        await impl.sendPushNotification(title, message, recipientId, null, chatData);
-      }
+      const chatData = {
+        order_id: orderId,
+        unique_order_id: p.order.unique_order_id,
+        type: 'chat',
+        recipient_role: recipientRole,
+      };
+      await impl.saveNotification(recipientId, title, message, chatData);
+      await impl.sendPushNotification(title, message, recipientId, null, chatData);
     }
 
     res.json({ success: true });

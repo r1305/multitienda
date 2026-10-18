@@ -35,4 +35,9 @@ function randomString(length) {
   return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-module.exports = { getDistance, storeAvgRating, getOrderStatusName, randomString };
+// Escapa % _ y \ para usar el término dentro de un LIKE y limita su longitud.
+function escapeLike(term, maxLen = 60) {
+  return String(term == null ? '' : term).trim().slice(0, maxLen).replace(/[\\%_]/g, (c) => '\\' + c);
+}
+
+module.exports = { escapeLike, getDistance, storeAvgRating, getOrderStatusName, randomString };

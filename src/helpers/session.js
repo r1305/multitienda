@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const session = require('express-session');
 const { sequelize } = require('../models');
 const { isRedisAvailable } = require('../config/redis');
@@ -11,8 +12,8 @@ async function createSessionMiddleware() {
       console.error('[Session] FATAL: SESSION_SECRET is not set. Aborting in production.');
       process.exit(1);
     }
-    console.warn('[Session] SESSION_SECRET not set — using insecure dev default.');
-    secret = 'multitienda-dev-only-change-in-production';
+    console.warn('[Session] SESSION_SECRET no definido: se usa un secreto aleatorio efímero (solo desarrollo).');
+    secret = crypto.randomBytes(32).toString('hex');
   }
 
   // En producción evitamos MemoryStore (tiene fuga de memoria): si no hay

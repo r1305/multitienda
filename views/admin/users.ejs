@@ -2,7 +2,7 @@
 <% var scripts = '<script>$(function(){ initAdminListTable("#usersTable", { order: [[0, "desc"]] }); wireAdminListSearch("#usersTableSearch", "#usersTable"); });</script>'; %>
 <%
 var roleOptions = '';
-if (typeof roles !== 'undefined') { roles.forEach(function(r) { roleOptions += `<option value="${r.name}">${r.name}</option>`; }); }
+if (typeof roles !== 'undefined') { roles.forEach(function(r) { roleOptions += `<option value="${esc(r.name)}">${esc(r.name)}</option>`; }); }
 
 var body = `
 <div class="card">
@@ -21,15 +21,15 @@ var body = `
 if (typeof users !== 'undefined' && users.length) {
   users.forEach(function(u) {
     body += `<tr>
-      <td>${u.id}</td>
-      <td><strong>${u.name}</strong></td>
-      <td>${u.email || '-'}</td>
-      <td>${u.phone || '-'}</td>
-      <td><span class="badge badge-info">${u.role_name || 'Customer'}</span></td>
-      <td><span class="badge badge-${u.is_active !== 0 ? 'success' : 'danger'}">${u.is_active !== 0 ? 'Active' : 'Banned'}</span></td>
+      <td>${esc(u.id)}</td>
+      <td><strong>${esc(u.name)}</strong></td>
+      <td>${esc(u.email || '-')}</td>
+      <td>${esc(u.phone || '-')}</td>
+      <td><span class="badge badge-info">${esc(u.role_name || 'Customer')}</span></td>
+      <td><span class="badge badge-${esc(u.is_active !== 0 ? 'success' : 'danger')}">${esc(u.is_active !== 0 ? 'Active' : 'Banned')}</span></td>
       <td>
-        <a href="/admin/user/edit/${u.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
-        <a href="/admin/user/ban/${u.id}" class="btn btn-sm btn-outline-${u.is_active !== 0 ? 'danger' : 'success'}"><i class="fas fa-${u.is_active !== 0 ? 'ban' : 'check'}"></i></a>
+        <a href="/admin/user/edit/${esc(u.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+        <form method="POST" action="/admin/user/ban/${esc(u.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-${esc(u.is_active !== 0 ? 'danger' : 'success')}"><i class="fas fa-${esc(u.is_active !== 0 ? 'ban' : 'check')}"></i></button></form>
       </td>
     </tr>`;
   });

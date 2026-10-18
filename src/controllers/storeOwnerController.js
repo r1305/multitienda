@@ -1,7 +1,13 @@
 const bcrypt = require('bcryptjs');
 const { User, Order, Orderitem, OrderItemAddon, Item, ItemCategory, Restaurant, Rating, sequelize } = require('../models');
 const { generateToken } = require('../middleware/auth');
-const { Op } = require('sequelize');
+const { Op, QueryTypes } = require('sequelize');
+const rules = require('../helpers/orderRules');
+const states = require('../helpers/orderStates');
+const { cancelOrderWithRefund } = require('../helpers/orderCancel');
+const { emitOrderEvent } = require('../helpers/orderEvents');
+const { releaseDueScheduledOrders } = require('../helpers/scheduledOrders');
+const { escapeLike } = require('../helpers/utils');
 
 exports.login = async (req, res) => {
   try {
@@ -18,7 +24,8 @@ exports.login = async (req, res) => {
 
     res.json({ success: true, data: { id: user.id, auth_token: token, name: user.name, email: user.email, restaurant } });
   } catch (err) {
-    res.status(500).json({ success: false, data: err.message });
+    console.error('storeOwner login error:', err.message);
+    res.status(500).json({ success: false, data: 'Error al iniciar sesión' });
   }
 };
 
@@ -43,10 +50,15 @@ exports.toggleStoreStatus = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
+    // Si el administrador deshabilitó la tienda (is_accepted = 0), el dueño no puede reabrirla
+    if (!restaurant.is_accepted) {
+      return res.status(403).json({ success: false, message: 'Tu tienda fue deshabilitada por el administrador' });
+    }
     const newStatus = restaurant.is_active ? 0 : 1;
     await sequelize.query('UPDATE restaurants SET is_active = ? WHERE id = ?', { replacements: [newStatus, restaurant.id] });
     res.json({ success: true, is_active: newStatus });
   } catch (err) {
+    console.error('toggleStoreStatus error:', err.message);
     res.status(500).json({ success: false });
   }
 };
@@ -55,6 +67,7 @@ exports.getOrders = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
+    await releaseDueScheduledOrders();
 
     const orders = await Order.findAll({
       where: { restaurant_id: restaurant.id, orderstatus_id: { [Op.in]: [1, 2, 3, 4, 7, 10, 11] } },
@@ -67,9 +80,28 @@ exports.getOrders = async (req, res) => {
   }
 };
 
+function sendStateError(err, res) {
+  if (err instanceof states.OrderStateError) {
+    return res.status(err.status).json({ success: false, message: err.message });
+  }
+  console.error('Store owner order error:', err.message);
+  return res.status(500).json({ success: false });
+}
+
+async function findOwnedOrder(orderId, restaurantId) {
+  const id = rules.toPositiveId(orderId);
+  if (!id) return null;
+  return Order.findOne({ where: { id, restaurant_id: restaurantId } });
+}
+
 exports.getSingleOrder = async (req, res) => {
   try {
-    const order = await Order.findByPk(req.body.order_id, {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json(null);
+    const orderId = rules.toPositiveId(req.body && req.body.order_id);
+    if (!orderId) return res.json(null);
+    const order = await Order.findOne({
+      where: { id: orderId, restaurant_id: restaurant.id },
       include: [{ association: 'orderitems', include: [{ association: 'order_item_addons' }] }],
     });
     if (!order) return res.json(null);
@@ -78,7 +110,7 @@ exports.getSingleOrder = async (req, res) => {
     if (result.orderitems && result.orderitems.length) {
       for (let oi of result.orderitems) {
         if (!oi.name && oi.item_id) {
-          const [rows] = await sequelize.query('SELECT name, price FROM items WHERE id = ?', { replacements: [oi.item_id] });
+          const [rows] = await sequelize.query('SELECT name, price FROM items WHERE id = ? AND restaurant_id = ?', { replacements: [oi.item_id, restaurant.id] });
           if (rows[0]) { oi.name = rows[0].name; if (!parseFloat(oi.price)) oi.price = rows[0].price; }
         }
       }
@@ -94,12 +126,13 @@ exports.cancelOrder = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    const order = await Order.findOne({ where: { id: req.body.order_id, restaurant_id: restaurant.id } });
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    await Order.update({ orderstatus_id: 6 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
-    res.json({ success: true });
+    const orderId = rules.toPositiveId(req.body && req.body.order_id);
+    if (!orderId) return res.status(404).json({ success: false, message: 'Order not found' });
+    const { order, refund } = await cancelOrderWithRefund({ orderId, actor: 'store', scope: { restaurant_id: restaurant.id } });
+    await emitOrderEvent('cancelled', order);
+    res.json({ success: true, refund });
   } catch (err) {
-    res.status(500).json({ success: false });
+    sendStateError(err, res);
   }
 };
 
@@ -107,12 +140,13 @@ exports.acceptOrder = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    const order = await Order.findOne({ where: { id: req.body.order_id, restaurant_id: restaurant.id } });
+    const order = await findOwnedOrder(req.body && req.body.order_id, restaurant.id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    await Order.update({ orderstatus_id: 2 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
+    await states.transition(order, [states.STATUS.PENDING], states.STATUS.ACCEPTED, 'store', null, { where: { restaurant_id: restaurant.id } });
+    await emitOrderEvent('accepted', order);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false });
+    sendStateError(err, res);
   }
 };
 
@@ -120,10 +154,15 @@ exports.markSelfpickupOrderReady = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    await Order.update({ orderstatus_id: 7 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
+    const order = await findOwnedOrder(req.body && req.body.order_id, restaurant.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (Number(order.delivery_type) !== 2) {
+      return res.status(409).json({ success: false, message: 'El pedido no es de recojo en tienda' });
+    }
+    await states.transition(order, [states.STATUS.ACCEPTED], states.STATUS.SELFPICKUP_READY, 'store', null, { where: { restaurant_id: restaurant.id } });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false });
+    sendStateError(err, res);
   }
 };
 
@@ -131,10 +170,16 @@ exports.markSelfpickupOrderCompleted = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    await Order.update({ orderstatus_id: 5 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
+    const order = await findOwnedOrder(req.body && req.body.order_id, restaurant.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (Number(order.delivery_type) !== 2) {
+      return res.status(409).json({ success: false, message: 'El pedido no es de recojo en tienda' });
+    }
+    await states.transition(order, [states.STATUS.SELFPICKUP_READY], states.STATUS.DELIVERED, 'store', null, { where: { restaurant_id: restaurant.id } });
+    await emitOrderEvent('delivered', order);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false });
+    sendStateError(err, res);
   }
 };
 
@@ -142,12 +187,18 @@ exports.confirmScheduledOrder = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
-    await Order.update({ orderstatus_id: 11 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
+    const order = await findOwnedOrder(req.body && req.body.order_id, restaurant.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    await states.transition(order, [states.STATUS.SCHEDULED_PENDING], states.STATUS.SCHEDULED_CONFIRMED, 'store', null, { where: { restaurant_id: restaurant.id } });
+    await emitOrderEvent('scheduled_confirmed', order);
+    // Si la hora ya llegó, se libera de inmediato a los repartidores
+    await releaseDueScheduledOrders({ force: true });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false });
+    sendStateError(err, res);
   }
 };
+
 
 exports.getMenu = async (req, res) => {
   try {
@@ -183,7 +234,7 @@ exports.searchItems = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json([]);
-    const items = await Item.findAll({ where: { restaurant_id: restaurant.id, name: { [Op.like]: `%${req.body.q}%` } } });
+    const items = await Item.findAll({ where: { restaurant_id: restaurant.id, name: { [Op.like]: `%${escapeLike(req.body.q)}%` } } });
     res.json(items);
   } catch (err) {
     res.status(500).json([]);
@@ -199,20 +250,6 @@ exports.editItem = async (req, res) => {
     res.json(item);
   } catch (err) {
     res.status(500).json(null);
-  }
-};
-
-exports.updateItem = async (req, res) => {
-  try {
-    const restaurant = await getOwnerRestaurant(req.user.id);
-    if (!restaurant) return res.status(403).json({ success: false });
-    const { item_id, name, price, description } = req.body;
-    const item = await Item.findByPk(item_id);
-    if (!item || item.restaurant_id !== restaurant.id) return res.json({ success: false });
-    await Item.update({ name, price, description }, { where: { id: item_id } });
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false });
   }
 };
 
@@ -236,7 +273,7 @@ exports.searchOrders = async (req, res) => {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json([]);
     const orders = await Order.findAll({
-      where: { restaurant_id: restaurant.id, unique_order_id: { [Op.like]: `%${req.body.q}%` } },
+      where: { restaurant_id: restaurant.id, unique_order_id: { [Op.like]: `%${escapeLike(req.body.q)}%` } },
       order: [['id', 'DESC']], limit: 10,
     });
     res.json(orders);
@@ -289,9 +326,24 @@ exports.updateStore = async (req, res) => {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
     const { name, description, address, latitude, longitude, delivery_time, price_range, restaurant_charges, delivery_charges, delivery_charge_type, base_delivery_charge, base_delivery_distance, extra_delivery_charge, extra_delivery_distance, delivery_radius, min_order_price, free_delivery_subtotal, delivery_type, auto_acceptable, is_schedulable } = req.body;
+    // Cargos y distancias: no negativos; la distancia extra debe ser > 0 (se usa como divisor)
+    const camposNoNegativos = { restaurant_charges, delivery_charges, base_delivery_charge, base_delivery_distance, extra_delivery_charge, delivery_radius, min_order_price, free_delivery_subtotal };
+    for (const [campo, valor] of Object.entries(camposNoNegativos)) {
+      if (valor === undefined || valor === null || valor === '') continue;
+      const n = Number(valor);
+      if (!Number.isFinite(n) || n < 0) {
+        return res.status(422).json({ success: false, message: `El valor de ${campo} no puede ser negativo` });
+      }
+    }
+    if (extra_delivery_distance !== undefined && extra_delivery_distance !== null && extra_delivery_distance !== '') {
+      const d = Number(extra_delivery_distance);
+      if (!Number.isFinite(d) || d <= 0) {
+        return res.status(422).json({ success: false, message: 'La distancia extra de entrega debe ser mayor que 0' });
+      }
+    }
     const image = req.file ? '/uploads/' + req.file.filename : null;
     let sql = `UPDATE restaurants SET name=?, description=?, address=?, latitude=?, longitude=?, delivery_time=?, price_range=?, restaurant_charges=?, delivery_charges=?, delivery_charge_type=?, base_delivery_charge=?, base_delivery_distance=?, extra_delivery_charge=?, extra_delivery_distance=?, delivery_radius=?, min_order_price=?, free_delivery_subtotal=?, delivery_type=?, auto_acceptable=?, is_schedulable=?, updated_at=NOW()`;
-    const params = [name || restaurant.name, description || '', address || '', latitude || restaurant.latitude, longitude || restaurant.longitude, delivery_time || '', price_range || '', restaurant_charges || 0, delivery_charges || 0, delivery_charge_type || 'FIXED', base_delivery_charge || 0, base_delivery_distance || 0, extra_delivery_charge || 0, extra_delivery_distance || 0, delivery_radius || 0, min_order_price || 0, free_delivery_subtotal || 0, delivery_type || 1, auto_acceptable ? 1 : 0, is_schedulable ? 1 : 0];
+    const params = [name || restaurant.name, description || '', address || '', latitude || restaurant.latitude, longitude || restaurant.longitude, delivery_time || '', price_range || '', restaurant_charges || 0, delivery_charges || 0, delivery_charge_type || 'FIXED', base_delivery_charge || 0, base_delivery_distance || 0, extra_delivery_charge || 0, extra_delivery_distance || restaurant.extra_delivery_distance || 1, delivery_radius || 0, min_order_price || 0, free_delivery_subtotal || 0, delivery_type || 1, auto_acceptable ? 1 : 0, is_schedulable ? 1 : 0];
     if (image) { sql += ', image=?'; params.push(image); }
     sql += ' WHERE id=?';
     params.push(restaurant.id);
@@ -305,11 +357,14 @@ exports.updateStore = async (req, res) => {
 
 exports.toggleCategoryStatus = async (req, res) => {
   try {
-    const cat = await ItemCategory.findByPk(req.body.category_id);
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const cat = await ItemCategory.findOne({ where: { id: req.body.category_id, restaurant_id: restaurant.id } });
     if (!cat) return res.json({ success: false });
     await cat.update({ is_enabled: !cat.is_enabled });
     res.json({ success: true, is_enabled: cat.is_enabled });
   } catch (err) {
+    console.error('toggleCategoryStatus error:', err.message);
     res.status(500).json({ success: false });
   }
 };
@@ -399,26 +454,60 @@ exports.getEarnings = async (req, res) => {
   }
 };
 
+// Valida que la categoría de ítem y las categorías de complementos pertenezcan a la tienda del dueño.
+function parseIdList(raw) {
+  let ids = raw;
+  if (typeof raw === 'string') {
+    try { ids = JSON.parse(raw); } catch (_) { return null; }
+  }
+  if (ids == null || ids === '') return [];
+  if (!Array.isArray(ids)) return null;
+  const out = [];
+  for (const v of ids) {
+    const n = rules.toPositiveId(v);
+    if (!n) return null;
+    if (!out.includes(n)) out.push(n);
+  }
+  return out;
+}
+
+async function resolveOwnedCategories(restaurantId, itemCategoryId, rawAddonIds) {
+  let itemCategory = null;
+  if (itemCategoryId !== undefined && itemCategoryId !== null && itemCategoryId !== '') {
+    itemCategory = rules.toPositiveId(itemCategoryId);
+    if (!itemCategory) return { ok: false, message: 'Categoría de producto inválida' };
+    const [rows] = await sequelize.query('SELECT id FROM item_categories WHERE id = ? AND restaurant_id = ?', { replacements: [itemCategory, restaurantId] });
+    if (!rows.length) return { ok: false, message: 'La categoría de producto no pertenece a tu tienda' };
+  }
+  const addonIds = parseIdList(rawAddonIds);
+  if (addonIds === null) return { ok: false, message: 'Categorías de complementos inválidas' };
+  if (addonIds.length) {
+    const [rows] = await sequelize.query('SELECT id FROM addon_categories WHERE id IN (?) AND restaurant_id = ?', { replacements: [addonIds, restaurantId] });
+    if (rows.length !== addonIds.length) return { ok: false, message: 'Una categoría de complementos no pertenece a tu tienda' };
+  }
+  return { ok: true, itemCategory, addonIds };
+}
+
 exports.createItem = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
     const { name, price, old_price, description, is_recommended, item_category_id, addon_category_ids } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : null;
-    const [result, meta] = await sequelize.query(
-      'INSERT INTO items (name, price, old_price, description, is_recommended, image, item_category_id, restaurant_id, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,1,NOW(),NOW())',
-      { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, image, item_category_id || null, restaurant.id] }
-    );
-    const itemId = meta;
-    if (addon_category_ids) {
-      let ids;
-      try {
-        ids = typeof addon_category_ids === 'string' ? JSON.parse(addon_category_ids) : addon_category_ids;
-      } catch (_) { ids = []; }
-      if (Array.isArray(ids)) {
-        for (const acId of ids) { await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, itemId] }); }
+    const owned = await resolveOwnedCategories(restaurant.id, item_category_id, addon_category_ids);
+    if (!owned.ok) return res.status(403).json({ success: false, message: owned.message });
+
+    await sequelize.transaction(async (t) => {
+      const inserted = await sequelize.query(
+        'INSERT INTO items (name, price, old_price, description, is_recommended, image, item_category_id, restaurant_id, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,1,NOW(),NOW())',
+        { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, image, owned.itemCategory, restaurant.id], type: QueryTypes.INSERT, transaction: t }
+      );
+      const itemId = rules.toPositiveId(Array.isArray(inserted) ? inserted[0] : inserted);
+      if (!itemId) throw new Error('No se obtuvo el id del ítem creado');
+      for (const acId of owned.addonIds) {
+        await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, itemId], transaction: t });
       }
-    }
+    });
     res.json({ success: true });
   } catch (err) {
     console.error('createItem error:', err.message);
@@ -431,35 +520,42 @@ exports.updateItem = async (req, res) => {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false });
     const { item_id, name, price, old_price, description, is_recommended, item_category_id, addon_category_ids } = req.body;
+    const itemId = rules.toPositiveId(item_id);
+    if (!itemId) return res.status(400).json({ success: false });
     const image = req.file ? '/uploads/' + req.file.filename : null;
-    if (image) {
-      await sequelize.query(
-        'UPDATE items SET name=?, price=?, old_price=?, description=?, is_recommended=?, image=?, item_category_id=?, updated_at=NOW() WHERE id=? AND restaurant_id=?',
-        { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, image, item_category_id || null, item_id, restaurant.id] }
-      );
-    } else {
-      await sequelize.query(
-        'UPDATE items SET name=?, price=?, old_price=?, description=?, is_recommended=?, item_category_id=?, updated_at=NOW() WHERE id=? AND restaurant_id=?',
-        { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, item_category_id || null, item_id, restaurant.id] }
-      );
-    }
-    // Update addon category links
-    await sequelize.query('DELETE FROM addon_category_item WHERE item_id = ?', { replacements: [item_id] });
-    if (addon_category_ids) {
-      let ids;
-      try {
-        ids = typeof addon_category_ids === 'string' ? JSON.parse(addon_category_ids) : addon_category_ids;
-      } catch (_) { ids = []; }
-      if (Array.isArray(ids)) {
-        for (const acId of ids) { await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, item_id] }); }
+
+    const [own] = await sequelize.query('SELECT id FROM items WHERE id = ? AND restaurant_id = ?', { replacements: [itemId, restaurant.id] });
+    if (!own.length) return res.status(404).json({ success: false, message: 'Producto no encontrado' });
+    const owned = await resolveOwnedCategories(restaurant.id, item_category_id, addon_category_ids);
+    if (!owned.ok) return res.status(403).json({ success: false, message: owned.message });
+
+    await sequelize.transaction(async (t) => {
+      if (image) {
+        await sequelize.query(
+          'UPDATE items SET name=?, price=?, old_price=?, description=?, is_recommended=?, image=?, item_category_id=?, updated_at=NOW() WHERE id=? AND restaurant_id=?',
+          { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, image, owned.itemCategory, itemId, restaurant.id], transaction: t }
+        );
+      } else {
+        await sequelize.query(
+          'UPDATE items SET name=?, price=?, old_price=?, description=?, is_recommended=?, item_category_id=?, updated_at=NOW() WHERE id=? AND restaurant_id=?',
+          { replacements: [name, price, old_price || 0, description || '', is_recommended ? 1 : 0, owned.itemCategory, itemId, restaurant.id], transaction: t }
+        );
       }
-    }
+      await sequelize.query(
+        'DELETE FROM addon_category_item WHERE item_id = ? AND item_id IN (SELECT id FROM items WHERE restaurant_id = ?)',
+        { replacements: [itemId, restaurant.id], transaction: t }
+      );
+      for (const acId of owned.addonIds) {
+        await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, itemId], transaction: t });
+      }
+    });
     res.json({ success: true });
   } catch (err) {
     console.error('updateItem error:', err.message);
     res.status(500).json({ success: false });
   }
 };
+
 
 exports.deleteItem = async (req, res) => {
   try {

@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { Restaurant, Item, ItemCategory, AddonCategory, Addon, RestaurantCategory, sequelize } = require('../models');
 const rq = require('../helpers/restaurantQueries');
+const { escapeLike } = require('../helpers/utils');
 
 exports.getDeliveryRestaurants = async (req, res) => {
   try {
@@ -14,7 +15,7 @@ exports.getDeliveryRestaurants = async (req, res) => {
     res.json(list);
   } catch (err) {
     console.error('[getDeliveryRestaurants]', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -29,7 +30,8 @@ exports.getSelfPickupRestaurants = async (req, res) => {
     });
     res.json(list);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -51,7 +53,8 @@ exports.getRestaurantInfo = async (req, res) => {
     data.is_favorited = false;
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -70,7 +73,8 @@ exports.getRestaurantInfoWithFavourite = async (req, res) => {
     data.is_favorited = !!fav;
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -85,7 +89,8 @@ exports.getRestaurantInfoById = async (req, res) => {
     delete data.commission_rate;
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -130,13 +135,15 @@ exports.getRestaurantItems = async (req, res) => {
 
     res.json({ recommended: rec, items: grouped });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
 exports.searchRestaurants = async (req, res) => {
   try {
-    const { q, latitude, longitude } = req.body;
+    const { q: qRaw, latitude, longitude } = req.body;
+    const q = escapeLike(qRaw);
     const rows = await Restaurant.findAll({
       where: { name: { [Op.like]: `%${q}%` }, is_accepted: 1 },
       limit: 20,
@@ -161,7 +168,8 @@ exports.searchRestaurants = async (req, res) => {
 
     res.json({ restaurants: nearRestaurants, items: nearItems });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -171,9 +179,11 @@ exports.getSingleItem = async (req, res) => {
       where: { id: req.body.id, is_active: 1 },
       include: [{ model: AddonCategory, as: 'addon_categories', include: [{ model: Addon, as: 'addons', where: { is_active: 1 }, required: false }] }],
     });
-    if (item) res.json(item);
+    if (!item) return res.status(404).json({ success: false, message: 'Producto no encontrado' });
+    res.json(item);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -201,17 +211,39 @@ exports.getFilteredRestaurants = async (req, res) => {
     const inactive = withAvg.filter((r) => !r.is_active).filter((r) => rq.checkOperation(latitude, longitude, r)).map((r) => rq.mapRow(r, latitude, longitude));
     res.json([...active, ...inactive]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
 exports.checkCartItemsAvailability = async (req, res) => {
   try {
-    const ids = req.body.items.map((i) => i.id);
-    const items = await Item.findAll({ where: { id: { [Op.in]: ids } }, attributes: ['id', 'price', 'is_active'] });
-    res.json(items.map((i) => ({ id: i.id, price: i.price, is_active: i.is_active })));
+    const rules = require('../helpers/orderRules');
+    const { loadCatalog } = require('../helpers/orderCatalog');
+    const raw = Array.isArray(req.body && req.body.items) ? req.body.items.slice(0, 100) : [];
+    const lines = [];
+    for (const i of raw) {
+      try {
+        const [line] = rules.normalizeLines([{ ...i, quantity: i && i.quantity !== undefined ? i.quantity : 1 }]);
+        lines.push(line);
+      } catch (_) { /* línea inválida: se omite */ }
+    }
+    if (!lines.length) return res.json([]);
+    const restaurantId = rules.toPositiveId(req.body.restaurant_id);
+    const data = await loadCatalog(lines);
+    const found = new Set(data.items.map((it) => Number(it.id)));
+    const result = lines.filter((l) => found.has(l.item_id)).map((line) => {
+      try {
+        const priced = rules.priceLines([line], { ...data, restaurantId });
+        return { id: line.item_id, price: priced.lines[0].unit_price, is_active: true };
+      } catch (_) {
+        const item = data.items.find((it) => Number(it.id) === line.item_id);
+        return { id: line.item_id, price: item ? rules.toMoney(item.price) : 0, is_active: false };
+      }
+    });
+    res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error al verificar el carrito' });
   }
 };
 
@@ -235,7 +267,8 @@ exports.getRestaurantInfoAndOperationalStatus = async (req, res) => {
     data.is_operational = rq.checkOperation(req.body.latitude, req.body.longitude, r);
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -258,6 +291,7 @@ exports.getFavoriteStores = async (req, res) => {
       .map((r) => rq.mapRow(r, latitude, longitude));
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[restaurant]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

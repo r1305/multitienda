@@ -9,7 +9,6 @@ const { rateLimitMiddleware } = require('./middleware/rateLimit');
 const { attachProcessor, closeQueue } = require('./helpers/notificationQueue');
 const {
   attachAppBaseMiddleware,
-  legacyPathRedirectMiddleware,
   getSpaIndexHtml,
   getAppBasePath,
   withAppBase,
@@ -21,7 +20,6 @@ async function createApp() {
   const app = express();
   const isProd = process.env.NODE_ENV === 'production';
   const appBase = getAppBasePath();
-  legacyPathRedirectMiddleware(app);
   attachAppBaseMiddleware(app);
 
   const firebaseWorkerPath = path.join(__dirname, '../public/firebase-messaging-sw.js');

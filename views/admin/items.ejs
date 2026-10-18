@@ -4,7 +4,7 @@
 var body = `
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>All Items (${typeof count !== 'undefined' ? count : 0})</span>
+        <span>All Items (${esc(typeof count !== 'undefined' ? count : 0)})</span>
         <span class="text-muted" style="font-size:12px"><i class="fas fa-info-circle"></i> Items se gestionan desde el panel del Store Owner</span>
     </div>
     <div class="card-body">
@@ -14,15 +14,15 @@ var body = `
 
 if (typeof items !== 'undefined' && items.length) {
   items.forEach(function(item) {
-    var img = item.image ? `<img src="${item.image}" width="50" height="37" style="object-fit:cover;border-radius:4px">` : '-';
-    var oldP = item.old_price > 0 ? ` <small class="text-muted"><del>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(item.old_price).toFixed(2)}</del></small>` : '';
+    var img = item.image ? `<img src="${esc(item.image)}" width="50" height="37" style="object-fit:cover;border-radius:4px">` : '-';
+    var oldP = item.old_price > 0 ? ` <small class="text-muted"><del>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(item.old_price).toFixed(2))}</del></small>` : '';
     body += `<tr>
       <td>${img}</td>
-      <td><strong>${item.name}</strong></td>
-      <td>${item.restaurant_name || '-'}</td>
-      <td>${item.category_name || '-'}</td>
-      <td>${typeof currency !== 'undefined' ? currency : '$'}${parseFloat(item.price || 0).toFixed(2)}${oldP}</td>
-      <td><span class="badge badge-${item.is_active ? 'success' : 'danger'}">${item.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td><strong>${esc(item.name)}</strong></td>
+      <td>${esc(item.restaurant_name || '-')}</td>
+      <td>${esc(item.category_name || '-')}</td>
+      <td>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(item.price || 0).toFixed(2))}${oldP}</td>
+      <td><span class="badge badge-${esc(item.is_active ? 'success' : 'danger')}">${esc(item.is_active ? 'Active' : 'Inactive')}</span></td>
     </tr>`;
   });
 } else {

@@ -7,16 +7,16 @@ if (typeof owner !== 'undefined' && owner) {
   if (typeof allStores !== 'undefined') {
     allStores.forEach(function(s) {
       var checked = (typeof assignedIds !== 'undefined' && assignedIds.includes(s.id)) ? 'checked' : '';
-      checkboxes += `<div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="stores" value="${s.id}" ${checked}><label class="form-check-label">${s.name}</label></div>`;
+      checkboxes += `<div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="stores" value="${esc(s.id)}" ${esc(checked)}><label class="form-check-label">${esc(s.name)}</label></div>`;
     });
   }
   if (!checkboxes) checkboxes = '<p class="text-muted">No stores available. Create a store first.</p>';
 
   body = `
   <div class="card">
-    <div class="card-header">Assign Stores to <strong>${owner.name}</strong> (${owner.email || ''})</div>
+    <div class="card-header">Assign Stores to <strong>${esc(owner.name)}</strong> (${esc(owner.email || '')})</div>
     <div class="card-body">
-      <form method="POST" action="/admin/store-owner/${owner.id}/stores/save">
+      <form method="POST" action="/admin/store-owner/${esc(owner.id)}/stores/save">
         ${checkboxes}
         <hr>
         <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>

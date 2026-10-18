@@ -22,6 +22,10 @@
         .sidebar-brand { padding: 18px 20px 24px; color: #fff; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: 8px; }
         .sidebar-brand i { font-size: 20px; color: var(--primary); }
         .sidebar a { color: #8a9bb5; padding: 11px 20px; display: flex; align-items: center; gap: 12px; text-decoration: none; font-size: 13px; font-weight: 500; border-left: 3px solid transparent; transition: all .15s; }
+        .sidebar form.logout-form { margin: 0; }
+        .sidebar form.logout-form button { color: #8a9bb5; padding: 11px 20px; display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; border: 0; border-left: 3px solid transparent; background: none; width: 100%; text-align: left; cursor: pointer; transition: all .15s; }
+        .sidebar form.logout-form button:hover { color: #fff; background: var(--dark-hover); }
+        .sidebar form.logout-form button i { width: 20px; text-align: center; font-size: 14px; }
         .sidebar a:hover { color: #fff; background: var(--dark-hover); }
         .sidebar a.active { color: #fff; background: var(--dark-hover); border-left-color: var(--primary); }
         .sidebar a i { width: 20px; text-align: center; font-size: 14px; }
@@ -152,7 +156,7 @@
         <a href="<%= bp %>/admin/payment-methods" class="<%= typeof active !== 'undefined' && active === 'paymentmethods' ? 'active' : '' %>"><i class="fas fa-credit-card"></i> Metodos de Pago</a>
         <a href="<%= bp %>/admin/settings" class="<%= typeof active !== 'undefined' && active === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> Settings</a>
         <hr>
-        <a href="<%= bp %>/auth/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+        <form method="POST" action="<%= bp %>/auth/logout" class="logout-form"><button type="submit"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button></form>
     </nav>
 
     <!-- Main -->

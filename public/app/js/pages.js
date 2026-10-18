@@ -718,7 +718,7 @@ const CheckoutPage = {
       this.processing = true; this.error = '';
       try {
         const addr = this.selectedAddress || Store.location || {};
-        const loc = { lat: parseFloat(addr.latitude || addr.lat || 0), lng: parseFloat(addr.longitude || addr.lng || 0), address: addr.address || '' };
+        const loc = { lat: parseFloat(addr.latitude || addr.lat || 0), lng: parseFloat(addr.longitude || addr.lng || 0), address: addr.address || '', address_id: addr.id || null };
         const restaurantId = Store.cart[0] ? Store.cart[0].restaurant_id : null;
         const res = await API.placeOrder({
           token: Store.user.auth_token, user: { data: Store.user },

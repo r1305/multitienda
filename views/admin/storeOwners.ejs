@@ -11,13 +11,13 @@ var body = `
 if (typeof storeOwners !== 'undefined' && storeOwners.length) {
   storeOwners.forEach(function(so) {
     body += `<tr>
-      <td>${so.id}</td>
-      <td><strong>${so.name}</strong></td>
-      <td>${so.email || '-'}</td>
-      <td>${so.phone || '-'}</td>
+      <td>${esc(so.id)}</td>
+      <td><strong>${esc(so.name)}</strong></td>
+      <td>${esc(so.email || '-')}</td>
+      <td>${esc(so.phone || '-')}</td>
       <td>
-        <a href="/admin/user/edit/${so.id}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
-        <a href="/admin/store-owner/${so.id}/stores" class="btn btn-sm btn-outline-info"><i class="fas fa-store"></i> Stores</a>
+        <a href="/admin/user/edit/${esc(so.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+        <a href="/admin/store-owner/${esc(so.id)}/stores" class="btn btn-sm btn-outline-info"><i class="fas fa-store"></i> Stores</a>
       </td>
     </tr>`;
   });

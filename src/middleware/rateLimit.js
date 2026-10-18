@@ -8,7 +8,14 @@ const OTP_WINDOW_MS = 15 * 60 * 1000;
 const OTP_MAX = parseInt(process.env.OTP_RATE_LIMIT || '5', 10);
 const otpMap = new Map();
 
-setInterval(() => {
+const timers = [];
+function startTimer(fn, ms) {
+  const t = setInterval(fn, ms);
+  if (t.unref) t.unref();
+  timers.push(t);
+}
+
+startTimer(() => {
   const now = Date.now();
   for (const [key, entry] of otpMap) {
     if (now - entry.start > OTP_WINDOW_MS) otpMap.delete(key);
@@ -21,7 +28,7 @@ function evictMemoryMap() {
     if (now - entry.start > RATE_WINDOW_MS) memoryMap.delete(key);
   }
 }
-setInterval(evictMemoryMap, RATE_WINDOW_MS);
+startTimer(evictMemoryMap, RATE_WINDOW_MS);
 
 async function checkRate(ip) {
   const redis = getRedis();
@@ -97,7 +104,7 @@ function evictAuthMap() {
     if (now - entry.start > AUTH_WINDOW_MS) authMap.delete(key);
   }
 }
-setInterval(evictAuthMap, AUTH_WINDOW_MS);
+startTimer(evictAuthMap, AUTH_WINDOW_MS);
 
 async function checkAuthRate(identifier) {
   const redis = getRedis();
@@ -131,4 +138,9 @@ function authRateLimit(req, res, next) {
     });
 }
 
-module.exports = { rateLimitMiddleware, otpRateLimit, authRateLimit, checkRate, RATE_MAX, RATE_WINDOW_MS };
+// Detiene los temporizadores de purga (para apagado ordenado y tests).
+function stop() {
+  while (timers.length) clearInterval(timers.pop());
+}
+
+module.exports = { stop, rateLimitMiddleware, otpRateLimit, authRateLimit, checkRate, RATE_MAX, RATE_WINDOW_MS };

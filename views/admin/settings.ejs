@@ -7,7 +7,7 @@ function esc(val) { return String(val || '').replace(/&/g, '&amp;').replace(/</g
 <%
 var _b = typeof appBase !== 'undefined' ? appBase : '';
 var body = `
-<form method="POST" action="${_b}/admin/settings">
+<form method="POST" action="${esc(_b)}/admin/settings">
     <div class="card">
         <div class="card-header">
             <ul class="nav nav-tabs card-header-tabs">
@@ -53,7 +53,7 @@ var body = `
                 <div class="tab-pane fade" id="delivery">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group"><label>Enable Delivery Pin</label><select name="enableDeliveryPin" class="form-control"><option value="true" ${s.enableDeliveryPin === 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enableDeliveryPin !== 'true' ? 'selected' : ''}>No</option></select></div>
+                            <div class="form-group"><label>Enable Delivery Pin</label><select name="enableDeliveryPin" class="form-control"><option value="true" ${esc(s.enableDeliveryPin === 'true' ? 'selected' : '')}>Yes</option><option value="false" ${esc(s.enableDeliveryPin !== 'true' ? 'selected' : '')}>No</option></select></div>
                             <div class="form-group"><label>Radio de asignacion de repartidores (km)</label><input type="number" step="0.1" name="deliveryRadius" class="form-control" value="${esc(s.deliveryRadius || '10')}"></div>
                         </div>
                         <div class="col-md-6">
@@ -75,7 +75,7 @@ var body = `
                             <div class="form-group"><label>Firebase App ID</label><input type="text" name="firebaseAppId" class="form-control" value="${esc(s.firebaseAppId)}"></div>
                             <div class="form-group"><label>Firebase Measurement ID (opcional)</label><input type="text" name="firebaseMeasurementId" class="form-control" value="${esc(s.firebaseMeasurementId)}"></div>
                             <div class="form-group"><label>Firebase VAPID Key (Web Push Certificate)</label><input type="text" name="firebaseVapidKey" class="form-control" value="${esc(s.firebaseVapidKey)}"></div>
-                            <div class="form-group"><label>Enable Push Notifications</label><select name="enablePushNotificationOrders" class="form-control"><option value="true" ${s.enablePushNotificationOrders === 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enablePushNotificationOrders !== 'true' ? 'selected' : ''}>No</option></select></div>
+                            <div class="form-group"><label>Enable Push Notifications</label><select name="enablePushNotificationOrders" class="form-control"><option value="true" ${esc(s.enablePushNotificationOrders === 'true' ? 'selected' : '')}>Yes</option><option value="false" ${esc(s.enablePushNotificationOrders !== 'true' ? 'selected' : '')}>No</option></select></div>
                         </div>
                     </div>
                 </div>
@@ -108,7 +108,7 @@ var body = `
 <div class="card mt-3">
     <div class="card-header">Upload Favicon</div>
     <div class="card-body">
-        <form method="POST" action="${_b}/admin/settings/upload-favicon" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+        <form method="POST" action="${esc(_b)}/admin/settings/upload-favicon" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
             <input type="file" name="favicon" class="form-control-file" accept="image/*" required style="max-width:250px">
             <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
         </form>
@@ -119,7 +119,7 @@ var body = `
     <div class="card-body">
         <p class="text-muted" style="font-size:12px;margin-bottom:8px">Logo principal de la plataforma. Se muestra en el sidebar del admin y en la app de clientes.</p>
         ${s.logoUrl ? '<div class="mb-2"><img src="'+esc(s.logoUrl)+'" height="48" style="border-radius:8px;border:1px solid #eee;background:#f8f8f8;padding:4px"></div>' : ''}
-        <form method="POST" action="${_b}/admin/settings/upload-logo" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+        <form method="POST" action="${esc(_b)}/admin/settings/upload-logo" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
             <input type="file" name="logo" class="form-control-file" accept="image/*" required style="max-width:250px">
             <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
         </form>
@@ -130,7 +130,7 @@ var body = `
     <div class="card-body">
         <p class="text-muted" style="font-size:12px;margin-bottom:8px">Imagen de portada/promocional. Se muestra en el home de la app y en listados destacados.</p>
         ${s.listingImageUrl ? '<div class="mb-2"><img src="'+esc(s.listingImageUrl)+'" height="80" style="border-radius:8px;border:1px solid #eee;background:#f8f8f8;padding:4px"></div>' : ''}
-        <form method="POST" action="${_b}/admin/settings/upload-listing-image" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+        <form method="POST" action="${esc(_b)}/admin/settings/upload-listing-image" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
             <input type="file" name="listingImage" class="form-control-file" accept="image/*" required style="max-width:250px">
             <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
         </form>
@@ -140,7 +140,7 @@ var body = `
     <div class="card-header bg-danger text-white"><i class="fas fa-exclamation-triangle"></i> Zona Peligrosa</div>
     <div class="card-body">
         <p class="text-muted" style="font-size:13px;margin-bottom:12px">Esto eliminara TODOS los datos (pedidos, tiendas, items, usuarios) excepto el superadmin. Las imagenes subidas tambien seran eliminadas. Esta accion no se puede deshacer.</p>
-        <form method="POST" action="${_b}/admin/clean-data" onsubmit="return confirm('ATENCION: Esto eliminara TODOS los datos. Esta seguro?')" style="display:flex;gap:8px;align-items:center">
+        <form method="POST" action="${esc(_b)}/admin/clean-data" onsubmit="return confirm('ATENCION: Esto eliminara TODOS los datos. Esta seguro?')" style="display:flex;gap:8px;align-items:center">
             <input type="text" name="pin_code" placeholder="PIN Code" required class="form-control" style="max-width:150px">
             <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Clean Data</button>
         </form>
