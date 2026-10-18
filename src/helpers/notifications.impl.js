@@ -26,12 +26,20 @@ function getFirebaseApp() {
   }
 }
 
+function appPathPrefix() {
+  const { getAppBasePath } = require('./appBasePath');
+  return getAppBasePath();
+}
+
 async function getAppBaseUrl() {
   const cache = require('./cache');
   const cached = await cache.get('settings:appBaseUrl');
   if (cached) return cached;
 
   let base = (process.env.APP_URL || '').trim().replace(/\/$/, '');
+  const prefix = appPathPrefix();
+  if (prefix && base && !base.endsWith(prefix)) base = `${base}${prefix}`;
+  else if (prefix && !base) base = prefix;
   if (!/^https?:\/\//i.test(base)) {
     try {
       const [rows] = await sequelize.query(
@@ -41,7 +49,8 @@ async function getAppBaseUrl() {
     } catch (_) { /* ignore */ }
   }
 
-  const resolved = /^https?:\/\//i.test(base) ? base : null;
+  let resolved = /^https?:\/\//i.test(base) ? base : null;
+  if (!resolved && prefix) resolved = prefix;
   if (resolved) await cache.set('settings:appBaseUrl', resolved, 600);
   return resolved;
 }
@@ -91,7 +100,10 @@ function inferNotificationUrl(data, baseUrl) {
 
 async function sendViaFCM(title, message, userId, role, data) {
   const app = getFirebaseApp();
-  if (!app) return null;
+  if (!app) {
+    console.warn('[FCM] Firebase Admin no disponible (instala firebase-admin y FIREBASE_CREDENTIALS)');
+    return { ok: false, reason: 'firebase_not_configured' };
+  }
 
   let admin;
   try {
@@ -131,37 +143,72 @@ async function sendViaFCM(title, message, userId, role, data) {
   const android = { priority: 'high', notification: { sound: 'default', channelId: 'orders' } };
   const apns = { payload: { aps: { sound: 'default', badge: 1 } } };
 
-  try {
-    if (userId) {
-      const [tokens] = await sequelize.query(
-        "SELECT token FROM push_tokens WHERE user_id = ? AND token IS NOT NULL AND token != ''",
-        { replacements: [userId] }
-      );
-      if (!tokens.length) return null;
-      const tokenList = tokens.map((t) => t.token).filter(Boolean);
-      if (!tokenList.length) return null;
-
-      const result = await messaging.sendEachForMulticast({
-        tokens: tokenList,
-        notification: { title, body: message },
+  function buildMessageForToken(token, deviceType) {
+    const isWeb = String(deviceType || '').toLowerCase() === 'web';
+    if (isWeb) {
+      return {
+        token,
         data: fcmData,
         webpush,
-        android,
-        apns,
-      });
+      };
+    }
+    return {
+      token,
+      notification: { title, body: message },
+      data: fcmData,
+      webpush,
+      android,
+      apns,
+    };
+  }
 
-      if (result.responses) {
-        const invalid = [];
-        result.responses.forEach((r, i) => {
-          if (!r.success && r.error && ['messaging/invalid-registration-token', 'messaging/registration-token-not-registered'].includes(r.error.code)) {
-            invalid.push(tokenList[i]);
-          }
-        });
-        if (invalid.length) {
-          await sequelize.query('DELETE FROM push_tokens WHERE token IN (?)', { replacements: [invalid] });
+  function processSendEachResult(result, tokenRows) {
+    const invalid = [];
+    if (result.responses) {
+      result.responses.forEach((r, i) => {
+        if (r.success) return;
+        const err = r.error;
+        const code = err?.code || 'unknown';
+        const tokenPreview = tokenRows[i]?.token ? `${String(tokenRows[i].token).slice(0, 12)}…` : '?';
+        console.warn('[FCM] Token falló:', code, err?.message || '', tokenPreview);
+        if (err && ['messaging/invalid-registration-token', 'messaging/registration-token-not-registered'].includes(code)) {
+          invalid.push(tokenRows[i].token);
         }
+      });
+    }
+    if (invalid.length) {
+      sequelize.query('DELETE FROM push_tokens WHERE token IN (?)', { replacements: [invalid] }).catch(() => {});
+    }
+    const successCount = result.successCount || 0;
+    const failureCount = result.failureCount || 0;
+    if (failureCount && successCount) {
+      console.warn('[FCM] Envío parcial user_id=', userId, 'ok=', successCount, 'fail=', failureCount);
+    }
+    return { successCount, failureCount, invalidCount: invalid.length };
+  }
+
+  try {
+    if (userId) {
+      const uid = Number(userId);
+      const [tokens] = await sequelize.query(
+        "SELECT token, device_type FROM push_tokens WHERE user_id = ? AND token IS NOT NULL AND token != ''",
+        { replacements: [uid] }
+      );
+      if (!tokens.length) {
+        console.warn('[FCM] Sin tokens push para user_id=', uid);
+        return { ok: false, reason: 'no_tokens', userId: uid };
       }
-      return result;
+      const tokenRows = tokens.filter((t) => t.token);
+      if (!tokenRows.length) return { ok: false, reason: 'no_tokens', userId: uid };
+
+      const messages = tokenRows.map((row) => buildMessageForToken(row.token, row.device_type));
+      const result = await messaging.sendEach(messages);
+      const { successCount, failureCount } = processSendEachResult(result, tokenRows);
+
+      if (!successCount) {
+        return { ok: false, reason: 'all_failed', userId: uid, tokenCount: tokenRows.length, failureCount };
+      }
+      return { ok: true, userId: uid, tokenCount: tokenRows.length, successCount, failureCount };
     }
     if (role) {
       const topic = role.replace(' ', '_').toLowerCase();
@@ -183,8 +230,8 @@ async function sendViaFCM(title, message, userId, role, data) {
       apns,
     });
   } catch (e) {
-    console.error('FCM error:', e.message);
-    return null;
+    console.error('[FCM] Error:', e.message);
+    return { ok: false, reason: 'send_error', message: e.message };
   }
 }
 
@@ -358,6 +405,7 @@ async function notifyDeliveryNewOrder(order) {
 }
 
 async function notifyDeliveryOrderAssigned(order, deliveryUserId) {
+  const uid = Number(deliveryUserId);
   const title = 'Pedido asignado';
   const message = `Te asignaron el pedido #${order.unique_order_id}`;
   const data = {
@@ -366,8 +414,17 @@ async function notifyDeliveryOrderAssigned(order, deliveryUserId) {
     order_id: Number(order.id),
     unique_order_id: order.unique_order_id,
   };
-  await saveNotification(deliveryUserId, title, message, data);
-  await sendPushNotification(title, message, deliveryUserId, null, data);
+  await saveNotification(uid, title, message, data);
+  const pushResult = await sendPushNotification(title, message, uid, null, data);
+  if (!pushResult || pushResult.ok === false) {
+    console.warn('[notifyDeliveryOrderAssigned] Push no entregado', {
+      deliveryUserId: uid,
+      orderId: order.id,
+      reason: pushResult?.reason || 'unknown',
+      failureCount: pushResult?.failureCount,
+    });
+  }
+  return pushResult;
 }
 
 async function notifyAdminNewDelivery(name, phone) {

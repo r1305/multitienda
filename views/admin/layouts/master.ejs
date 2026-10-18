@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Admin - Multitienda</title>
+    <% const bp = (typeof appBase !== 'undefined' && appBase) ? appBase : ''; %>
+    <% const favUrl = (typeof settings !== 'undefined' && settings && settings.faviconUrl) ? settings.faviconUrl : bp + '/assets/img/favicons/favicon-96x96.png'; %>
+    <link rel="icon" type="image/png" href="<%= favUrl %>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/vendor/fontawesome-free-6.5.0-web/css/all.min.css">
+    <link rel="stylesheet" href="<%= bp %>/assets/vendor/fontawesome-free-6.5.0-web/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap4.min.css">
     <style>
@@ -121,35 +124,35 @@
 
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
-        <div class="sidebar-brand"><i class="fas fa-store"></i> Multitienda</div>
+        <div class="sidebar-brand"><% if (settings && settings.logoUrl) { %><img src="<%= settings.logoUrl %>" height="24" style="border-radius:4px;vertical-align:middle;margin-right:8px"><% } else { %><i class="fas fa-store"></i> <% } %> Multitienda</div>
         <div class="sidebar-section">Principal</div>
-        <a href="/admin/dashboard" class="<%= typeof active !== 'undefined' && active === 'dashboard' ? 'active' : '' %>"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <a href="/admin/orders" class="<%= typeof active !== 'undefined' && active === 'orders' ? 'active' : '' %>"><i class="fas fa-shopping-cart"></i> Pedidos</a>
-        <a href="/admin/stores" class="<%= typeof active !== 'undefined' && active === 'stores' ? 'active' : '' %>"><i class="fas fa-store"></i> Tiendas</a>
+        <a href="<%= bp %>/admin/dashboard" class="<%= typeof active !== 'undefined' && active === 'dashboard' ? 'active' : '' %>"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="<%= bp %>/admin/orders" class="<%= typeof active !== 'undefined' && active === 'orders' ? 'active' : '' %>"><i class="fas fa-shopping-cart"></i> Pedidos</a>
+        <a href="<%= bp %>/admin/stores" class="<%= typeof active !== 'undefined' && active === 'stores' ? 'active' : '' %>"><i class="fas fa-store"></i> Tiendas</a>
 
         <div class="sidebar-section">Catálogo</div>
-        <a href="/admin/items" class="<%= typeof active !== 'undefined' && active === 'items' ? 'active' : '' %>"><i class="fas fa-utensils"></i> Items</a>
-        <a href="/admin/item-categories" class="<%= typeof active !== 'undefined' && active === 'itemcategories' ? 'active' : '' %>"><i class="fas fa-list"></i> Categorías</a>
-        <a href="/admin/addon-categories" class="<%= typeof active !== 'undefined' && active === 'addoncategories' ? 'active' : '' %>"><i class="fas fa-puzzle-piece"></i> Addons</a>
+        <a href="<%= bp %>/admin/items" class="<%= typeof active !== 'undefined' && active === 'items' ? 'active' : '' %>"><i class="fas fa-utensils"></i> Items</a>
+        <a href="<%= bp %>/admin/item-categories" class="<%= typeof active !== 'undefined' && active === 'itemcategories' ? 'active' : '' %>"><i class="fas fa-list"></i> Categorías</a>
+        <a href="<%= bp %>/admin/addon-categories" class="<%= typeof active !== 'undefined' && active === 'addoncategories' ? 'active' : '' %>"><i class="fas fa-puzzle-piece"></i> Addons</a>
 
         <div class="sidebar-section">Usuarios</div>
-        <a href="/admin/users" class="<%= typeof active !== 'undefined' && active === 'users' ? 'active' : '' %>"><i class="fas fa-users"></i> Usuarios</a>
-        <a href="/admin/delivery-guys" class="<%= typeof active !== 'undefined' && active === 'delivery' ? 'active' : '' %>"><i class="fas fa-motorcycle"></i> Repartidores</a>
-        <a href="/admin/store-owners" class="<%= typeof active !== 'undefined' && active === 'storeowners' ? 'active' : '' %>"><i class="fas fa-user-tie"></i> Dueños</a>
+        <a href="<%= bp %>/admin/users" class="<%= typeof active !== 'undefined' && active === 'users' ? 'active' : '' %>"><i class="fas fa-users"></i> Usuarios</a>
+        <a href="<%= bp %>/admin/delivery-guys" class="<%= typeof active !== 'undefined' && active === 'delivery' ? 'active' : '' %>"><i class="fas fa-motorcycle"></i> Repartidores</a>
+        <a href="<%= bp %>/admin/store-owners" class="<%= typeof active !== 'undefined' && active === 'storeowners' ? 'active' : '' %>"><i class="fas fa-user-tie"></i> Dueños</a>
 
         <div class="sidebar-section">Marketing</div>
-        <a href="/admin/promo-sliders" class="<%= typeof active !== 'undefined' && active === 'sliders' ? 'active' : '' %>"><i class="fas fa-images"></i> Sliders</a>
-        <a href="/admin/coupons" class="<%= typeof active !== 'undefined' && active === 'coupons' ? 'active' : '' %>"><i class="fas fa-ticket-alt"></i> Cupones</a>
-        <a href="/admin/store-category-slider" class="<%= typeof active !== 'undefined' && active === 'categoryslider' ? 'active' : '' %>"><i class="fas fa-th-large"></i> Cat. Slider</a>
+        <a href="<%= bp %>/admin/promo-sliders" class="<%= typeof active !== 'undefined' && active === 'sliders' ? 'active' : '' %>"><i class="fas fa-images"></i> Sliders</a>
+        <a href="<%= bp %>/admin/coupons" class="<%= typeof active !== 'undefined' && active === 'coupons' ? 'active' : '' %>"><i class="fas fa-ticket-alt"></i> Cupones</a>
+        <a href="<%= bp %>/admin/store-category-slider" class="<%= typeof active !== 'undefined' && active === 'categoryslider' ? 'active' : '' %>"><i class="fas fa-th-large"></i> Cat. Slider</a>
 
         <div class="sidebar-section">Configuración</div>
-        <a href="/admin/translations" class="<%= typeof active !== 'undefined' && active === 'translations' ? 'active' : '' %>"><i class="fas fa-language"></i> Idiomas</a>
-        <a href="/admin/notifications" class="<%= typeof active !== 'undefined' && active === 'notifications' ? 'active' : '' %>"><i class="fas fa-bell"></i> Notificaciones</a>
-        <a href="/admin/store-payouts" class="<%= typeof active !== 'undefined' && active === 'payouts' ? 'active' : '' %>"><i class="fas fa-money-bill"></i> Pagos</a>
-        <a href="/admin/payment-methods" class="<%= typeof active !== 'undefined' && active === 'paymentmethods' ? 'active' : '' %>"><i class="fas fa-credit-card"></i> Metodos de Pago</a>
-        <a href="/admin/settings" class="<%= typeof active !== 'undefined' && active === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> Settings</a>
+        <a href="<%= bp %>/admin/translations" class="<%= typeof active !== 'undefined' && active === 'translations' ? 'active' : '' %>"><i class="fas fa-language"></i> Idiomas</a>
+        <a href="<%= bp %>/admin/notifications" class="<%= typeof active !== 'undefined' && active === 'notifications' ? 'active' : '' %>"><i class="fas fa-bell"></i> Notificaciones</a>
+        <a href="<%= bp %>/admin/store-payouts" class="<%= typeof active !== 'undefined' && active === 'payouts' ? 'active' : '' %>"><i class="fas fa-money-bill"></i> Pagos</a>
+        <a href="<%= bp %>/admin/payment-methods" class="<%= typeof active !== 'undefined' && active === 'paymentmethods' ? 'active' : '' %>"><i class="fas fa-credit-card"></i> Metodos de Pago</a>
+        <a href="<%= bp %>/admin/settings" class="<%= typeof active !== 'undefined' && active === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> Settings</a>
         <hr>
-        <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+        <a href="<%= bp %>/auth/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
     </nav>
 
     <!-- Main -->
@@ -262,6 +265,24 @@
       }
       (function() { var t = localStorage.getItem('adminTheme') || 'light'; document.documentElement.setAttribute('data-theme', t); updateThemeIcon(); })();
 
+    </script>
+    <script>
+      // Auto-inject CSRF token into all POST forms
+      (function() {
+        var token = '<%= typeof csrfToken !== "undefined" ? csrfToken : "" %>';
+        if (!token) return;
+        document.querySelectorAll('form').forEach(function(form) {
+          var method = (form.method || 'GET').toUpperCase();
+          if (method !== 'POST') return;
+          // Avoid duplicate tokens
+          if (form.querySelector('input[name="_csrf"]')) return;
+          var input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = '_csrf';
+          input.value = token;
+          form.appendChild(input);
+        });
+      })();
     </script>
     <% if (typeof scripts !== 'undefined') { %><%- scripts %><% } %>
 </body>

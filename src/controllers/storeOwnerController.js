@@ -92,7 +92,11 @@ exports.getSingleOrder = async (req, res) => {
 
 exports.cancelOrder = async (req, res) => {
   try {
-    await Order.update({ orderstatus_id: 6 }, { where: { id: req.body.order_id } });
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const order = await Order.findOne({ where: { id: req.body.order_id, restaurant_id: restaurant.id } });
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    await Order.update({ orderstatus_id: 6 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -101,7 +105,11 @@ exports.cancelOrder = async (req, res) => {
 
 exports.acceptOrder = async (req, res) => {
   try {
-    await Order.update({ orderstatus_id: 2 }, { where: { id: req.body.order_id } });
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const order = await Order.findOne({ where: { id: req.body.order_id, restaurant_id: restaurant.id } });
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    await Order.update({ orderstatus_id: 2 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -110,7 +118,9 @@ exports.acceptOrder = async (req, res) => {
 
 exports.markSelfpickupOrderReady = async (req, res) => {
   try {
-    await Order.update({ orderstatus_id: 7 }, { where: { id: req.body.order_id } });
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await Order.update({ orderstatus_id: 7 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -119,7 +129,9 @@ exports.markSelfpickupOrderReady = async (req, res) => {
 
 exports.markSelfpickupOrderCompleted = async (req, res) => {
   try {
-    await Order.update({ orderstatus_id: 5 }, { where: { id: req.body.order_id } });
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await Order.update({ orderstatus_id: 5 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -128,7 +140,9 @@ exports.markSelfpickupOrderCompleted = async (req, res) => {
 
 exports.confirmScheduledOrder = async (req, res) => {
   try {
-    await Order.update({ orderstatus_id: 11 }, { where: { id: req.body.order_id } });
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    await Order.update({ orderstatus_id: 11 }, { where: { id: req.body.order_id, restaurant_id: restaurant.id } });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -154,8 +168,10 @@ exports.getMenu = async (req, res) => {
 
 exports.toggleItemStatus = async (req, res) => {
   try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
     const item = await Item.findByPk(req.body.item_id);
-    if (!item) return res.json({ success: false });
+    if (!item || item.restaurant_id !== restaurant.id) return res.json({ success: false });
     await item.update({ is_active: !item.is_active });
     res.json({ success: true, is_active: item.is_active });
   } catch (err) {
@@ -176,7 +192,10 @@ exports.searchItems = async (req, res) => {
 
 exports.editItem = async (req, res) => {
   try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json(null);
     const item = await Item.findByPk(req.body.item_id);
+    if (!item || item.restaurant_id !== restaurant.id) return res.json(null);
     res.json(item);
   } catch (err) {
     res.status(500).json(null);
@@ -185,7 +204,11 @@ exports.editItem = async (req, res) => {
 
 exports.updateItem = async (req, res) => {
   try {
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
     const { item_id, name, price, description } = req.body;
+    const item = await Item.findByPk(item_id);
+    if (!item || item.restaurant_id !== restaurant.id) return res.json({ success: false });
     await Item.update({ name, price, description }, { where: { id: item_id } });
     res.json({ success: true });
   } catch (err) {
@@ -388,8 +411,13 @@ exports.createItem = async (req, res) => {
     );
     const itemId = meta;
     if (addon_category_ids) {
-      const ids = typeof addon_category_ids === 'string' ? JSON.parse(addon_category_ids) : addon_category_ids;
-      for (const acId of ids) { await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, itemId] }); }
+      let ids;
+      try {
+        ids = typeof addon_category_ids === 'string' ? JSON.parse(addon_category_ids) : addon_category_ids;
+      } catch (_) { ids = []; }
+      if (Array.isArray(ids)) {
+        for (const acId of ids) { await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, itemId] }); }
+      }
     }
     res.json({ success: true });
   } catch (err) {
@@ -418,8 +446,13 @@ exports.updateItem = async (req, res) => {
     // Update addon category links
     await sequelize.query('DELETE FROM addon_category_item WHERE item_id = ?', { replacements: [item_id] });
     if (addon_category_ids) {
-      const ids = typeof addon_category_ids === 'string' ? JSON.parse(addon_category_ids) : addon_category_ids;
-      for (const acId of ids) { await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, item_id] }); }
+      let ids;
+      try {
+        ids = typeof addon_category_ids === 'string' ? JSON.parse(addon_category_ids) : addon_category_ids;
+      } catch (_) { ids = []; }
+      if (Array.isArray(ids)) {
+        for (const acId of ids) { await sequelize.query('INSERT IGNORE INTO addon_category_item (addon_category_id, item_id) VALUES (?,?)', { replacements: [acId, item_id] }); }
+      }
     }
     res.json({ success: true });
   } catch (err) {

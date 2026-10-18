@@ -1,4 +1,3 @@
-process.noDeprecation = true;
 require('dotenv').config();
 
 const { createApp, shutdown } = require('./src/app');
@@ -12,9 +11,13 @@ let server;
 createApp()
   .then((app) => sequelize.authenticate().then(() => app))
   .then((app) => {
+    const { wrapAppWithBasePath } = require('./src/helpers/appBasePath');
+    return wrapAppWithBasePath(app);
+  })
+  .then((app) => {
     if (!isProd) console.log('Database connected.');
     server = app.listen(PORT, () => {
-      if (!isProd) console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Server running on http://localhost:${PORT}${isProd ? ' (NODE_ENV=production)' : ''}`);
     });
     return app;
   })

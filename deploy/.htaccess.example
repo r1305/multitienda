@@ -1,5 +1,10 @@
 # cPanel / Apache — place in public_html or app root as .htaccess
 # Adjust RewriteBase and paths
+#
+# Gateway unificado (recomendado): PassengerAppRoot = carpeta apps, startup passenger_app.js
+# Multitienda queda en https://tudominio.com/multitienda/
+#
+# Solo multitienda-node: APP_BASE_PATH=/multitienda en .env
 
 PassengerAppRoot /home/USER/multitienda-node
 PassengerAppType node

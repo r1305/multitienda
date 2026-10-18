@@ -1,6 +1,23 @@
+function clientAppBase() {
+  const b = (typeof window !== 'undefined' && window.__APP_BASE_PATH__)
+    ? String(window.__APP_BASE_PATH__).replace(/\/$/, '')
+    : '';
+  return b;
+}
+
 const API = {
   _base: null,
-  _baseCandidates: ['/api', '/public/api'],
+  _baseCandidates: ['/apps/multitienda/api', '/multitienda/api', '/api', '/public/api', '/apps/multitienda/public/api'],
+
+  appPath(subpath) {
+    const base = clientAppBase();
+    const p = subpath.startsWith('/') ? subpath : `/${subpath}`;
+    return base ? `${base}${p}` : p;
+  },
+
+  publicApiBase() {
+    return this.appPath('/public/api');
+  },
 
   get token() {
     return localStorage.getItem('appToken') || null;
@@ -18,10 +35,11 @@ const API = {
 
   _candidateBases() {
     const metaBase = this._apiBaseFromMeta();
+    const fromBase = clientAppBase() ? [`${clientAppBase()}/api`, `${clientAppBase()}/public/api`] : [];
     const list = metaBase
-      ? [metaBase, ...this._baseCandidates.filter((b) => b !== metaBase)]
-      : [...this._baseCandidates];
-    return list;
+      ? [metaBase, ...fromBase, ...this._baseCandidates.filter((b) => b !== metaBase && !fromBase.includes(b))]
+      : [...fromBase, ...this._baseCandidates];
+    return [...new Set(list.filter(Boolean))];
   },
 
   async resolveBase(force) {
@@ -61,10 +79,10 @@ const API = {
       let authToken = null;
       if (path.startsWith('/conversation/') && data.token) {
         authToken = data.token;
-      } else if (path.startsWith('/delivery/') && deliveryToken) {
+      } else if ((path.startsWith('/delivery/') || path.includes('/delivery/')) && deliveryToken) {
         authToken = deliveryToken;
         data.token = deliveryToken;
-      } else if (path.startsWith('/store-owner/') && storeOwnerToken) {
+      } else if ((path.startsWith('/store-owner/') || path.includes('/store-owner/')) && storeOwnerToken) {
         authToken = storeOwnerToken;
         data.token = storeOwnerToken;
       } else if (this.token) {

@@ -129,7 +129,7 @@ exports.placeOrder = async (req, res) => {
 
     const { balance: walletBalance } = await getWalletBalance(user.id);
     let payable = orderTotal;
-    if (method === 'COD' && partial_wallet) payable = orderTotal - walletBalance;
+    if (method === 'COD' && partial_wallet) payable = Math.max(0, orderTotal - walletBalance);
 
     const newOrder = await Order.create({
       unique_order_id, user_id: user.id, restaurant_id, orderstatus_id,
@@ -137,9 +137,9 @@ exports.placeOrder = async (req, res) => {
       restaurant_charge: restaurant.restaurant_charges, tax: 0,
       tax_amount: 0, coupon_name, coupon_amount, tip_amount: tipAmount || 0,
       payment_mode: method, transaction_id: payment_token,
-      address: delivery_type == 2 ? 'NA' : (location?.address || userAddress?.address || ''),
+      address: delivery_type == 2 ? 'NA' : (location?.address || ''),
       location: JSON.stringify(location), delivery_type,
-      delivery_pin: Math.random().toString().slice(2, 7),
+      delivery_pin: require('crypto').randomInt(10000, 100000).toString(),
       order_comment, distance, cash_change_amount: cash_change_amount || null,
       is_scheduled, schedule_date: schedule_date ? JSON.stringify(schedule_date) : null,
       schedule_slot: schedule_slot ? JSON.stringify(schedule_slot) : null,

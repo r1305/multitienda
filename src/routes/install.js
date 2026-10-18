@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const { getAppBasePath, withAppBase } = require('../helpers/appBasePath');
+
+// Block install route in production
+const isProd = process.env.NODE_ENV === 'production';
 
 // Install page - shows form
 router.get('/install', async (req, res) => {
+  if (isProd) return res.status(404).send('Not found');
   // Check if already installed
   try {
     const { Sequelize } = require('sequelize');
@@ -45,6 +50,7 @@ router.get('/install', async (req, res) => {
 
 // Process installation
 router.post('/install', async (req, res) => {
+  if (isProd) return res.status(404).send('Not found');
   const { db_name, db_password, email, password, pin_code } = req.body;
 
   try {
@@ -463,12 +469,68 @@ router.post('/install', async (req, res) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS slides (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id INT UNSIGNED,
+        image VARCHAR(255),
+        sort_position INT DEFAULT 0,
+        is_active TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS popular_geo_places (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255),
+        latitude DECIMAL(10,8),
+        longitude DECIMAL(11,8),
+        address TEXT,
+        is_active TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS store_payouts (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id INT UNSIGNED,
+        user_id INT UNSIGNED,
+        amount DECIMAL(10,2),
+        status ENUM('pending','approved','rejected') DEFAULT 'pending',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS favorites (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        user_id INT UNSIGNED,
+        favoriteable_id INT UNSIGNED,
+        favoriteable_type VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
     `;
 
     // Execute each CREATE TABLE statement
     const statements = tables.split(';').filter(s => s.trim());
     for (const stmt of statements) {
       await seq.query(stmt);
+    }
+
+    // Add performance indexes
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_orders_restaurant ON orders(restaurant_id)',
+      'CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(orderstatus_id)',
+      'CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_orderitems_order ON orderitems(order_id)',
+      'CREATE INDEX IF NOT EXISTS idx_accept_deliveries_order ON accept_deliveries(order_id)',
+      'CREATE INDEX IF NOT EXISTS idx_model_has_roles_model ON model_has_roles(model_id)',
+      'CREATE INDEX IF NOT EXISTS idx_delivery_earnings_user ON delivery_earnings(user_id)',
+    ];
+    for (const idx of indexes) {
+      try { await seq.query(idx); } catch (_) { /* index may already exist */ }
     }
 
     // Create roles
@@ -500,7 +562,10 @@ router.post('/install', async (req, res) => {
 
     await seq.close();
 
-    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const host = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+    const prefix = getAppBasePath();
+    const baseUrl = prefix && !host.endsWith(prefix) ? `${host}${prefix}` : host;
+    const appLink = (p) => (host + withAppBase(p));
 
     res.send(`
 <!DOCTYPE html>
@@ -511,10 +576,10 @@ router.post('/install', async (req, res) => {
   <h1>✅ Instalación Exitosa</h1>
   <p>Tu aplicación multitienda está lista. Guarda estas URLs:</p>
   <ul class="url-list">
-    <li><span>🛒 Cliente</span><a href="${baseUrl}/">${baseUrl}/</a></li>
-    <li><span>🏪 Store Owner</span><a href="${baseUrl}/store-owner">${baseUrl}/store-owner</a></li>
-    <li><span>🏍 Delivery</span><a href="${baseUrl}/delivery">${baseUrl}/delivery</a></li>
-    <li><span>⚙️ Admin</span><a href="${baseUrl}/admin/dashboard">${baseUrl}/admin/dashboard</a></li>
+    <li><span>🛒 Cliente</span><a href="${appLink('/')}">${appLink('/')}</a></li>
+    <li><span>🏪 Store Owner</span><a href="${appLink('/store-owner')}">${appLink('/store-owner')}</a></li>
+    <li><span>🏍 Delivery</span><a href="${appLink('/delivery')}">${appLink('/delivery')}</a></li>
+    <li><span>⚙️ Admin</span><a href="${appLink('/admin/dashboard')}">${appLink('/admin/dashboard')}</a></li>
   </ul>
   <p style="font-size:12px;color:#888;margin-bottom:16px"><strong>Email:</strong> ${email}<br><strong>PIN Code:</strong> ${pin_code} (guárdalo para limpiar datos)</p>
   <a href="/auth/login" class="btn">Ir al Admin</a>
@@ -526,7 +591,7 @@ router.post('/install', async (req, res) => {
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Error</title>
 <style>body{font-family:sans-serif;padding:40px;text-align:center}.error{background:#ffebee;color:#c62828;padding:20px;border-radius:8px;max-width:500px;margin:0 auto}</style>
-</head><body><div class="error"><h3>Error de instalación</h3><p>${err.message}</p><br><a href="/install">Volver</a></div></body></html>`);
+</head><body><div class="error"><h3>Error de instalación</h3><p>No se pudo completar la instalación. Verifica los datos e intenta de nuevo.</p><br><a href="/install">Volver</a></div></body></html>`);
   }
 });
 

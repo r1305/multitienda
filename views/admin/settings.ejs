@@ -2,8 +2,12 @@
 <% var scripts = ''; %>
 <%
 var s = typeof settings !== 'undefined' ? settings : {};
+function esc(val) { return String(val || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+%>
+<%
+var _b = typeof appBase !== 'undefined' ? appBase : '';
 var body = `
-<form method="POST" action="/admin/settings">
+<form method="POST" action="${_b}/admin/settings">
     <div class="card">
         <div class="card-header">
             <ul class="nav nav-tabs card-header-tabs">
@@ -19,20 +23,27 @@ var body = `
                 <div class="tab-pane fade show active" id="general">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group"><label>Store Name</label><input type="text" name="storeName" class="form-control" value="${s.storeName || ''}"></div>
-                            <div class="form-group"><label>Store Currency</label><input type="text" name="currencySymbol" class="form-control" value="${s.currencySymbol || '$'}"></div>
-                            <div class="form-group"><label>Currency ID</label><input type="text" name="currencyId" class="form-control" value="${s.currencyId || 'USD'}"></div>
+                            <div class="form-group"><label>Store Name</label><input type="text" name="storeName" class="form-control" value="${esc(s.storeName)}"></div>
+                            <div class="form-group"><label>Primary Color (Buttons & Accents)</label>
+                                <div style="display:flex;gap:8px;align-items:center">
+                                    <input type="color" name="primaryColor" value="${esc(s.primaryColor || '#ff5722')}" style="width:48px;height:36px;border:1px solid #ccc;border-radius:6px;cursor:pointer;padding:2px" oninput="this.nextElementSibling.value=this.value">
+                                    <input type="text" class="form-control" value="${esc(s.primaryColor || '#ff5722')}" style="max-width:120px" oninput="this.previousElementSibling.value=this.value">
+                                </div>
+                                <p class="text-muted" style="font-size:11px;margin-top:4px">Color principal de botones, badges, tabs y acentos de la app.</p>
+                            </div>
+                            <div class="form-group"><label>Store Currency</label><input type="text" name="currencySymbol" class="form-control" value="${esc(s.currencySymbol || '$')}"></div>
+                            <div class="form-group"><label>Currency ID</label><input type="text" name="currencyId" class="form-control" value="${esc(s.currencyId || 'USD')}"></div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group"><label>Map API Key</label><input type="text" name="googleApiKey" class="form-control" value="${s.googleApiKey || ''}"></div>
-                            <div class="form-group"><label>Wallet Name</label><input type="text" name="walletName" class="form-control" value="${s.walletName || 'Wallet'}"></div>
+                            <div class="form-group"><label>Map API Key</label><input type="text" name="googleApiKey" class="form-control" value="${esc(s.googleApiKey)}"></div>
+                            <div class="form-group"><label>Wallet Name</label><input type="text" name="walletName" class="form-control" value="${esc(s.walletName || 'Wallet')}"></div>
                         </div>
                     </div>
                 </div>
                 <div class="tab-pane fade" id="store">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group"><label>Upload Image Quality (1-100)</label><input type="number" name="uploadImageQuality" class="form-control" value="${s.uploadImageQuality || '75'}"></div>
+                            <div class="form-group"><label>Upload Image Quality (1-100)</label><input type="number" name="uploadImageQuality" class="form-control" value="${esc(s.uploadImageQuality || '75')}"></div>
                         </div>
                         <div class="col-md-6">
                             <p class="text-muted" style="margin-top:8px"><i class="fas fa-info-circle"></i> Min Order Amount, Delivery Charge y Search Radius se configuran individualmente en cada tienda.</p>
@@ -42,8 +53,8 @@ var body = `
                 <div class="tab-pane fade" id="delivery">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group"><label>Enable Delivery Pin</label><select name="enableDeliveryPin" class="form-control"><option value="true" ${s.enableDeliveryPin == 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enableDeliveryPin != 'true' ? 'selected' : ''}>No</option></select></div>
-                            <div class="form-group"><label>Radio de asignacion de repartidores (km)</label><input type="number" step="0.1" name="deliveryRadius" class="form-control" value="${s.deliveryRadius || '10'}"></div>
+                            <div class="form-group"><label>Enable Delivery Pin</label><select name="enableDeliveryPin" class="form-control"><option value="true" ${s.enableDeliveryPin === 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enableDeliveryPin !== 'true' ? 'selected' : ''}>No</option></select></div>
+                            <div class="form-group"><label>Radio de asignacion de repartidores (km)</label><input type="number" step="0.1" name="deliveryRadius" class="form-control" value="${esc(s.deliveryRadius || '10')}"></div>
                         </div>
                         <div class="col-md-6">
                             <p class="text-muted" style="margin-top:8px"><i class="fas fa-info-circle"></i> Delivery Charge Type, Base Delivery Charge y Extra Delivery Charge se configuran individualmente en cada tienda.</p>
@@ -54,28 +65,28 @@ var body = `
                 <div class="tab-pane fade" id="notifications">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group"><label>Firebase API Key</label><input type="text" name="firebaseApiKey" class="form-control" value="${s.firebaseApiKey || ''}"></div>
-                            <div class="form-group"><label>Firebase Auth Domain</label><input type="text" name="firebaseAuthDomain" class="form-control" value="${s.firebaseAuthDomain || ''}"></div>
-                            <div class="form-group"><label>Firebase Project ID</label><input type="text" name="firebaseProjectId" class="form-control" value="${s.firebaseProjectId || ''}"></div>
-                            <div class="form-group"><label>Firebase Storage Bucket</label><input type="text" name="firebaseStorageBucket" class="form-control" value="${s.firebaseStorageBucket || ''}"></div>
+                            <div class="form-group"><label>Firebase API Key</label><input type="text" name="firebaseApiKey" class="form-control" value="${esc(s.firebaseApiKey)}"></div>
+                            <div class="form-group"><label>Firebase Auth Domain</label><input type="text" name="firebaseAuthDomain" class="form-control" value="${esc(s.firebaseAuthDomain)}"></div>
+                            <div class="form-group"><label>Firebase Project ID</label><input type="text" name="firebaseProjectId" class="form-control" value="${esc(s.firebaseProjectId)}"></div>
+                            <div class="form-group"><label>Firebase Storage Bucket</label><input type="text" name="firebaseStorageBucket" class="form-control" value="${esc(s.firebaseStorageBucket)}"></div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group"><label>Firebase Messaging Sender ID</label><input type="text" name="firebaseMessagingSenderId" class="form-control" value="${s.firebaseMessagingSenderId || ''}"></div>
-                            <div class="form-group"><label>Firebase App ID</label><input type="text" name="firebaseAppId" class="form-control" value="${s.firebaseAppId || ''}"></div>
-                            <div class="form-group"><label>Firebase Measurement ID (opcional)</label><input type="text" name="firebaseMeasurementId" class="form-control" value="${s.firebaseMeasurementId || ''}"></div>
-                            <div class="form-group"><label>Firebase VAPID Key (Web Push Certificate)</label><input type="text" name="firebaseVapidKey" class="form-control" value="${s.firebaseVapidKey || ''}"></div>
-                            <div class="form-group"><label>Enable Push Notifications</label><select name="enablePushNotificationOrders" class="form-control"><option value="true" ${s.enablePushNotificationOrders == 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enablePushNotificationOrders != 'true' ? 'selected' : ''}>No</option></select></div>
+                            <div class="form-group"><label>Firebase Messaging Sender ID</label><input type="text" name="firebaseMessagingSenderId" class="form-control" value="${esc(s.firebaseMessagingSenderId)}"></div>
+                            <div class="form-group"><label>Firebase App ID</label><input type="text" name="firebaseAppId" class="form-control" value="${esc(s.firebaseAppId)}"></div>
+                            <div class="form-group"><label>Firebase Measurement ID (opcional)</label><input type="text" name="firebaseMeasurementId" class="form-control" value="${esc(s.firebaseMeasurementId)}"></div>
+                            <div class="form-group"><label>Firebase VAPID Key (Web Push Certificate)</label><input type="text" name="firebaseVapidKey" class="form-control" value="${esc(s.firebaseVapidKey)}"></div>
+                            <div class="form-group"><label>Enable Push Notifications</label><select name="enablePushNotificationOrders" class="form-control"><option value="true" ${s.enablePushNotificationOrders === 'true' ? 'selected' : ''}>Yes</option><option value="false" ${s.enablePushNotificationOrders !== 'true' ? 'selected' : ''}>No</option></select></div>
                         </div>
                     </div>
                 </div>
                 <div class="tab-pane fade" id="seo">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group"><label>SEO Meta Title</label><input type="text" name="seoMetaTitle" class="form-control" value="${s.seoMetaTitle || ''}"></div>
-                            <div class="form-group"><label>SEO Meta Description</label><textarea name="seoMetaDescription" class="form-control" rows="3">${s.seoMetaDescription || ''}</textarea></div>
+                            <div class="form-group"><label>SEO Meta Title</label><input type="text" name="seoMetaTitle" class="form-control" value="${esc(s.seoMetaTitle)}"></div>
+                            <div class="form-group"><label>SEO Meta Description</label><textarea name="seoMetaDescription" class="form-control" rows="3">${esc(s.seoMetaDescription)}</textarea></div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group"><label>Google Analytics Code</label><textarea name="googleAnalyticsCode" class="form-control" rows="3">${s.googleAnalyticsCode || ''}</textarea></div>
+                            <div class="form-group"><label>Google Analytics Code</label><textarea name="googleAnalyticsCode" class="form-control" rows="3">${esc(s.googleAnalyticsCode)}</textarea></div>
                         </div>
                     </div>
                     <hr>
@@ -84,7 +95,7 @@ var body = `
                             <div class="form-group">
                                 <label>Favicon / App Icon</label>
                                 <p class="text-muted" style="font-size:12px">Se muestra como icono en la pestana del navegador y al agregar a inicio</p>
-                                ${s.faviconUrl ? '<div class="mb-2"><img src="'+s.faviconUrl+'" width="48" height="48" style="border-radius:8px;border:1px solid #eee"></div>' : ''}
+                                ${s.faviconUrl ? '<div class="mb-2"><img src="'+esc(s.faviconUrl)+'" width="48" height="48" style="border-radius:8px;border:1px solid #eee"></div>' : ''}
                             </div>
                         </div>
                     </div>
@@ -97,8 +108,30 @@ var body = `
 <div class="card mt-3">
     <div class="card-header">Upload Favicon</div>
     <div class="card-body">
-        <form method="POST" action="/admin/settings/upload-favicon" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+        <form method="POST" action="${_b}/admin/settings/upload-favicon" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
             <input type="file" name="favicon" class="form-control-file" accept="image/*" required style="max-width:250px">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
+        </form>
+    </div>
+</div>
+<div class="card mt-3">
+    <div class="card-header"><i class="fas fa-image"></i> Upload Logo</div>
+    <div class="card-body">
+        <p class="text-muted" style="font-size:12px;margin-bottom:8px">Logo principal de la plataforma. Se muestra en el sidebar del admin y en la app de clientes.</p>
+        ${s.logoUrl ? '<div class="mb-2"><img src="'+esc(s.logoUrl)+'" height="48" style="border-radius:8px;border:1px solid #eee;background:#f8f8f8;padding:4px"></div>' : ''}
+        <form method="POST" action="${_b}/admin/settings/upload-logo" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+            <input type="file" name="logo" class="form-control-file" accept="image/*" required style="max-width:250px">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
+        </form>
+    </div>
+</div>
+<div class="card mt-3">
+    <div class="card-header"><i class="fas fa-photo-video"></i> Upload Listing Image</div>
+    <div class="card-body">
+        <p class="text-muted" style="font-size:12px;margin-bottom:8px">Imagen de portada/promocional. Se muestra en el home de la app y en listados destacados.</p>
+        ${s.listingImageUrl ? '<div class="mb-2"><img src="'+esc(s.listingImageUrl)+'" height="80" style="border-radius:8px;border:1px solid #eee;background:#f8f8f8;padding:4px"></div>' : ''}
+        <form method="POST" action="${_b}/admin/settings/upload-listing-image" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+            <input type="file" name="listingImage" class="form-control-file" accept="image/*" required style="max-width:250px">
             <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Subir</button>
         </form>
     </div>
@@ -107,11 +140,11 @@ var body = `
     <div class="card-header bg-danger text-white"><i class="fas fa-exclamation-triangle"></i> Zona Peligrosa</div>
     <div class="card-body">
         <p class="text-muted" style="font-size:13px;margin-bottom:12px">Esto eliminara TODOS los datos (pedidos, tiendas, items, usuarios) excepto el superadmin. Las imagenes subidas tambien seran eliminadas. Esta accion no se puede deshacer.</p>
-        <form method="POST" action="/admin/clean-data" onsubmit="return confirm('ATENCION: Esto eliminara TODOS los datos. Esta seguro?')" style="display:flex;gap:8px;align-items:center">
+        <form method="POST" action="${_b}/admin/clean-data" onsubmit="return confirm('ATENCION: Esto eliminara TODOS los datos. Esta seguro?')" style="display:flex;gap:8px;align-items:center">
             <input type="text" name="pin_code" placeholder="PIN Code" required class="form-control" style="max-width:150px">
             <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Clean Data</button>
         </form>
     </div>
-</div>`;
+</div>`
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

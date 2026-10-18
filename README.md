@@ -99,26 +99,24 @@ Procesos:
 
 ### cPanel / Passenger
 
-**Node.js 20** es compatible. No uses `connect-session-sequelize@8` (pide Node 22).
+Ver **`CPANEL.md`** y usa **`ecosystem.cpanel.config.js`** (1 proceso). **No** uses `ecosystem.config.js` (cluster + worker) en hosting compartido.
 
-En cPanel, si el servidor está muy cargado, `npm install` puede fallar con `fork: Resource temporarily unavailable`. Usa:
+**Node.js 20** es compatible. No uses `connect-session-sequelize@8` (pide Node 22).
 
 ```bash
 cd ~/multitienda-node
 npm run install:cpanel
+cp .env.example .env
 ```
 
-Equivale a `npm install --ignore-scripts`.
-
-Si necesitas Firebase FCM y cPanel falla por recursos, instala `node_modules` en tu PC con `npm run install:full` y súbelo por FTP, o ejecuta `npm install` cuando el servidor tenga pocos procesos activos.
+Startup: **`passenger_app.js`**. Ver `deploy/.htaccess.example`.
 
 ```env
-# Startup file: passenger_app.js
-SESSION_STORE=redis
-REDIS_URL=redis://...
+SESSION_STORE=memory
+ENABLE_NOTIFICATION_WORKER=true
 ```
 
-Ver `deploy/.htaccess.example` para servir estáticos con Apache.
+Si tienes Redis en VPS: `SESSION_STORE=redis`, `REDIS_URL=...`, `ENABLE_NOTIFICATION_WORKER=false` + worker PM2.
 
 ## Despliegue básico
 

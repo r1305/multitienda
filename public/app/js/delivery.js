@@ -94,8 +94,8 @@ const DeliveryOrdersPage = {
         <i class="fas fa-bell" style="font-size:24px;color:#1976d2;margin-bottom:8px"></i>
         <p v-if="pushState === 'denied'" style="font-size:13px;color:#1565c0;margin-bottom:8px">Las notificaciones están bloqueadas en Edge. Ve a Configuración del sitio → Permisos → Notificaciones y permite este sitio.</p>
         <p v-else style="font-size:13px;color:#1565c0;margin-bottom:8px">{{ pushError || 'Activa las notificaciones para recibir pedidos asignados al instante.' }}</p>
-        <p v-if="pushSuccess" style="font-size:13px;color:#2e7d32;margin-bottom:8px"><i class="fas fa-check-circle"></i> Notificaciones activadas</p>
-        <button v-if="pushState !== 'denied' && !pushSuccess" type="button" style="background:#1976d2;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;border:none;cursor:pointer" :disabled="pushLoading" @click="enablePush">{{ pushLoading ? 'Activando...' : 'Activar notificaciones' }}</button>
+        <p v-if="pushSuccess" style="font-size:13px;color:#2e7d32;margin-bottom:8px"><i class="fas fa-check-circle"></i> Notificaciones activadas en este dispositivo</p>
+        <button v-if="pushState !== 'denied' && !pushSuccess" type="button" style="background:#1976d2;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;border:none;cursor:pointer" :disabled="pushLoading" @click="enablePush">{{ pushLoading ? 'Activando...' : (pushState === 'granted' ? 'Sincronizar notificaciones' : 'Activar notificaciones') }}</button>
       </div>
       <div v-if="!gpsReady" style="padding:16px;text-align:center;background:#fff3e0;margin:12px 16px;border-radius:8px">
         <i class="fas fa-location-crosshairs" style="font-size:24px;color:#ff9800;margin-bottom:8px"></i>
@@ -129,9 +129,15 @@ const DeliveryOrdersPage = {
   computed: {
     showPushBanner() {
       if (typeof Notification === 'undefined') return false;
-      if (this.pushState === 'granted' || this.pushState === 'unsupported') return false;
+      if (this.pushState === 'unsupported') return false;
+      if (this.pushSuccess) return false;
       if (this.settingsReady && window.PushNotifications && !PushNotifications.isConfigured()) return false;
+      if (this.pushState === 'granted' && this.pushTokenSaved) return false;
       return true;
+    },
+    pushTokenSaved() {
+      if (!this.deliveryUserId || !window.PushNotifications) return false;
+      return PushNotifications.hasSavedTokenForUser(this.deliveryUserId, 'delivery');
     },
     user() { return JSON.parse(localStorage.getItem('deliveryUser') || '{}'); },
     deliveryUserId() {
@@ -157,6 +163,11 @@ const DeliveryOrdersPage = {
     window.addEventListener('app:settings-ready', this._onPushReady);
     if (Store.settings && Object.keys(Store.settings).length) this.settingsReady = true;
     this.tryRegisterPush();
+    this._onPushForeground = (ev) => {
+      const data = ev.detail?.data || {};
+      if (data.type === 'delivery_assigned' || data.type === 'delivery_order') this.refresh();
+    };
+    window.addEventListener('app:push-foreground', this._onPushForeground);
     this.getLocation();
     this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000);
   },
@@ -166,6 +177,7 @@ const DeliveryOrdersPage = {
       window.removeEventListener('app:push-ready', this._onPushReady);
       window.removeEventListener('app:settings-ready', this._onPushReady);
     }
+    if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground);
   },
   methods: {
     syncPushState() {
@@ -173,11 +185,29 @@ const DeliveryOrdersPage = {
       this.pushState = PushNotifications.getBrowserPermission();
       if (Store.settings && Object.keys(Store.settings).length) this.settingsReady = true;
     },
-    tryRegisterPush() {
-      if (this._pushRegistered) return;
-      if (this.pushState !== 'granted' || !this.deliveryUserId || !PushNotifications.isReady()) return;
-      this._pushRegistered = true;
-      PushNotifications.registerDelivery(this.deliveryUserId);
+    async tryRegisterPush() {
+      if (this._pushRegistering) return;
+      if (this.pushState !== 'granted' || !this.deliveryUserId || !PushNotifications?.isReady()) return;
+      if (PushNotifications.hasSavedTokenForUser(this.deliveryUserId, 'delivery')) {
+        this.pushSuccess = true;
+        this._pushRegistered = true;
+        return;
+      }
+      this._pushRegistering = true;
+      try {
+        const ok = await PushNotifications.registerDelivery(this.deliveryUserId);
+        if (ok) {
+          this.pushSuccess = true;
+          this.pushError = '';
+          this._pushRegistered = true;
+        } else if (!PushNotifications.isVapidConfigured()) {
+          this.pushError = 'Falta la clave VAPID de Firebase en Admin → Ajustes.';
+        } else {
+          this.pushError = 'Permiso concedido pero el token no se guardó. Pulsa «Sincronizar notificaciones».';
+        }
+      } finally {
+        this._pushRegistering = false;
+      }
     },
     async enablePush() {
       if (!PushNotifications) {
@@ -203,7 +233,11 @@ const DeliveryOrdersPage = {
         } else if (result.reason === 'dismissed') {
           this.pushError = 'Debes aceptar el permiso cuando Edge lo solicite.';
         } else if (result.reason === 'not_configured') {
-          this.pushError = 'Push no configurado en el servidor (Firebase).';
+          this.pushError = 'Push no configurado en el servidor (Firebase). Revisa Admin → Ajustes.';
+        } else if (result.reason === 'vapid_missing') {
+          this.pushError = 'Falta Firebase VAPID Key en Admin → Ajustes (Cloud Messaging → Web Push certificates).';
+        } else if (result.reason === 'token_save_failed') {
+          this.pushError = 'No se pudo registrar este dispositivo. Cierra sesión, vuelve a entrar y pulsa de nuevo.';
         } else if (result.reason === 'init_failed') {
           this.pushError = 'No se pudo iniciar el servicio de notificaciones. Recarga la página e inténtalo de nuevo.';
         } else {

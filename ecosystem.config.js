@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'multitienda-api',
       script: 'server.js',
-      instances: process.env.PM2_INSTANCES || 'max',
+      instances: parseInt(process.env.PM2_INSTANCES || '1', 10),
       exec_mode: 'cluster',
       max_memory_restart: '512M',
       env: {

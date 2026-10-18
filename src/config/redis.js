@@ -1,5 +1,3 @@
-const Redis = require('ioredis');
-
 let client = null;
 let initAttempted = false;
 let available = false;
@@ -7,6 +5,7 @@ let available = false;
 function createRedisClient() {
   const url = process.env.REDIS_URL;
   if (!url) return null;
+  const Redis = require('ioredis');
   return new Redis(url, {
     maxRetriesPerRequest: 2,
     enableReadyCheck: true,

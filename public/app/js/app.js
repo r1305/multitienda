@@ -37,8 +37,14 @@ const routes = [
   { path: '/store-owner/coupons', component: StoreOwnerCouponsPage },
 ];
 
+function getRouterBase() {
+  const fromWindow = typeof window !== 'undefined' && window.__APP_BASE_PATH__;
+  if (fromWindow) return `${String(fromWindow).replace(/\/$/, '')}/`;
+  return '/';
+}
+
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(getRouterBase()),
   routes,
   scrollBehavior() { return { top: 0 }; }
 });
@@ -52,7 +58,10 @@ const app = createApp({
   computed: {
     showTabBar() {
       const hide = ['/location', '/login', '/register', '/forgot-password', '/checkout'];
-      return !hide.includes(this.$route.path) && !this.$route.path.startsWith('/order/') && !this.$route.path.startsWith('/rate/') && !this.$route.path.startsWith('/delivery') && !this.$route.path.startsWith('/store-owner');
+      const p = this.$route.path;
+      const base = (window.__APP_BASE_PATH__ || '').replace(/\/$/, '');
+      const rel = base && p.startsWith(base) ? p.slice(base.length) || '/' : p;
+      return !hide.includes(rel) && !rel.startsWith('/order/') && !rel.startsWith('/rate/') && !rel.startsWith('/delivery') && !rel.startsWith('/store-owner');
     }
   }
 });
@@ -102,6 +111,10 @@ window.loadAppSettings = loadAppSettings;
       link.type = 'image/png';
       link.href = Store.settings.faviconUrl;
       document.head.appendChild(link);
+    }
+    // Apply custom primary color
+    if (Store.settings.primaryColor) {
+      document.documentElement.style.setProperty('--primary', Store.settings.primaryColor);
     }
   } catch(e) { console.warn('Failed to load settings after retries:', e.message || e); }
 })();

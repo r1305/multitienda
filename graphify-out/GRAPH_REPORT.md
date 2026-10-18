@@ -1,17 +1,17 @@
-# Graph Report - multitienda-node  (2026-10-15)
+# Graph Report - multitienda-node  (2026-10-17)
 
 ## Corpus Check
-- 1483 files · ~1,435,426 words
+- 1483 files · ~1,437,845 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 179 file(s) not represented in the graph (top: .css 79, .scss 48, .ttf 11)
 
 ## Summary
-- 5904 nodes · 12619 edges · 1449 communities (161 shown, 1288 thin omitted)
-- Extraction: 82% EXTRACTED · 18% INFERRED · 0% AMBIGUOUS · INFERRED: 2329 edges (avg confidence: 0.85)
+- 5934 nodes · 12671 edges · 1449 communities (160 shown, 1289 thin omitted)
+- Extraction: 82% EXTRACTED · 18% INFERRED · 0% AMBIGUOUS · INFERRED: 2337 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8f3784f7`
+- Built from commit: `7a14edca`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -61,7 +61,7 @@
 - kl
 - .wrapBodyInlineWithPara
 - jquery-alphanum.js
-- orderController.js
+- userController.js
 - bootstrap.bundle.min.js
 - CHANGES.md
 - r
@@ -73,7 +73,7 @@
 - full.min.js
 - HintPopover
 - o
-- package.json
+- scripts
 - i
 - restaurantController.js
 - mode-jsoniq.js
@@ -143,7 +143,7 @@
 - widgets.min.js
 - Events
 - b
-- oa
+- .triggerEvent
 - promise.min.js
 - Te
 - ext-emmet.js
@@ -151,8 +151,8 @@
 - CodeView
 - S
 - moment/main.min.js
-- la
-- Ca
+- sortable.min.js
+- patch-frontend.js
 - dropzone.min.js
 - cookie.js
 - a
@@ -171,7 +171,7 @@
 - t
 - location.js
 - headroom.min.js
-- p
+- be
 - pie.js
 - treemap.js
 - printThis.js
@@ -206,7 +206,6 @@
 - bootstrap/main.min.js
 - r
 - rrule/main.min.js
-- b
 - radar.js
 - js/api.js
 - ext-chromevox.js
@@ -256,27 +255,27 @@
 ## Import Cycles
 - None detected.
 
-## Communities (1449 total, 1288 thin omitted)
+## Communities (1449 total, 1289 thin omitted)
 
 ### Community 0 - "plupload.full.min.js"
-Cohesion: 0.06
-Nodes (71): e(), n(), r(), t(), a(), d(), e(), f() (+63 more)
+Cohesion: 0.09
+Nodes (57): a(), a(), c(), d(), l(), m(), i(), u() (+49 more)
 
 ### Community 1 - "ckeditor.js"
 Cohesion: 0.10
-Nodes (73): B(), J(), a(), p(), r(), aa(), b(), d() (+65 more)
+Nodes (72): J(), W(), a(), p(), r(), aa(), b(), d() (+64 more)
 
 ### Community 2 - "miscControllers.js"
 Cohesion: 0.03
-Nodes (42): axios, addressToCoordinates(), bcrypt, coordinatesToAddress(), deliveryLogin(), getPaymentGateways(), { Op }, popularGeoLocations() (+34 more)
+Nodes (43): axios, hashids, sequelize, poolMax, poolMin, { Sequelize }, addressToCoordinates(), bcrypt (+35 more)
 
 ### Community 3 - "adminController.js"
 Cohesion: 0.02
-Nodes (10): assignDelivery(), assignOrderToDeliveryGuy(), dashboard(), { formatOrderElapsed }, orders(), reassignDelivery(), { sequelize }, viewOrder() (+2 more)
+Nodes (14): bcryptjs, assignDelivery(), assignOrderToDeliveryGuy(), createUser(), crypto, dashboard(), { formatOrderElapsed }, orders() (+6 more)
 
 ### Community 4 - "worker-lua.js"
-Cohesion: 0.08
-Nodes (72): a(), B(), c(), e(), f(), C(), k(), L() (+64 more)
+Cohesion: 0.07
+Nodes (84): a(), B(), c(), e(), f(), C(), k(), L() (+76 more)
 
 ### Community 5 - "steps.min.js"
 Cohesion: 0.06
@@ -296,31 +295,31 @@ Nodes (69): F(), P(), t(), i(), o(), t(), i(), n() (+61 more)
 
 ### Community 9 - "z"
 Cohesion: 0.08
-Nodes (73): Oe(), Ci(), Qr(), e(), S(), x(), z(), a() (+65 more)
+Nodes (74): Oe(), Ci(), Qr(), Zt(), e(), S(), x(), z() (+66 more)
 
 ### Community 10 - "moment.min.js"
-Cohesion: 0.07
-Nodes (64): he(), a(), Ae(), at(), b(), be(), e(), c() (+56 more)
+Cohesion: 0.08
+Nodes (52): he(), a(), Ae(), at(), b(), e(), c(), cn() (+44 more)
 
 ### Community 11 - ".invoke"
-Cohesion: 0.06
-Nodes (16): attachEvents(), Buttons(), Context(), detachEvents(), fail(), find(), HelpDialog(), html() (+8 more)
+Cohesion: 0.07
+Nodes (13): attachEvents(), AutoSync(), Buttons(), Context(), detachEvents(), find(), HelpDialog(), html() (+5 more)
 
 ### Community 12 - "src/app.js"
 Cohesion: 0.05
-Nodes (60): { sequelize }, tables, { createApp }, ready, { sequelize }, compression, connect-flash, connect-redis (+52 more)
+Nodes (65): description, devDependencies, nodemon, engines, node, main, name, optionalDependencies (+57 more)
 
 ### Community 13 - "z"
 Cohesion: 0.08
 Nodes (64): a(), b(), bt(), c(), ct(), d(), dt(), e() (+56 more)
 
 ### Community 14 - "summernote.js"
-Cohesion: 0.05
-Nodes (37): addCellInfoToVirtual(), adjustStartPoint(), and(), AutoSync(), Clipboard(), commonAncestor(), compact(), createVirtualTable() (+29 more)
+Cohesion: 0.06
+Nodes (35): addCellInfoToVirtual(), adjustStartPoint(), and(), commonAncestor(), createVirtualTable(), eq(), init(), isBodyContainer() (+27 more)
 
 ### Community 15 - "worker-javascript.js"
 Cohesion: 0.11
-Nodes (54): a(), at(), bt(), c(), ct(), n(), r(), dt() (+46 more)
+Nodes (54): a(), at(), B(), bt(), c(), ct(), n(), r() (+46 more)
 
 ### Community 16 - "u"
 Cohesion: 0.10
@@ -343,8 +342,8 @@ Cohesion: 0.06
 Nodes (38): ae(), ao(), at(), be(), co(), ee(), eo(), fo() (+30 more)
 
 ### Community 21 - "datatables.min.js"
-Cohesion: 0.10
-Nodes (54): aa(), Ab(), B(), ba(), Bb(), C(), Cb(), da() (+46 more)
+Cohesion: 0.09
+Nodes (55): aa(), Ab(), B(), ba(), Bb(), C(), Cb(), da() (+47 more)
 
 ### Community 22 - "worker-xquery.js"
 Cohesion: 0.09
@@ -367,8 +366,8 @@ Cohesion: 0.06
 Nodes (48): br(), c(), ce(), ct(), e(), cu(), e(), d() (+40 more)
 
 ### Community 27 - "storeOwnerController.js"
-Cohesion: 0.07
-Nodes (36): bcrypt, createAddon(), createAddonItem(), createCategory(), createCoupon(), createItem(), dashboard(), deleteAddon() (+28 more)
+Cohesion: 0.08
+Nodes (43): acceptOrder(), bcrypt, cancelOrder(), confirmScheduledOrder(), createAddon(), createAddonItem(), createCategory(), createCoupon() (+35 more)
 
 ### Community 28 - "worker-css.js"
 Cohesion: 0.06
@@ -384,42 +383,42 @@ Nodes (45): at(), br(), bs(), co(), cs(), dt(), en(), fr() (+37 more)
 
 ### Community 31 - "Editor"
 Cohesion: 0.11
-Nodes (4): createImage(), debounce(), Editor(), readFileAsDataURL()
+Nodes (3): createImage(), debounce(), Editor()
 
 ### Community 32 - "handlebars.min.js"
 Cohesion: 0.14
 Nodes (38): a(), b(), c(), d(), e(), c(), d(), c() (+30 more)
 
 ### Community 33 - "notifications.impl.js"
-Cohesion: 0.09
-Nodes (33): content, file, fs, path, fs, p, path, s (+25 more)
+Cohesion: 0.15
+Nodes (24): notifications(), sendChatMessage(), appPathPrefix(), broadcastToRole(), getAppBaseUrl(), getDeliveryPushStatus(), getFirebaseApp(), getUserIdsByRoleTag() (+16 more)
 
 ### Community 34 - "jl"
 Cohesion: 0.12
 Nodes (40): au(), ba(), bt(), ca(), cr(), da(), du(), ea() (+32 more)
 
 ### Community 35 - "moment_locales.min.js"
-Cohesion: 0.06
-Nodes (13): an(), bn(), en(), jn(), Kn(), ls(), Na(), Nn() (+5 more)
+Cohesion: 0.05
+Nodes (29): A(), an(), at(), bn(), Ce(), dn(), en(), ia() (+21 more)
 
 ### Community 36 - ".update"
-Cohesion: 0.07
-Nodes (9): AirPopover(), Handle(), ImagePopover(), isControlSizing(), LinkPopover(), Placeholder(), posFromPlaceholder(), rect2bnd() (+1 more)
+Cohesion: 0.09
+Nodes (8): AirPopover(), Handle(), ImagePopover(), isCell(), isControlSizing(), LinkPopover(), posFromPlaceholder(), TablePopover()
 
 ### Community 37 - "WrappedRange"
-Cohesion: 0.13
-Nodes (22): hasChildren(), isCharPoint(), isEdgePoint(), isEmpty$1(), isLeftEdgePoint(), isLeftEdgePointOf(), isRightEdgeOf(), isRightEdgePoint() (+14 more)
+Cohesion: 0.11
+Nodes (26): contains(), hasChildren(), isCharPoint(), isCustomStyleTag(), isEdgePoint(), isEmpty$1(), isLeftEdgeOf(), isLeftEdgePoint() (+18 more)
 
 ### Community 38 - "gps.js"
 Cohesion: 0.07
-Nodes (35): deliveryGuysLocations(), saveSettings(), uploadFavicon(), getRedis(), getDeliveryGuyGpsLocation(), getSettings(), setDeliveryGuyGpsLocation(), del() (+27 more)
+Nodes (35): deliveryGuysLocations(), saveSettings(), uploadFavicon(), uploadListingImage(), uploadLogo(), getRedis(), getDeliveryGuyGpsLocation(), getDeliveryOrders() (+27 more)
 
 ### Community 39 - "o"
 Cohesion: 0.08
 Nodes (36): a(), ao(), bo(), c(), eo(), er(), fo(), fs() (+28 more)
 
 ### Community 40 - "b"
-Cohesion: 0.28
+Cohesion: 0.32
 Nodes (29): A(), a(), at(), b(), n(), c(), d(), E() (+21 more)
 
 ### Community 41 - "jquery.min.js"
@@ -432,15 +431,15 @@ Nodes (37): aa(), ar(), bu(), cn(), cu(), dn(), eu(), fn() (+29 more)
 
 ### Community 43 - ".wrapBodyInlineWithPara"
 Cohesion: 0.15
-Nodes (18): appendChildNodes(), Bullet(), clusterBy(), create(), from(), head(), insertAfter(), isList() (+10 more)
+Nodes (16): appendChildNodes(), Bullet(), Clipboard(), clusterBy(), compact(), create(), from(), head() (+8 more)
 
 ### Community 44 - "jquery-alphanum.js"
 Cohesion: 0.10
 Nodes (23): allowThouSep(), alphanum_allowChar(), countDigits(), getBlacklistSet(), getCombinedSettingsAlphaNum(), isCaseless(), isControlKey(), isGreaterThanMax() (+15 more)
 
-### Community 45 - "orderController.js"
+### Community 45 - "userController.js"
 Cohesion: 0.09
-Nodes (29): getDeliveryOrders(), cancelOrder(), { getDistance, randomString }, getWalletBalance(), Hashids, { Order, Orderitem, OrderItemAddon, Item, Addon, Coupon, Restaurant, Wallet, Transaction, sequelize }, placeOrder(), walletDeposit() (+21 more)
+Nodes (25): jsonwebtoken, deliveryLogin(), login(), axios, bcrypt, buildUserResponse(), { generateToken }, getDefaultAddress() (+17 more)
 
 ### Community 46 - "bootstrap.bundle.min.js"
 Cohesion: 0.13
@@ -475,16 +474,16 @@ Cohesion: 0.14
 Nodes (22): e(), n(), r(), i(), n(), s(), e(), i() (+14 more)
 
 ### Community 55 - "HintPopover"
-Cohesion: 0.11
-Nodes (8): AutoLink(), AutoReplace(), contains(), createText(), HintPopover(), isCustomStyleTag(), prev(), unique()
+Cohesion: 0.12
+Nodes (6): AutoLink(), AutoReplace(), createText(), HintPopover(), prev(), rect2bnd()
 
 ### Community 56 - "o"
 Cohesion: 0.20
 Nodes (27): bt(), ce(), de(), E(), f(), i(), r(), s() (+19 more)
 
-### Community 57 - "package.json"
-Cohesion: 0.07
-Nodes (26): description, devDependencies, nodemon, engines, node, main, name, optionalDependencies (+18 more)
+### Community 57 - "scripts"
+Cohesion: 0.25
+Nodes (8): scripts, dev, install:cpanel, install:full, start, start:cpanel, start:pm2, start:worker
 
 ### Community 58 - "i"
 Cohesion: 0.09
@@ -492,11 +491,11 @@ Nodes (20): r(), iu(), r(), jt(), i(), rt(), a(), f() (+12 more)
 
 ### Community 59 - "restaurantController.js"
 Cohesion: 0.08
-Nodes (14): sequelize, poolMax, poolMin, { Sequelize }, getRestaurantInfo(), getRestaurantInfoWithFavourite(), loadRestaurantBySlug(), { Op } (+6 more)
+Nodes (22): getRestaurantInfo(), getRestaurantInfoWithFavourite(), loadRestaurantBySlug(), { Op }, { Restaurant, Item, ItemCategory, AddonCategory, Addon, RestaurantCategory, sequelize }, rq, cache, checkOperation() (+14 more)
 
 ### Community 60 - "mode-jsoniq.js"
-Cohesion: 0.17
-Nodes (22): a(), c(), d(), f(), h(), l(), o(), r() (+14 more)
+Cohesion: 0.39
+Nodes (10): a(), c(), d(), f(), h(), l(), o(), r() (+2 more)
 
 ### Community 61 - "select.js"
 Cohesion: 0.13
@@ -511,24 +510,24 @@ Cohesion: 0.21
 Nodes (25): a(), c(), cr(), dr(), f(), gn(), h(), hn() (+17 more)
 
 ### Community 64 - "notifications.js"
-Cohesion: 0.13
-Nodes (21): bull, acceptOrder(), sendNotification(), acceptToDeliver(), deliveryRegister(), pickedupOrder(), saveFCMToken(), attachProcessor() (+13 more)
+Cohesion: 0.09
+Nodes (34): bull, ioredis, gracefulStop(), acceptOrder(), sendNotification(), shutdown(), closeRedis(), createRedisClient() (+26 more)
 
 ### Community 65 - "cropper.min.js"
 Cohesion: 0.16
 Nodes (16): dt(), e(), Et(), G(), ht(), it(), K(), kt() (+8 more)
 
 ### Community 66 - "dependencies"
-Cohesion: 0.10
-Nodes (21): dependencies, axios, bcryptjs, bull, compression, connect-flash, connect-redis, connect-session-sequelize (+13 more)
+Cohesion: 0.08
+Nodes (24): dependencies, axios, bcryptjs, bull, compression, connect-flash, connect-redis, connect-session-sequelize (+16 more)
 
 ### Community 68 - "p"
 Cohesion: 0.32
 Nodes (19): c(), ct(), d(), f(), g(), h(), g(), k() (+11 more)
 
 ### Community 69 - "admin.js"
-Cohesion: 0.10
-Nodes (15): bcryptjs, multer, createUser(), updateUser(), bcrypt, { sequelize }, adminController, authController (+7 more)
+Cohesion: 0.07
+Nodes (18): { sequelize }, tables, multer, bcrypt, { sequelize }, adminController, ALLOWED_IMG_EXTS, authController (+10 more)
 
 ### Community 70 - "uniform.min.js"
 Cohesion: 0.17
@@ -543,8 +542,8 @@ Cohesion: 0.20
 Nodes (15): a(), c(), d(), E(), f(), g(), h(), i() (+7 more)
 
 ### Community 73 - "routes/api.js"
-Cohesion: 0.12
-Nodes (17): jsonwebtoken, jwt, jwtAuth(), optionalAuth(), { User }, User, { jwtAuth, optionalAuth }, misc (+9 more)
+Cohesion: 0.07
+Nodes (26): AUTH_MAX, authMap, authRateLimit(), checkAuthRate(), checkOtpRate(), { getRedis }, memoryMap, OTP_MAX (+18 more)
 
 ### Community 74 - "pages.js"
 Cohesion: 0.11
@@ -571,8 +570,8 @@ Cohesion: 0.16
 Nodes (18): an(), bn(), t(), cn(), dn(), fn(), he(), hn() (+10 more)
 
 ### Community 80 - "wa"
-Cohesion: 0.29
-Nodes (18): c(), d(), fa(), g(), s(), ga(), h(), i() (+10 more)
+Cohesion: 0.14
+Nodes (35): b(), c(), Ca(), d(), da(), f(), fa(), g() (+27 more)
 
 ### Community 83 - "it"
 Cohesion: 0.15
@@ -631,7 +630,7 @@ Cohesion: 0.33
 Nodes (12): a(), c(), i(), l(), m(), n(), o(), p() (+4 more)
 
 ### Community 97 - "ancestor"
-Cohesion: 0.31
+Cohesion: 0.30
 Nodes (3): ancestor(), remove(), Table()
 
 ### Community 98 - "t"
@@ -643,8 +642,8 @@ Cohesion: 0.27
 Nodes (10): a(), c(), d(), h(), i(), l(), n(), o() (+2 more)
 
 ### Community 100 - "be"
-Cohesion: 0.22
-Nodes (12): be(), e(), Ee(), ge(), He(), je(), Ka(), le() (+4 more)
+Cohesion: 0.18
+Nodes (14): be(), e(), Ee(), ge(), He(), je(), Ka(), le() (+6 more)
 
 ### Community 101 - "store-owner.js"
 Cohesion: 0.17
@@ -742,9 +741,9 @@ Nodes (4): bind(), Events(), parse(), unbind()
 Cohesion: 0.28
 Nodes (9): b(), et(), gn(), k(), it(), nt(), qe(), tt() (+1 more)
 
-### Community 129 - "oa"
-Cohesion: 0.28
-Nodes (9): A(), da(), ia(), j(), Mt(), oa(), qa(), ra() (+1 more)
+### Community 129 - ".triggerEvent"
+Cohesion: 0.11
+Nodes (7): fail(), ImageDialog(), isValidUrl(), LinkDialog(), namespaceToCamel(), readFileAsDataURL(), VideoDialog()
 
 ### Community 131 - "promise.min.js"
 Cohesion: 0.56
@@ -759,20 +758,20 @@ Cohesion: 0.36
 Nodes (4): a(), o(), t(), u()
 
 ### Community 136 - "S"
-Cohesion: 0.32
-Nodes (8): Ca(), F(), J(), Ja(), ka(), N(), S(), ca()
+Cohesion: 0.28
+Nodes (9): Ca(), F(), J(), Ja(), ka(), N(), S(), Z() (+1 more)
 
 ### Community 137 - "moment/main.min.js"
 Cohesion: 0.43
 Nodes (6): d(), i(), l(), o(), r(), u()
 
-### Community 138 - "la"
-Cohesion: 0.43
-Nodes (8): at(), Ce(), ie(), la(), Ne(), Re(), Te(), ua()
+### Community 138 - "sortable.min.js"
+Cohesion: 0.11
+Nodes (14): e(), n(), r(), t(), a(), d(), e(), f() (+6 more)
 
-### Community 139 - "Ca"
-Cohesion: 0.32
-Nodes (8): Ca(), f(), ja(), lt(), r(), Sa(), t(), za()
+### Community 139 - "patch-frontend.js"
+Cohesion: 0.17
+Nodes (9): content, file, fs, path, fs, p, path, s (+1 more)
 
 ### Community 140 - "dropzone.min.js"
 Cohesion: 0.39
@@ -838,9 +837,9 @@ Nodes (4): getContextForElement(), isPluginApplied(), setupInputListenersInput()
 Cohesion: 0.53
 Nodes (4): b(), c(), d(), e()
 
-### Community 158 - "p"
-Cohesion: 0.33
-Nodes (6): Jt(), k(), Nt(), p(), pa(), rt()
+### Community 158 - "be"
+Cohesion: 0.29
+Nodes (10): be(), ce(), de(), fe(), ke(), Pe(), T(), Te() (+2 more)
 
 ### Community 159 - "pie.js"
 Cohesion: 0.47
@@ -898,29 +897,25 @@ Nodes (3): Demo, Installation, Previous version
 Cohesion: 1.00
 Nodes (3): l(), n(), u()
 
-### Community 203 - "b"
-Cohesion: 0.50
-Nodes (4): b(), dn(), n(), rn()
-
 ## Knowledge Gaps
-- **8 isolated node(s):** `connect-session-sequelize`, `dotenv`, `ejs`, `mysql2`, `nodemailer` (+3 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2389 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **1288 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **9 isolated node(s):** `connect-session-sequelize`, `csurf`, `dotenv`, `ejs`, `mysql2` (+4 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2401 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **1289 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Q()` connect `r` to `cropper.min.js`, `ckeditor.js`, `steps.min.js`, `m`, `worker-html.js`, `pdfmake.min.js`?**
-  _High betweenness centrality (0.022) - this node is a cross-community bridge._
+  _High betweenness centrality (0.026) - this node is a cross-community bridge._
 - **Are the 37 inferred relationships involving `t()` (e.g. with `d3.min.js` and `ar()`) actually correct?**
   _`t()` has 37 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `connect-session-sequelize`, `dotenv`, `ejs` to the rest of the system?**
-  _8 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **What connects `connect-session-sequelize`, `csurf`, `dotenv` to the rest of the system?**
+  _9 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `plupload.full.min.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.056767676767676765 - nodes in this community are weakly interconnected._
-- **Why does `Z()` connect `ckeditor.js` to `steps.min.js`, `S`, `l`, `m`, `datatables.min.js`, `worker-html.js`?**
+  _Cohesion score 0.09033691225472047 - nodes in this community are weakly interconnected._
+- **Why does `Z()` connect `S` to `ckeditor.js`, `steps.min.js`, `l`, `m`, `datatables.min.js`, `worker-html.js`?**
   _High betweenness centrality (0.021) - this node is a cross-community bridge._
 - **Should `ckeditor.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.09671052631578947 - nodes in this community are weakly interconnected._
-- **Why does `Xe()` connect `z` to `be`, `la`, `moment.min.js`, `bootstrap.bundle.min.js`, `mode-jsoniq.js`?**
-  _High betweenness centrality (0.017) - this node is a cross-community bridge._
+  _Cohesion score 0.09876819708846585 - nodes in this community are weakly interconnected._
+- **Why does `Xe()` connect `z` to `moment_locales.min.js`, `be`, `worker-lua.js`, `moment.min.js`, `bootstrap.bundle.min.js`?**
+  _High betweenness centrality (0.018) - this node is a cross-community bridge._

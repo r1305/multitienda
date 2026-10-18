@@ -3,14 +3,43 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const adminController = require('../controllers/adminController');
 const multer = require('multer');
+const crypto = require('crypto');
 const path = require('path');
 
-// Multer config for file uploads
+// CSRF protection — mandatory in production
+const isProd = process.env.NODE_ENV === 'production';
+let csrfProtection = (req, res, next) => next();
+try {
+  csrfProtection = require('csurf')({ cookie: true });
+} catch (_) {
+  if (isProd) console.error('[FATAL] csurf package not installed — CSRF protection disabled in production!');
+}
+
+const ALLOWED_IMG_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico'];
+
+function safeImageFileFilter(req, file, cb) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!ALLOWED_IMG_EXTS.includes(ext)) {
+    return cb(new Error('Only image files with allowed extensions are permitted'));
+  }
+  if (!file.mimetype.startsWith('image/')) {
+    return cb(new Error('Only image MIME types are allowed'));
+  }
+  cb(null, true);
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, '../../../public/uploads')),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'))
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, Date.now() + '-' + crypto.randomBytes(8).toString('hex') + ext);
+  }
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: safeImageFileFilter,
+});
 
 // Auth middleware
 const auth = (req, res, next) => {
@@ -18,7 +47,14 @@ const auth = (req, res, next) => {
   res.redirect('/auth/login');
 };
 
-// Inject settings for admin views (cached)
+// Admin-only middleware (vertical privilege escalation protection)
+const adminOnly = (req, res, next) => {
+  if (req.session && req.session.user && req.session.user.role === 'Admin') return next();
+  req.flash('error', 'Admin access required');
+  res.redirect('/auth/login');
+};
+
+// Inject settings + CSRF token for admin views (cached)
 const injectSettings = async (req, res, next) => {
   try {
     const cache = require('../../helpers/cache');
@@ -26,7 +62,7 @@ const injectSettings = async (req, res, next) => {
     let settings = await cache.get(cacheKey);
     if (!settings) {
       const { sequelize } = require('../../models');
-      const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('currencySymbol','currencyFormat')");
+      const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('currencySymbol','currencyFormat','logoUrl','listingImageUrl','faviconUrl','primaryColor')");
       settings = {};
       rows.forEach((r) => { settings[r.key] = r.value; });
       await cache.set(cacheKey, settings, parseInt(process.env.CACHE_ADMIN_SETTINGS_TTL || '300', 10));
@@ -37,19 +73,23 @@ const injectSettings = async (req, res, next) => {
     res.locals.currency = '$';
     res.locals.settings = {};
   }
+  // CSRF token for templates
+  if (req.csrfToken) {
+    res.locals.csrfToken = req.csrfToken();
+  }
   next();
 };
 
-// Auth routes (no auth required)
-router.get('/auth/login', authController.loginPage);
-router.post('/auth/login', authController.login);
+// Auth routes (no auth required, but CSRF protected)
+router.get('/auth/login', csrfProtection, authController.loginPage);
+router.post('/auth/login', csrfProtection, authController.login);
 router.get('/auth/logout', authController.logout);
 
-// All admin routes require auth
-router.use('/admin', auth, injectSettings);
+// All admin routes require auth + CSRF + admin-only
+router.use('/admin', auth, adminOnly, csrfProtection, injectSettings);
 
 // Admin API (JSON responses for charts)
-router.get('/admin/api/earnings-chart', auth, async (req, res) => {
+router.get('/admin/api/earnings-chart', async (req, res) => {
   const { sequelize } = require('../../models');
   const { filter, from, to } = req.query;
   let startStr, endStr;
@@ -99,7 +139,7 @@ router.get('/admin/api/earnings-chart', auth, async (req, res) => {
   }
 });
 
-router.get('/admin/api/store-earnings-chart', auth, async (req, res) => {
+router.get('/admin/api/store-earnings-chart', async (req, res) => {
   const { sequelize } = require('../../models');
   const { store_id, filter, from, to } = req.query;
   let startDate, endDate = new Date();
@@ -142,7 +182,7 @@ router.get('/admin/api/store-earnings-chart', auth, async (req, res) => {
   }
 });
 
-router.get('/admin/api/delivery-earnings-chart', auth, async (req, res) => {
+router.get('/admin/api/delivery-earnings-chart', async (req, res) => {
   const { sequelize } = require('../../models');
   const { user_id, filter, from, to } = req.query;
   let startDate, endDate = new Date();
@@ -184,6 +224,9 @@ router.get('/admin/api/delivery-earnings-chart', auth, async (req, res) => {
     res.json({ labels: [], values: [], total: 0, deliveryCount: 0 });
   }
 });
+
+// Redirect /admin to dashboard
+router.get('/admin', (req, res) => res.redirect('/admin/dashboard'));
 
 // Dashboard
 router.get('/admin/dashboard', adminController.dashboard);
@@ -276,6 +319,8 @@ router.get('/admin/store-category-slider/delete/:id', adminController.deleteCate
 router.get('/admin/settings', adminController.settings);
 router.post('/admin/settings', adminController.saveSettings);
 router.post('/admin/settings/upload-favicon', upload.single('favicon'), adminController.uploadFavicon);
+router.post('/admin/settings/upload-logo', upload.single('logo'), adminController.uploadLogo);
+router.post('/admin/settings/upload-listing-image', upload.single('listingImage'), adminController.uploadListingImage);
 
 // Payment Methods
 router.get('/admin/payment-methods', adminController.paymentMethods);

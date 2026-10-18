@@ -3,21 +3,33 @@ const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
 // ─── Settings ────────────────────────────────────────────────────────────────
+const PUBLIC_SETTINGS_KEYS = [
+  'storeName', 'currencySymbol', 'currencyId', 'currencyFormat',
+  'walletName', 'deliveryRadius', 'enableDeliveryPin',
+  'enablePushNotificationOrders',
+  'seoMetaTitle', 'seoMetaDescription', 'googleAnalyticsCode',
+  'firebaseApiKey', 'firebaseAuthDomain', 'firebaseProjectId', 'firebaseStorageBucket',
+  'firebaseMessagingSenderId', 'firebaseAppId', 'firebaseMeasurementId', 'firebaseVapidKey',
+  'faviconUrl', 'logoUrl', 'listingImageUrl', 'primaryColor',
+];
+
 exports.getSettings = async (req, res) => {
   try {
     const cache = require('../helpers/cache');
     const cached = await cache.get('settings:all');
     if (cached) return res.json(cached);
     const rows = await Setting.findAll();
-    const settings = rows.map((s) => {
-      const j = s.toJSON ? s.toJSON() : s;
-      return { id: j.id, key: j.key, value: j.value };
-    });
+    const settings = rows
+      .map((s) => {
+        const j = s.toJSON ? s.toJSON() : s;
+        return { id: j.id, key: j.key, value: j.value };
+      })
+      .filter((s) => PUBLIC_SETTINGS_KEYS.includes(s.key));
     await cache.set('settings:all', settings, parseInt(process.env.CACHE_SETTINGS_TTL || '300', 10));
     res.json(settings);
   } catch (err) {
-    console.error('[getSettings]', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('[getSettings]');
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -33,10 +45,12 @@ exports.getSettingByKey = async (req, res) => {
 // ─── Location ─────────────────────────────────────────────────────────────────
 exports.searchLocation = async (req, res) => {
   try {
-    const locations = await Location.findAll({ where: { name: { [Op.like]: `%${req.params.query}%` } }, limit: 10 });
+    const raw = String(req.params.query || '').slice(0, 100);
+    const q = raw.replace(/%/g, '\\%').replace(/_/g, '\\_');
+    const locations = await Location.findAll({ where: { name: { [Op.like]: `%${q}%` } }, limit: 10 });
     res.json(locations);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -127,7 +141,7 @@ exports.applyCoupon = async (req, res) => {
       if (userUses[0] && parseInt(userUses[0].cnt) >= coupon.max_count_per_user) return res.json({ success: false, message: 'Ya usaste este cupón el máximo de veces permitido' });
     }
     // Check restaurant match
-    if (coupon.restaurant_id && req.body.restaurant_id && coupon.restaurant_id != req.body.restaurant_id) return res.json({ success: false, message: 'Cupón no válido para esta tienda' });
+    if (coupon.restaurant_id && req.body.restaurant_id && Number(coupon.restaurant_id) !== Number(req.body.restaurant_id)) return res.json({ success: false, message: 'Cupón no válido para esta tienda' });
     res.json({ success: true, coupon });
   } catch (err) {
     console.error('applyCoupon error:', err.message);
@@ -156,10 +170,15 @@ exports.saveTokenNoUser = async (req, res) => {
 
 exports.saveFCMToken = async (req, res) => {
   try {
+    const token = req.body && req.body.token;
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ success: false, message: 'Token required' });
+    }
     const { saveFCMToken } = require('../helpers/notifications');
-    await saveFCMToken(req.user.id, req.body.token, req.body.platform || 'android');
-    res.json({ success: true });
+    await saveFCMToken(req.user.id, token, req.body.platform || 'web');
+    res.json({ success: true, user_id: req.user.id });
   } catch (err) {
+    console.error('[saveFCMToken]', err.message);
     res.status(500).json({ success: false });
   }
 };
@@ -281,9 +300,8 @@ exports.getAllRestaurantsCategories = async (req, res) => {
 // ─── SMS / OTP ────────────────────────────────────────────────────────────────
 exports.sendOtp = async (req, res) => {
   try {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = require('crypto').randomInt(100000, 999999).toString();
     await SmsOtp.upsert({ phone: req.body.phone, otp });
-    // TODO: integrate SMS gateway (Twilio, etc.)
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -292,8 +310,13 @@ exports.sendOtp = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
   try {
+    const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
     const record = await SmsOtp.findOne({ where: { phone: req.body.phone } });
-    res.json({ success: record && String(record.otp) === String(req.body.otp) });
+    if (!record) return res.json({ success: false });
+    if (record.created_at && Date.now() - new Date(record.created_at).getTime() > OTP_TTL_MS) {
+      return res.json({ success: false, message: 'OTP expired' });
+    }
+    res.json({ success: String(record.otp) === String(req.body.otp) });
   } catch (err) {
     res.status(500).json({ success: false });
   }
@@ -301,7 +324,7 @@ exports.verifyOtp = async (req, res) => {
 
 exports.generateOtpForLogin = async (req, res) => {
   try {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = require('crypto').randomInt(100000, 999999).toString();
     await SmsOtp.upsert({ phone: req.body.phone, otp });
     res.json({ success: true });
   } catch (err) {
@@ -312,9 +335,8 @@ exports.generateOtpForLogin = async (req, res) => {
 // ─── Password Reset ───────────────────────────────────────────────────────────
 exports.sendPasswordResetMail = async (req, res) => {
   try {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = require('crypto').randomInt(100000, 999999).toString();
     await PasswordResetOtp.upsert({ email: req.body.email, otp });
-    // TODO: send email with nodemailer
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -323,8 +345,13 @@ exports.sendPasswordResetMail = async (req, res) => {
 
 exports.verifyPasswordResetOtp = async (req, res) => {
   try {
+    const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
     const record = await PasswordResetOtp.findOne({ where: { email: req.body.email } });
-    res.json({ success: record && String(record.otp) === String(req.body.otp) });
+    if (!record) return res.json({ success: false });
+    if (record.created_at && Date.now() - new Date(record.created_at).getTime() > OTP_TTL_MS) {
+      return res.json({ success: false, message: 'OTP expired' });
+    }
+    res.json({ success: String(record.otp) === String(req.body.otp) });
   } catch (err) {
     res.status(500).json({ success: false });
   }
@@ -332,9 +359,24 @@ exports.verifyPasswordResetOtp = async (req, res) => {
 
 exports.changeUserPassword = async (req, res) => {
   try {
-    const user = await User.findOne({ where: { email: req.body.email } });
+    const { email, password, otp } = req.body;
+    if (!password || password.length < 8) {
+      return res.json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+    if (!otp) return res.json({ success: false, message: 'OTP requerido' });
+    const otpRecord = await PasswordResetOtp.findOne({ where: { email } });
+    if (!otpRecord) return res.json({ success: false, message: 'Solicita un OTP primero' });
+    const OTP_TTL_MS = 5 * 60 * 1000;
+    if (otpRecord.created_at && Date.now() - new Date(otpRecord.created_at).getTime() > OTP_TTL_MS) {
+      return res.json({ success: false, message: 'OTP expirado' });
+    }
+    if (String(otpRecord.otp) !== String(otp)) {
+      return res.json({ success: false, message: 'OTP inválido' });
+    }
+    const user = await User.findOne({ where: { email } });
     if (!user) return res.json({ success: false });
-    await user.update({ password: await bcrypt.hash(req.body.password, 10) });
+    await user.update({ password: await bcrypt.hash(password, 10) });
+    await otpRecord.destroy();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
@@ -378,23 +420,24 @@ exports.getRatingAndReview = async (req, res) => {
 exports.deliveryLogin = async (req, res) => {
   try {
     const { generateToken } = require('../middleware/auth');
-    const user = await User.findOne({ where: { phone: req.body.phone }, include: [{ association: 'delivery_guy_detail' }] });
-    if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
-      return res.status(201).json({ success: false, data: 'DONOTMATCH' });
-    }
-    // Check if user has Delivery Guy role
-    const [roles] = await sequelize.query('SELECT r.name FROM model_has_roles mr JOIN roles r ON mr.role_id = r.id WHERE mr.model_id = ?', { replacements: [user.id] });
-    if (!roles.length || roles[0].name !== 'Delivery Guy') {
-      return res.status(201).json({ success: false, data: 'DONOTMATCH' });
+    const [rows] = await sequelize.query(
+      'SELECT u.* FROM users u JOIN model_has_roles mr ON u.id = mr.model_id JOIN roles r ON mr.role_id = r.id WHERE u.phone = ? AND r.name = ? LIMIT 1',
+      { replacements: [req.body.phone, 'Delivery Guy'] }
+    );
+    const row = rows[0];
+    if (!row || !(await bcrypt.compare(req.body.password, row.password))) {
+      return res.status(401).json({ success: false, data: 'DONOTMATCH' });
     }
     // Check if approved
-    if (!user.is_active) {
+    if (!row.is_active) {
       return res.json({ success: false, message: 'Tu cuenta aún no ha sido aprobada por el administrador.' });
     }
+    const user = await User.findByPk(row.id, { include: [{ association: 'delivery_guy_detail' }] });
     const token = generateToken(user);
     await user.update({ auth_token: token });
     res.json({ success: true, data: { id: user.id, auth_token: token, name: user.name, phone: user.phone, delivery_guy_detail: user.delivery_guy_detail } });
   } catch (err) {
+    console.error('deliveryLogin error:', err.message);
     res.status(500).json({ success: false });
   }
 };
@@ -402,6 +445,9 @@ exports.deliveryLogin = async (req, res) => {
 exports.deliveryRegister = async (req, res) => {
   try {
     const { name, email, phone, password, vehicle_number } = req.body;
+    if (!password || password.length < 8) {
+      return res.json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
     // Check if phone or email already exists
     const existing = await User.findOne({ where: { [Op.or]: [{ phone }, { email }] } });
     if (existing) return res.json({ success: false, message: 'El teléfono o email ya está registrado' });
@@ -526,10 +572,14 @@ exports.getDeliveryGuyGpsLocation = async (req, res) => {
 
 exports.acceptToDeliver = async (req, res) => {
   try {
-    const existing = await AcceptDelivery.findOne({ where: { order_id: req.body.order_id } });
-    if (existing) return res.json({ success: false, message: 'Already accepted' });
-    await AcceptDelivery.create({ order_id: req.body.order_id, user_id: req.user.id });
-    await Order.update({ orderstatus_id: 3 }, { where: { id: req.body.order_id } });
+    const result = await sequelize.transaction(async (t) => {
+      const existing = await AcceptDelivery.findOne({ where: { order_id: req.body.order_id }, transaction: t, lock: true });
+      if (existing) return null;
+      await AcceptDelivery.create({ order_id: req.body.order_id, user_id: req.user.id }, { transaction: t });
+      await Order.update({ orderstatus_id: 3 }, { where: { id: req.body.order_id }, transaction: t });
+      return true;
+    });
+    if (result === null) return res.json({ success: false, message: 'Already accepted' });
 
     // Notify customer
     const order = await Order.findByPk(req.body.order_id);

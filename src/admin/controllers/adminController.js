@@ -1,5 +1,6 @@
 const { sequelize } = require('../../models');
 const { formatOrderElapsed } = require('../../helpers/orderDuration');
+const crypto = require('crypto');
 
 async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
   const [orders] = await sequelize.query(
@@ -27,8 +28,8 @@ async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
   );
 
   const { notifyDeliveryOrderAssigned } = require('../../helpers/notifications');
-  await notifyDeliveryOrderAssigned(order, deliveryUserId);
-  return order;
+  const pushResult = await notifyDeliveryOrderAssigned(order, deliveryUserId);
+  return { order, pushResult };
 }
 
 exports.dashboard = async (req, res) => {
@@ -133,7 +134,7 @@ exports.dashboard = async (req, res) => {
       currency: '$',
       formatOrderElapsed,
       success: null,
-      error: 'Error loading dashboard: ' + err.message
+      error: 'Error loading dashboard'
     });
   }
 };
@@ -283,8 +284,16 @@ exports.acceptOrder = async (req, res) => {
 
 exports.assignDelivery = async (req, res) => {
   try {
-    const order = await assignOrderToDeliveryGuy(req.body.order_id, req.body.user_id);
-    req.flash('success', 'Repartidor asignado y notificado');
+    const { order, pushResult } = await assignOrderToDeliveryGuy(req.body.order_id, req.body.user_id);
+    if (pushResult?.ok) {
+      req.flash('success', 'Repartidor asignado y notificación push enviada.');
+    } else if (pushResult?.reason === 'all_failed') {
+      req.flash('error', 'Repartidor asignado, pero FCM rechazó el token. El repartidor debe volver a activar notificaciones en /delivery.');
+    } else if (pushResult?.reason === 'firebase_not_configured') {
+      req.flash('error', 'Repartidor asignado, pero Firebase no está configurado en el servidor.');
+    } else {
+      req.flash('success', 'Repartidor asignado.');
+    }
     if (req.body.return_to === 'orders') return res.redirect('/admin/orders');
     return res.redirect('/admin/order/' + (order.unique_order_id || order.id));
   } catch (err) {
@@ -297,8 +306,14 @@ exports.assignDelivery = async (req, res) => {
 
 exports.reassignDelivery = async (req, res) => {
   try {
-    const order = await assignOrderToDeliveryGuy(req.body.order_id, req.body.user_id);
-    req.flash('success', 'Repartidor reasignado y notificado');
+    const { order, pushResult } = await assignOrderToDeliveryGuy(req.body.order_id, req.body.user_id);
+    if (pushResult?.ok) {
+      req.flash('success', 'Repartidor reasignado y notificación push enviada.');
+    } else if (pushResult?.reason === 'all_failed') {
+      req.flash('error', 'Repartidor reasignado, pero FCM rechazó el token. Vuelva a activar notificaciones en /delivery.');
+    } else {
+      req.flash('success', 'Repartidor reasignado.');
+    }
     return res.redirect('/admin/order/' + (order.unique_order_id || order.id));
   } catch (err) {
     console.error(err);
@@ -625,6 +640,10 @@ exports.createUser = async (req, res) => {
   const bcrypt = require('bcryptjs');
   try {
     const { name, email, phone, password, role } = req.body;
+    if (!password || password.length < 8) {
+      req.flash('error', 'Password must be at least 8 characters');
+      return res.redirect('/admin/users');
+    }
     const hash = await bcrypt.hash(password, 10);
     const [result] = await sequelize.query(
       'INSERT INTO users (name, email, phone, password, is_active, created_at, updated_at) VALUES (?,?,?,?,1,NOW(),NOW())',
@@ -1220,7 +1239,7 @@ exports.sendNotification = async (req, res) => {
     }
   } catch (err) {
     console.error('Send notification error:', err);
-    req.flash('error', 'Error al enviar la notificación: ' + err.message);
+    req.flash('error', 'Error al enviar la notificación');
   }
   res.redirect('/admin/notifications');
 };
@@ -1307,6 +1326,8 @@ exports.settings = async (req, res) => {
     const settings = {};
     rows.forEach(r => { settings[r.key] = r.value; });
     settings.faviconUrl = settings.faviconUrl || '';
+    settings.logoUrl = settings.logoUrl || '';
+    settings.listingImageUrl = settings.listingImageUrl || '';
     res.render('admin/settings', { user: req.session.user, settings, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     console.error(err);
@@ -1334,10 +1355,56 @@ exports.uploadFavicon = async (req, res) => {
   res.redirect('/admin/settings');
 };
 
+exports.uploadLogo = async (req, res) => {
+  try {
+    if (!req.file) { req.flash('error', 'No file uploaded'); return res.redirect('/admin/settings'); }
+    const logoUrl = '/uploads/' + req.file.filename;
+    const [existing] = await sequelize.query("SELECT id FROM settings WHERE `key` = 'logoUrl' LIMIT 1");
+    if (existing.length) {
+      await sequelize.query("UPDATE settings SET `value` = ? WHERE `key` = 'logoUrl'", { replacements: [logoUrl] });
+    } else {
+      await sequelize.query("INSERT INTO settings (`key`, `value`) VALUES ('logoUrl', ?)", { replacements: [logoUrl] });
+    }
+    const cache = require('../../helpers/cache');
+    await cache.del('settings:all');
+    await cache.del('admin:settings:inject');
+    req.flash('success', 'Logo actualizado');
+  } catch (err) { req.flash('error', 'Error uploading logo'); }
+  res.redirect('/admin/settings');
+};
+
+exports.uploadListingImage = async (req, res) => {
+  try {
+    if (!req.file) { req.flash('error', 'No file uploaded'); return res.redirect('/admin/settings'); }
+    const listingImageUrl = '/uploads/' + req.file.filename;
+    const [existing] = await sequelize.query("SELECT id FROM settings WHERE `key` = 'listingImageUrl' LIMIT 1");
+    if (existing.length) {
+      await sequelize.query("UPDATE settings SET `value` = ? WHERE `key` = 'listingImageUrl'", { replacements: [listingImageUrl] });
+    } else {
+      await sequelize.query("INSERT INTO settings (`key`, `value`) VALUES ('listingImageUrl', ?)", { replacements: [listingImageUrl] });
+    }
+    const cache = require('../../helpers/cache');
+    await cache.del('settings:all');
+    await cache.del('admin:settings:inject');
+    req.flash('success', 'Listing image actualizada');
+  } catch (err) { req.flash('error', 'Error uploading listing image'); }
+  res.redirect('/admin/settings');
+};
+
 exports.saveSettings = async (req, res) => {
   try {
     const fields = req.body;
+    const ALLOWED_KEYS = [
+      'storeName', 'currencySymbol', 'currencyId', 'currencyFormat',
+      'googleApiKey', 'walletName', 'uploadImageQuality', 'primaryColor',
+      'enableDeliveryPin', 'deliveryRadius',
+      'firebaseApiKey', 'firebaseAuthDomain', 'firebaseProjectId', 'firebaseStorageBucket',
+      'firebaseMessagingSenderId', 'firebaseAppId', 'firebaseMeasurementId', 'firebaseVapidKey',
+      'enablePushNotificationOrders',
+      'seoMetaTitle', 'seoMetaDescription', 'googleAnalyticsCode',
+    ];
     for (const [key, value] of Object.entries(fields)) {
+      if (!ALLOWED_KEYS.includes(key)) continue;
       const [existing] = await sequelize.query('SELECT id FROM settings WHERE `key` = ? LIMIT 1', { replacements: [key] });
       if (existing.length) {
         await sequelize.query('UPDATE settings SET `value` = ? WHERE `key` = ?', { replacements: [value, key] });
@@ -1411,9 +1478,15 @@ exports.cleanData = async (req, res) => {
     const { pin_code } = req.body;
     if (!pin_code) { req.flash('error', 'PIN Code requerido'); return res.redirect('/admin/settings'); }
 
-    // Verify PIN against superadmin
+    // Verify PIN against superadmin (timing-safe comparison)
     const [admins] = await sequelize.query("SELECT pin_code FROM users WHERE id = (SELECT model_id FROM model_has_roles WHERE role_id = 1 LIMIT 1) LIMIT 1");
-    if (!admins.length || admins[0].pin_code !== pin_code) {
+    if (!admins.length) {
+      req.flash('error', 'PIN Code incorrecto');
+      return res.redirect('/admin/settings');
+    }
+    const storedPin = admins[0].pin_code || '';
+    const inputPin = String(pin_code);
+    if (storedPin.length !== inputPin.length || !crypto.timingSafeEqual(Buffer.from(storedPin), Buffer.from(inputPin))) {
       req.flash('error', 'PIN Code incorrecto');
       return res.redirect('/admin/settings');
     }
@@ -1465,7 +1538,7 @@ exports.cleanData = async (req, res) => {
     req.flash('success', 'Todos los datos han sido eliminados correctamente');
   } catch (err) {
     console.error('Clean data error:', err.message);
-    req.flash('error', 'Error al limpiar datos: ' + err.message);
+    req.flash('error', 'Error al limpiar datos');
   }
   res.redirect('/admin/settings');
 };

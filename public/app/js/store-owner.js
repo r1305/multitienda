@@ -514,9 +514,9 @@ const StoreOwnerMenuPage = {
         if (this.imageFile) fd.append('image', this.imageFile);
         if (this.editItem) {
           fd.append('item_id', this.editItem.id);
-          await fetch('/public/api/store-owner/update-item', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
+          await fetch(`${API.publicApiBase()}/store-owner/update-item`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
         } else {
-          await fetch('/public/api/store-owner/create-item', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
+          await fetch(`${API.publicApiBase()}/store-owner/create-item`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
         }
         this.showForm = false;
         await this.load();
@@ -854,7 +854,7 @@ const StoreOwnerSettingsPage = {
         fd.append('token', token);
         Object.keys(this.form).forEach(k => { fd.append(k, this.form[k]); });
         if (this.imageFile) fd.append('image', this.imageFile);
-        const res = await fetch('/public/api/store-owner/update-store', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
+        const res = await fetch(`${API.publicApiBase()}/store-owner/update-store`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd }).then(r => r.json());
         if (res.success) this.successMsg = 'Cambios guardados!';
       } catch(e) { console.error(e); }
       this.saving = false;

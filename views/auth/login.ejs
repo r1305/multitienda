@@ -14,6 +14,7 @@
     </style>
 </head>
 <body>
+    <% const bp = (typeof appBase !== 'undefined' && appBase) ? appBase : ''; %>
     <div class="container">
         <div class="card login-card">
             <div class="card-header">
@@ -24,7 +25,8 @@
                 <% if (typeof error !== 'undefined' && error) { %>
                     <div class="alert alert-danger"><%= error %></div>
                 <% } %>
-                <form method="POST" action="/auth/login">
+                <form method="POST" action="<%= bp %>/auth/login">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="form-group">
                         <label>Email</label>
                         <input type="email" name="email" class="form-control" required autofocus placeholder="admin@example.com">

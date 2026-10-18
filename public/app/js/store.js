@@ -62,6 +62,10 @@ const Store = Vue.reactive({
     if (url.startsWith('storage/')) url = '/uploads/' + url.slice(8);
     else if (url.startsWith('/storage/')) url = '/uploads/' + url.slice(9);
     if (!url.startsWith('/')) url = '/' + url;
+    const base = (typeof window !== 'undefined' && window.__APP_BASE_PATH__)
+      ? String(window.__APP_BASE_PATH__).replace(/\/$/, '')
+      : '';
+    if (base && !url.startsWith(`${base}/`) && url !== base) url = base + url;
     return url;
   },
 });

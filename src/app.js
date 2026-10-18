@@ -1,28 +1,70 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const flash = require('connect-flash');
 const { initRedis, closeRedis } = require('./config/redis');
 const { createSessionMiddleware } = require('./helpers/session');
 const { rateLimitMiddleware } = require('./middleware/rateLimit');
 const { attachProcessor, closeQueue } = require('./helpers/notificationQueue');
+const {
+  attachAppBaseMiddleware,
+  legacyPathRedirectMiddleware,
+  getSpaIndexHtml,
+  getAppBasePath,
+  withAppBase,
+} = require('./helpers/appBasePath');
 
 async function createApp() {
   await initRedis();
 
   const app = express();
   const isProd = process.env.NODE_ENV === 'production';
+  const appBase = getAppBasePath();
+  legacyPathRedirectMiddleware(app);
+  attachAppBaseMiddleware(app);
+
   const firebaseWorkerPath = path.join(__dirname, '../public/firebase-messaging-sw.js');
   app.get('/firebase-messaging-sw.js', (req, res) => {
     res.type('application/javascript');
     res.set({
-      'Service-Worker-Allowed': '/',
+      'Service-Worker-Allowed': appBase ? `${appBase}/` : '/',
       'Cache-Control': 'public, max-age=300',
     });
     res.sendFile(firebaseWorkerPath);
   });
 
   app.set('trust proxy', 1);
+
+  // HTTPS enforcement in production — only when NOT behind gateway
+  // (the gateway/cPanel reverse-proxy handles TLS termination)
+  if (isProd && process.env.APP_GATEWAY_MOUNTED !== '1') {
+    app.use((req, res, next) => {
+      const host = req.headers.host || '';
+      if (req.secure || /^localhost|^127\.0\.0\.1/i.test(host)) return next();
+      res.redirect(301, 'https://' + req.headers.host + req.originalUrl);
+    });
+  }
+
+  // Security headers (optional - install helmet for full protection)
+  try {
+    const helmet = require('helmet');
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://code.jquery.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com", "https://unpkg.com"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "https://www.gstatic.com"],
+          upgradeInsecureRequests: null,
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      hsts: false,
+    }));
+  } catch (_) { /* helmet not installed */ }
 
   try {
     const compression = require('compression');
@@ -39,6 +81,8 @@ async function createApp() {
 
   app.use(express.json({ limit: process.env.BODY_LIMIT || '2mb' }));
   app.use(express.urlencoded({ extended: true, limit: process.env.BODY_LIMIT || '2mb' }));
+
+  app.use(cookieParser());
 
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '../views'));
@@ -62,21 +106,32 @@ async function createApp() {
   app.use('/', require('./admin/routes/admin'));
 
   app.use((err, req, res, next) => {
-    if (!isProd) console.error(`[ERROR] ${req.method} ${req.path} ->`, err.message);
+    console.error(`[ERROR] ${req.method} ${req.path} ->`, err.stack || err.message || err);
     if (res.headersSent) return next(err);
     const wantsJson = req.path.startsWith('/api') || req.path.startsWith('/public/api');
     if (wantsJson) {
-      return res.status(500).json({ error: isProd ? 'Internal server error' : err.message });
+      return res.status(500).json({ error: 'Internal server error' });
     }
-    res.status(500).send(isProd ? 'Internal server error' : err.message);
+    res.status(500).send('Internal server error');
   });
 
-  const spaFile = path.join(__dirname, '../public/app/index.html');
-  app.get('*', (req, res) => {
+  app.get('*', async (req, res) => {
     if (req.path.startsWith('/admin') || req.path.startsWith('/auth')) {
       return res.status(404).send('Route not found');
     }
-    res.sendFile(spaFile);
+    let html = getSpaIndexHtml();
+    try {
+      const cache = require('./helpers/cache');
+      const cached = await cache.get('settings:all');
+      if (cached) {
+        const fav = cached.find(s => s.key === 'faviconUrl');
+        if (fav && fav.value) {
+          const appBase = getAppBasePath() || '';
+          html = html.replace(/rel="icon"[^>]*href="[^"]*"/, `rel="icon" type="image/png" href="${appBase}${fav.value}"`);
+        }
+      }
+    } catch (_) { /* use default favicon */ }
+    res.type('html').send(html);
   });
 
   if (process.env.ENABLE_NOTIFICATION_WORKER !== 'false') {
@@ -93,4 +148,4 @@ async function shutdown() {
   await sequelize.close();
 }
 
-module.exports = { createApp, shutdown };
+module.exports = { createApp, shutdown, getAppBasePath, withAppBase };

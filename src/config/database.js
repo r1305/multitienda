@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Sequelize } = require('sequelize');
 
-const poolMax = parseInt(process.env.DB_POOL_MAX || '5', 10);
+const poolMax = parseInt(process.env.DB_POOL_MAX || '3', 10);
 const poolMin = parseInt(process.env.DB_POOL_MIN || '0', 10);
 
 const sequelize = new Sequelize(

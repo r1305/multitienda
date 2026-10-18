@@ -285,6 +285,7 @@ const PopularGeoPlace = sequelize.define('PopularGeoPlace', {
   latitude: DataTypes.DECIMAL(10, 8),
   longitude: DataTypes.DECIMAL(11, 8),
   is_default: { type: DataTypes.BOOLEAN, defaultValue: false },
+  is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
 }, { tableName: 'popular_geo_places' });
 
 const Wallet = sequelize.define('Wallet', {

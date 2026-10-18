@@ -1,4 +1,7 @@
 node_modules/
 *.log
-
+.env
+.env.*
 firebase-credentials.json
+*.pem
+public/uploads/

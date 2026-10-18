@@ -29,6 +29,10 @@ const PushNotifications = {
     return !!(cfg.apiKey && cfg.projectId && cfg.messagingSenderId && cfg.appId);
   },
 
+  isVapidConfigured() {
+    return !!this._firebaseVapidKey();
+  },
+
   getBrowserPermission() {
     if (typeof Notification === 'undefined') return 'unsupported';
     return Notification.permission || 'default';
@@ -38,13 +42,27 @@ const PushNotifications = {
     return !!window.__fcmReady;
   },
 
+  _appBase() {
+    return (typeof window !== 'undefined' && window.__APP_BASE_PATH__)
+      ? String(window.__APP_BASE_PATH__).replace(/\/$/, '')
+      : '';
+  },
+
+  _pathStartsWith(segment) {
+    const p = window.location.pathname || '';
+    const seg = segment.startsWith('/') ? segment : `/${segment}`;
+    const base = this._appBase();
+    return p.startsWith(seg) || (base && p.startsWith(`${base}${seg}`));
+  },
+
   serviceWorkerUrl() {
     const cfg = this._firebaseConfig();
     const params = new URLSearchParams();
     Object.entries(cfg).forEach(([k, v]) => {
       if (v) params.set(k, v);
     });
-    return `/firebase-messaging-sw.js?${params.toString()}`;
+    const prefix = this._appBase();
+    return `${prefix}/firebase-messaging-sw.js?${params.toString()}`;
   },
 
   async requestBrowserPermission() {
@@ -61,7 +79,8 @@ const PushNotifications = {
   async _registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return null;
     if (this._serviceWorkerReg) return this._serviceWorkerReg;
-    this._serviceWorkerReg = await navigator.serviceWorker.register(this.serviceWorkerUrl(), { scope: '/' });
+    const scope = this._appBase() ? `${this._appBase()}/` : '/';
+    this._serviceWorkerReg = await navigator.serviceWorker.register(this.serviceWorkerUrl(), { scope });
     return this._serviceWorkerReg;
   },
 
@@ -102,16 +121,16 @@ const PushNotifications = {
   _apiBases() {
     const list = [];
     if (typeof API !== 'undefined' && API._base) list.push(API._base);
-    ['/api', '/public/api'].forEach((b) => {
-      if (!list.includes(b)) list.push(b);
+    const prefix = this._appBase();
+    [`${prefix}/api`, '/multitienda/api', '/api', '/public/api'].forEach((b) => {
+      if (b && !list.includes(b)) list.push(b);
     });
     return list;
   },
 
   _currentAuthToken() {
-    const p = window.location.pathname || '';
-    if (p.startsWith('/delivery')) return localStorage.getItem('deliveryToken');
-    if (p.startsWith('/store-owner')) return localStorage.getItem('storeOwnerToken');
+    if (this._pathStartsWith('/delivery')) return localStorage.getItem('deliveryToken');
+    if (this._pathStartsWith('/store-owner')) return localStorage.getItem('storeOwnerToken');
     if (typeof API !== 'undefined' && API.token) return API.token;
     return localStorage.getItem('appToken');
   },
@@ -143,6 +162,7 @@ const PushNotifications = {
       Authorization: `Bearer ${authToken}`,
     };
 
+    let lastStatus = 0;
     for (const base of this._apiBases()) {
       try {
         const res = await fetch(`${base}/save-fcm-token`, {
@@ -152,12 +172,15 @@ const PushNotifications = {
           credentials: 'same-origin',
           cache: 'no-store',
         });
+        lastStatus = res.status;
         if (res.ok) {
           this._lastSavedTokenByUser[userKey] = token;
+          try { localStorage.setItem(`fcm_saved:${userKey}`, '1'); } catch (_) { /* ignore */ }
           return true;
         }
       } catch (_) { /* try next base */ }
     }
+    console.warn('[FCM] No se pudo guardar el token en el servidor', lastStatus ? `(HTTP ${lastStatus})` : '');
     return false;
   },
 
@@ -174,6 +197,7 @@ const PushNotifications = {
 
     const inited = await this.initSDK();
     if (!inited) return { ok: false, reason: 'init_failed' };
+    if (!this.isVapidConfigured()) return { ok: false, reason: 'vapid_missing' };
     return { ok: true, reason: 'ready' };
   },
 
@@ -197,6 +221,12 @@ const PushNotifications = {
 
   registerStoreOwner(userId, restaurantId) {
     return this.register(userId, 'store_owner', restaurantId ? { restaurant_id: String(restaurantId) } : {});
+  },
+
+  hasSavedTokenForUser(userId, roleTag = 'delivery') {
+    const userKey = `${roleTag}:${String(userId)}`;
+    if (this._lastSavedTokenByUser[userKey]) return true;
+    try { return localStorage.getItem(`fcm_saved:${userKey}`) === '1'; } catch (_) { return false; }
   },
 
   async enableDeliveryPush(userId) {
@@ -224,17 +254,16 @@ const PushNotifications = {
   },
 
   _registerForContextNow() {
-    const p = window.location.pathname || '';
     let deliveryUser = null;
     let storeOwnerUser = null;
     try { deliveryUser = JSON.parse(localStorage.getItem('deliveryUser') || 'null'); } catch (_) { /* ignore */ }
     try { storeOwnerUser = JSON.parse(localStorage.getItem('storeOwnerUser') || 'null'); } catch (_) { /* ignore */ }
 
-    if (p.startsWith('/delivery')) {
+    if (this._pathStartsWith('/delivery')) {
       if (deliveryUser?.id) this.registerDelivery(deliveryUser.id);
       return;
     }
-    if (p.startsWith('/store-owner')) {
+    if (this._pathStartsWith('/store-owner')) {
       if (storeOwnerUser?.id) {
         const rid = storeOwnerUser.restaurant?.id || storeOwnerUser.restaurant_id;
         this.registerStoreOwner(storeOwnerUser.id, rid);
@@ -260,7 +289,24 @@ const PushNotifications = {
 
   _handleForegroundMessage(payload) {
     const data = this._readPayloadData(payload);
-    window.dispatchEvent(new CustomEvent('app:push-foreground', { detail: { payload, data } }));
+    const notif = payload?.notification || {};
+    const title = notif.title || data.title || 'Notificación';
+    const body = notif.body || data.message || '';
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try {
+        const n = new Notification(title, {
+          body,
+          icon: notif.icon || '/assets/img/favicons/favicon-96x96.png',
+          tag: data.order_id ? `order-${data.order_id}` : 'app-push',
+        });
+        n.onclick = () => {
+          const url = data.url || '/';
+          window.focus();
+          if (url && url !== '/') window.location.href = url;
+        };
+      } catch (_) { /* ignore */ }
+    }
+    window.dispatchEvent(new CustomEvent('app:push-foreground', { detail: { payload, data, title, body } }));
   },
 };
 

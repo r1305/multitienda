@@ -7,7 +7,8 @@ const { sequelize } = require('./src/models');
 let app;
 const ready = createApp()
   .then((created) => sequelize.authenticate().then(() => {
-    app = created;
+    const { wrapAppWithBasePath } = require('./src/helpers/appBasePath');
+    app = wrapAppWithBasePath(created);
     return app;
   }))
   .catch((err) => {

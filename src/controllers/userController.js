@@ -176,6 +176,9 @@ exports.loginWithOtp = async (req, res) => {
 exports.register = async (req, res) => {
   try {
     const { email, phone, password, name, address } = req.body;
+    if (!password || password.length < 8) {
+      return res.json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
 
     const emailExists = await User.findOne({ where: { email } });
     const phoneExists = await User.findOne({ where: { phone } });
