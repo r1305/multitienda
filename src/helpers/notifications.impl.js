@@ -454,6 +454,7 @@ const CUSTOMER_ORDER_EVENTS = {
   ready: { title: 'Pedido listo', message: (o) => `Tu pedido #${o.unique_order_id} está listo para recoger` },
   cancelled: { title: 'Pedido cancelado', message: (o) => `Tu pedido #${o.unique_order_id} fue cancelado` },
   delivered: { title: 'Pedido entregado', message: (o) => `Tu pedido #${o.unique_order_id} fue entregado. ¡Gracias!` },
+  paid: { title: 'Pago confirmado', message: (o) => `Recibimos el pago de tu pedido #${o.unique_order_id}` },
   scheduled_confirmed: { title: 'Pedido programado confirmado', message: (o) => `La tienda confirmó tu pedido programado #${o.unique_order_id}` },
 };
 

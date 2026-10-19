@@ -1548,18 +1548,43 @@ exports.saveSettings = async (req, res) => {
   res.redirect('/admin/settings');
 };
 
-exports.paymentMethods = async (req, res) => {
+async function renderPaymentMethods(req, res, { status = 200, error = null } = {}) {
+  const ps = require('../../helpers/paymentSecrets');
+  const mp = require('../../helpers/mercadoPago');
+  let gateways = [];
+  let mercadopago = { gateway: null, encryptionReady: false, fields: {}, webhookUrl: null };
+  let loadError = null;
   try {
-    const [gateways] = await sequelize.query('SELECT * FROM payment_gateways ORDER BY id');
-    res.render('admin/paymentMethods', { user: req.session.user, gateways, success: req.flash('success')[0], error: req.flash('error')[0] });
+    const [rows] = await sequelize.query('SELECT * FROM payment_gateways ORDER BY id');
+    gateways = rows.filter((g) => !ps.isReservedGatewayName(g.name));
+    const gw = rows.find((g) => ps.isReservedGatewayName(g.name)) || null;
+    const described = await ps.describeSecrets(gw ? gw.id : null);
+    const base = mp.publicBaseUrl();
+    mercadopago = { gateway: gw, ...described, webhookUrl: base ? `${base}/api/mp/webhook` : null };
   } catch (err) {
-    res.render('admin/paymentMethods', { user: req.session.user, gateways: [], success: null, error: 'Error loading payment methods' });
+    console.error('admin paymentMethods:', err.message);
+    loadError = 'Error loading payment methods';
   }
-};
+  res.status(status).render('admin/paymentMethods', {
+    user: req.session.user,
+    gateways,
+    mercadopago,
+    success: status === 200 ? req.flash('success')[0] : null,
+    error: error || req.flash('error')[0] || loadError,
+  });
+}
+
+exports.paymentMethods = async (req, res) => renderPaymentMethods(req, res);
+
+const RESERVED_GATEWAY_MSG = 'Mercado Pago se configura en su propia sección';
 
 exports.createPaymentMethod = async (req, res) => {
   try {
     const { name, account_number, phone_number } = req.body;
+    if (require('../../helpers/paymentSecrets').isReservedGatewayName(name)) {
+      req.flash('error', RESERVED_GATEWAY_MSG);
+      return res.redirect('/admin/payment-methods');
+    }
     await sequelize.query('INSERT INTO payment_gateways (name, account_number, phone_number, is_active, created_at, updated_at) VALUES (?,?,?,1,NOW(),NOW())', { replacements: [name, account_number || null, phone_number || null] });
     req.flash('success', 'Metodo de pago creado');
   } catch (err) { req.flash('error', 'Error al crear'); }
@@ -1569,6 +1594,12 @@ exports.createPaymentMethod = async (req, res) => {
 exports.updatePaymentMethod = async (req, res) => {
   try {
     const { id, name, account_number, phone_number } = req.body;
+    const ps = require('../../helpers/paymentSecrets');
+    const current = await ps.findGatewayById(id);
+    if (ps.isReservedGatewayName(name) || (current && ps.isReservedGatewayName(current.name))) {
+      req.flash('error', RESERVED_GATEWAY_MSG);
+      return res.redirect('/admin/payment-methods');
+    }
     await sequelize.query('UPDATE payment_gateways SET name=?, account_number=?, phone_number=?, updated_at=NOW() WHERE id=?', { replacements: [name, account_number || null, phone_number || null, id] });
     req.flash('success', 'Metodo actualizado');
   } catch (err) { req.flash('error', 'Error al actualizar'); }
@@ -1577,6 +1608,12 @@ exports.updatePaymentMethod = async (req, res) => {
 
 exports.togglePaymentMethod = async (req, res) => {
   try {
+    const ps = require('../../helpers/paymentSecrets');
+    const current = await ps.findGatewayById(req.params.id);
+    if (current && ps.isReservedGatewayName(current.name)) {
+      req.flash('error', RESERVED_GATEWAY_MSG);
+      return res.redirect('/admin/payment-methods');
+    }
     await sequelize.query('UPDATE payment_gateways SET is_active = NOT is_active WHERE id = ?', { replacements: [req.params.id] });
     req.flash('success', 'Estado actualizado');
   } catch (err) { req.flash('error', 'Error'); }
@@ -1585,9 +1622,57 @@ exports.togglePaymentMethod = async (req, res) => {
 
 exports.deletePaymentMethod = async (req, res) => {
   try {
+    const ps = require('../../helpers/paymentSecrets');
+    const current = await ps.findGatewayById(req.params.id);
+    if (current && ps.isReservedGatewayName(current.name)) {
+      req.flash('error', 'Mercado Pago no se elimina: desactívalo en su sección');
+      return res.redirect('/admin/payment-methods');
+    }
     await sequelize.query('DELETE FROM payment_gateways WHERE id = ?', { replacements: [req.params.id] });
     req.flash('success', 'Metodo eliminado');
   } catch (err) { req.flash('error', 'Error al eliminar'); }
+  res.redirect('/admin/payment-methods');
+};
+
+const MISSING_KEY_MSG = 'No se guardó la configuración de Mercado Pago: falta la variable de entorno MP_ENCRYPTION_KEY (32 bytes en base64) en el servidor. Agrégala y reinicia la app.';
+
+exports.saveMercadoPago = async (req, res) => {
+  const ps = require('../../helpers/paymentSecrets');
+  const secretBox = require('../../helpers/secretBox');
+  let values;
+  try {
+    values = ps.cleanSecretInput(req.body);
+  } catch (err) {
+    req.flash('error', err.code === 'INVALID_SECRET' ? err.message : 'Datos inválidos');
+    return res.redirect('/admin/payment-methods');
+  }
+  const wantActive = ['1', 'on', 'true'].includes(String((req.body && req.body.is_active) || '').toLowerCase());
+  if ((Object.keys(values).length || wantActive) && !secretBox.isConfigured()) {
+    return renderPaymentMethods(req, res, { status: 500, error: MISSING_KEY_MSG });
+  }
+  try {
+    await sequelize.transaction(async (t) => {
+      const gw = await ps.ensureGateway(ps.MP_GATEWAY, ps.MP_TITLE, t);
+      if (Object.keys(values).length) await ps.saveSecrets(gw.id, values, t);
+      if (wantActive && !(await ps.canActivate(gw.id, t))) {
+        const err = new Error('Para activar Mercado Pago primero guarda el Access Token y la Public Key');
+        err.code = 'MP_CANNOT_ACTIVATE';
+        throw err;
+      }
+      await sequelize.query('UPDATE payment_gateways SET is_active = ?, updated_at = NOW() WHERE id = ?', { replacements: [wantActive ? 1 : 0, gw.id], transaction: t });
+    });
+    req.flash('success', wantActive ? 'Mercado Pago guardado y activo' : 'Mercado Pago guardado (inactivo)');
+  } catch (err) {
+    if (err instanceof secretBox.SecretBoxError) {
+      return renderPaymentMethods(req, res, { status: 500, error: MISSING_KEY_MSG });
+    }
+    if (err.code === 'MP_CANNOT_ACTIVATE') {
+      req.flash('error', err.message);
+    } else {
+      console.error('admin saveMercadoPago:', err.message);
+      req.flash('error', 'Error al guardar Mercado Pago');
+    }
+  }
   res.redirect('/admin/payment-methods');
 };
 

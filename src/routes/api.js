@@ -28,6 +28,7 @@ const restaurant = require('../controllers/restaurantController');
 const order = require('../controllers/orderController');
 const misc = require('../controllers/miscControllers');
 const storeOwner = require('../controllers/storeOwnerController');
+const mercadoPago = require('../controllers/mercadoPagoController');
 const favorites = require('../controllers/favoritesController');
 
 // Shorthand: every protected route uses jwtAuth explicitly
@@ -94,6 +95,7 @@ router.post('/delete-address', auth, misc.deleteAddress);
 router.post('/update-user-info', auth, user.updateUserInfo);
 router.post('/check-running-order', auth, user.checkRunningOrder);
 router.post('/place-order', auth, order.placeOrder);
+router.post('/mp/webhook', mercadoPago.webhook);
 router.post('/set-default-address', auth, misc.setDefaultAddress);
 router.post('/get-orders', auth, order.getOrders);
 router.post('/get-order-items', auth, order.getOrderItems);

@@ -683,7 +683,7 @@ const CheckoutPage = {
           <div v-for="gw in gateways" :key="gw.id" style="border-radius:8px;margin-bottom:8px;border:1px solid var(--border);padding:12px;cursor:pointer" @click="pay(gw.name)">
             <div style="display:flex;align-items:center;gap:10px">
               <i :class="gwIcon(gw.name)" style="font-size:20px"></i>
-              <span style="flex:1;font-size:14px;font-weight:500">{{gw.name}}</span>
+              <span style="flex:1;font-size:14px;font-weight:500">{{gw.title || gw.name}}</span>
               <i class="fas fa-chevron-right" style="color:var(--muted);font-size:12px"></i>
             </div>
             <div v-if="gw.account_number" style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-left:30px"><span style="font-size:12px;color:var(--muted)">Cuenta: {{gw.account_number}}</span><i class="fas fa-copy" style="color:var(--primary);font-size:11px;cursor:pointer" @click.stop="copyText(gw.account_number)"></i></div>
@@ -720,7 +720,7 @@ const CheckoutPage = {
     }
   },
   methods: {
-    gwIcon(name) { return name === 'COD' ? 'fas fa-money-bill' : 'fas fa-wallet'; },
+    gwIcon(name) { return name === 'COD' ? 'fas fa-money-bill' : (name === 'MERCADOPAGO' ? 'fas fa-credit-card' : 'fas fa-wallet'); },
     copyText(text) { navigator.clipboard.writeText(text); this.copied = true; setTimeout(() => { this.copied = false; }, 2000); },
     async pay(method) {
       if (!this.selectedAddress && this.addresses.length) { this.error = 'Selecciona una dirección de entrega'; return; }
@@ -739,7 +739,8 @@ const CheckoutPage = {
           schedule_date: this.isScheduled ? this.scheduleDate : null,
           schedule_slot: this.isScheduled ? this.scheduleTime : null
         });
-        if (res && res.success) { Store.clearCart(); this.$router.push('/order/' + res.data.unique_order_id); }
+        if (res && res.success && res.init_point) { Store.clearCart(); window.location.href = res.init_point; }
+        else if (res && res.success) { Store.clearCart(); this.$router.push('/order/' + res.data.unique_order_id); }
         else { this.error = res.message || 'Error al procesar la orden'; this.processing = false; }
       } catch(e) { this.error = 'Error de conexión'; this.processing = false; }
     }

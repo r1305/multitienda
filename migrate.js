@@ -431,6 +431,15 @@ const tables = [
     updated_at TIMESTAMP NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  `CREATE TABLE IF NOT EXISTS payment_gateway_secrets (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    gateway_id INT UNSIGNED NOT NULL,
+    \`key\` VARCHAR(64) NOT NULL,
+    value_encrypted TEXT NOT NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY payment_gateway_secrets_gateway_key_unique (gateway_id, \`key\`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS payment_gateway_restaurant (
     payment_gateway_id INT UNSIGNED NOT NULL,
     restaurant_id INT UNSIGNED NOT NULL,
@@ -676,12 +685,19 @@ const tables = [
   // Seed: default language (English)
   `INSERT IGNORE INTO translations (language_name, language_code, is_default, is_active, translation_data, created_at, updated_at) VALUES
     ('English', 'en', 1, 1, '{"orderPaymentWalletComment":"Payment for order ","orderPartialPaymentWalletComment":"Partial payment for order ","orderRefundWalletComment":"Refund for order ","orderPartialRefundWalletComment":"Partial refund for order "}', NOW(), NOW())`,
+
+  // Seed: Mercado Pago inactivo hasta que el admin guarde sus credenciales
+  `INSERT INTO payment_gateways (name, title, is_active, created_at, updated_at)
+    SELECT 'MERCADOPAGO', 'Mercado Pago', 0, NOW(), NOW() FROM DUAL
+    WHERE NOT EXISTS (SELECT 1 FROM payment_gateways WHERE UPPER(TRIM(name)) = 'MERCADOPAGO')`,
 ];
 
 const columns = [
   { table: 'restaurants', column: 'business_type_id', ddl: 'ALTER TABLE restaurants ADD COLUMN business_type_id INT UNSIGNED NULL' },
   { table: 'restaurants', column: 'prep_minutes', ddl: 'ALTER TABLE restaurants ADD COLUMN prep_minutes INT NULL DEFAULT 20' },
   { table: 'ratings', column: 'reply', ddl: 'ALTER TABLE ratings ADD COLUMN reply TEXT NULL' },
+  { table: 'payment_gateways', column: 'account_number', ddl: 'ALTER TABLE payment_gateways ADD COLUMN account_number VARCHAR(255) NULL' },
+  { table: 'payment_gateways', column: 'phone_number', ddl: 'ALTER TABLE payment_gateways ADD COLUMN phone_number VARCHAR(255) NULL' },
 ];
 
 const uniques = [

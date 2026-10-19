@@ -1,7 +1,43 @@
 <% var active = 'paymentmethods'; var pageTitle = 'Metodos de Pago'; %>
 <% var scripts = ''; %>
 <%
+var mpInfo = (typeof mercadopago !== 'undefined' && mercadopago) ? mercadopago : { gateway: null, encryptionReady: false, fields: {}, webhookUrl: null };
+var mpActive = !!(mpInfo.gateway && Number(mpInfo.gateway.is_active));
+var mpField = function(key, label, help) {
+  var f = (mpInfo.fields && mpInfo.fields[key]) || { saved: false, hint: null };
+  var state = f.saved ? 'Guardado: ' + (f.hint || '') + ' (deja vacío para mantenerlo)' : 'Sin guardar';
+  return `<div class="form-group">
+      <label>${esc(label)}</label>
+      <input type="password" name="${esc(key)}" class="form-control" autocomplete="new-password" spellcheck="false" placeholder="${esc(f.saved ? 'Pega un valor nuevo para reemplazarlo' : 'Pega el valor')}">
+      <small class="form-text text-muted">${esc(state)}${help ? ' · ' + esc(help) : ''}</small>
+    </div>`;
+};
 var body = `
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-credit-card"></i> Mercado Pago</span>
+        <span class="badge badge-${esc(mpActive ? 'success' : 'secondary')}">${esc(mpActive ? 'Activo' : 'Inactivo')}</span>
+    </div>
+    <div class="card-body">
+        ${mpInfo.encryptionReady ? '' : '<div class="alert alert-warning">Falta la variable de entorno <code>MP_ENCRYPTION_KEY</code> en el servidor: no se pueden guardar ni usar las credenciales.</div>'}
+        <form method="POST" action="/admin/payment-method/mercadopago/save" autocomplete="off">
+            ${mpField('access_token', 'Access Token (privado)', 'Credencial de producción de tu cuenta de Mercado Pago')}
+            ${mpField('public_key', 'Public Key', '')}
+            ${mpField('webhook_secret', 'Clave secreta de notificaciones (webhook)', 'Se usa para validar la firma x-signature')}
+            <div class="form-group">
+                <label>URL de notificaciones</label>
+                <input type="text" class="form-control" readonly value="${esc(mpInfo.webhookUrl || 'Configura APP_URL en el servidor')}">
+                <small class="form-text text-muted">Regístrala en Mercado Pago (Webhooks, evento Pagos).</small>
+            </div>
+            <div class="form-check mb-3">
+                <input type="checkbox" class="form-check-input" id="mpActive" name="is_active" value="1" ${mpActive ? 'checked' : ''}>
+                <label class="form-check-label" for="mpActive">Activo (requiere Access Token y Public Key guardados)</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar Mercado Pago</button>
+        </form>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Metodos de Pago</span>

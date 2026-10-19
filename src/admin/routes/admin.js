@@ -354,6 +354,7 @@ router.post('/admin/payment-method/new/save', adminController.createPaymentMetho
 router.post('/admin/payment-method/edit/save', adminController.updatePaymentMethod);
 router.post('/admin/payment-method/toggle/:id', adminController.togglePaymentMethod);
 router.post('/admin/payment-method/delete/:id', adminController.deletePaymentMethod);
+router.post('/admin/payment-method/mercadopago/save', adminController.saveMercadoPago);
 
 // Clean data
 router.post('/admin/clean-data', adminController.cleanData);

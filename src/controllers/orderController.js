@@ -8,6 +8,7 @@ const catalog = require('../helpers/orderCatalog');
 const { lockWallet, walletWithdraw } = require('../helpers/orderWallet');
 const { attachEta } = require('../helpers/orderEta');
 const { buildReorder } = require('../helpers/orderReorder');
+const mp = require('../helpers/mercadoPago');
 
 async function getSettings() {
   const cache = require('../helpers/cache');
@@ -58,6 +59,12 @@ exports.placeOrder = async (req, res) => {
 
     const paymentMethod = rules.assertMethodAllowed(method, await catalog.getAllowedPaymentMethods());
     const tip = rules.parseTip(tipAmount);
+    const isMercadoPago = mp.isMercadoPago(paymentMethod);
+    let mpConfig = null;
+    if (isMercadoPago) {
+      mpConfig = await mp.getConfig();
+      mp.assertReady(mpConfig);
+    }
 
     const settings = await getSettings();
     const priced = rules.priceLines(lines, { ...(await catalog.loadCatalog(lines)), restaurantId: restaurant_id });
@@ -75,6 +82,7 @@ exports.placeOrder = async (req, res) => {
       // Programado: con autoaceptación queda confirmado (11) y se libera a los repartidores a su hora
       orderstatus_id = restaurant.auto_acceptable ? 11 : 10;
     }
+    if (isMercadoPago) orderstatus_id = 8;
 
     let delivery_charge = 0, actual_delivery_charge = 0, distance = 0;
     let deliveryAddress = null;
@@ -127,7 +135,7 @@ exports.placeOrder = async (req, res) => {
       restaurant_charge, tax: 0,
       tax_amount: 0, coupon_name, coupon_amount, tip_amount: tip,
       wallet_amount: walletAmount > 0 ? walletAmount : null,
-      payment_mode: paymentMethod, transaction_id: payment_token,
+      payment_mode: paymentMethod, transaction_id: isMercadoPago ? null : payment_token,
       address: deliveryAddress ? (deliveryAddress.address || '') : 'NA',
       location: JSON.stringify(deliveryAddress
         ? { lat: parseFloat(deliveryAddress.latitude), lng: parseFloat(deliveryAddress.longitude), address: deliveryAddress.address || '', address_id: deliveryAddress.id }
@@ -153,7 +161,16 @@ exports.placeOrder = async (req, res) => {
     }
     if (addonRows.length) await OrderItemAddon.bulkCreate(addonRows, { transaction: t });
 
+    let preference = null;
+    if (isMercadoPago) {
+      preference = await mp.createPreference({ id: newOrder.id, unique_order_id, payable }, { config: mpConfig });
+    }
+
     await t.commit();
+
+    if (preference) {
+      return res.json({ success: true, data: newOrder, init_point: preference.init_point });
+    }
 
     try {
       const impl = require('../helpers/notifications.impl');
@@ -168,6 +185,10 @@ exports.placeOrder = async (req, res) => {
     if (t && !t.finished) await t.rollback();
     if (err instanceof rules.OrderValidationError) {
       return res.json({ success: false, message: err.message });
+    }
+    if (err instanceof mp.MercadoPagoError) {
+      console.error('placeOrder Mercado Pago:', err.message);
+      return res.status(502).json({ success: false, message: 'No se pudo iniciar el pago con Mercado Pago. Intenta de nuevo.' });
     }
     console.error('placeOrder error:', err.message);
     res.status(500).json({ success: false, message: 'Error al procesar el pedido' });
@@ -318,7 +339,7 @@ exports.cancelOrder = async (req, res) => {
     res.json({ success: true, refund });
   } catch (err) {
     if (err instanceof require('../helpers/orderStates').OrderStateError) {
-      return res.json({ success: false, refund: false });
+      return res.json({ success: false, refund: false, message: err.message });
     }
     console.error('cancelOrder error:', err.message);
     res.status(500).json({ success: false, refund: false });
