@@ -25,11 +25,13 @@ function makeDb() {
       if (/FOR UPDATE/.test(sql)) db.locks++;
       if (/SELECT id FROM store_earnings WHERE order_id/.test(sql)) return db.earnings.filter((e) => e.order_id === r[0]);
       if (/SELECT commission_rate FROM restaurants/.test(sql)) return db.restaurants.filter((x) => x.id === r[0]);
-      if (/SELECT restaurant_id FROM coupons WHERE code/.test(sql)) return db.coupons.filter((c) => c.code === r[0]);
+      if (/FROM coupons WHERE code = \? AND \(restaurant_id IS NULL OR restaurant_id = \?\)/.test(sql)) {
+        return db.coupons.filter((c) => c.code === r[0] && (c.restaurant_id === null || c.restaurant_id === r[1]));
+      }
       if (/INSERT INTO store_earnings/.test(sql)) {
-        const [restaurant_id, order_id, subtotal, commission_amount, coupon_absorbed_by, coupon_amount, net_amount, notExists] = r;
+        const [restaurant_id, order_id, subtotal, commission_amount, coupon_absorbed_by, coupon_amount, net_amount, kind, notExists] = r;
         if (db.earnings.some((e) => e.order_id === notExists)) return [0, 0];
-        db.earnings.push({ id: db.nextId++, restaurant_id, order_id, subtotal, commission_amount, coupon_absorbed_by, coupon_amount, net_amount, payout_id: null });
+        db.earnings.push({ id: db.nextId++, restaurant_id, order_id, subtotal, commission_amount, coupon_absorbed_by, coupon_amount, net_amount, kind, payout_id: null });
         return [0, 1];
       }
       if (/SELECT id FROM restaurants WHERE id/.test(sql)) return db.restaurants.filter((x) => x.id === r[0]);
@@ -37,7 +39,7 @@ function makeDb() {
         return db.payouts.filter((p) => p.restaurant_id === r[0] && ['requested', 'pending'].includes(p.status));
       }
       if (/SELECT id, net_amount FROM store_earnings/.test(sql)) {
-        return db.earnings.filter((e) => e.restaurant_id === r[0] && !e.payout_id && e.net_amount > 0);
+        return db.earnings.filter((e) => e.restaurant_id === r[0] && !e.payout_id && e.net_amount !== 0);
       }
       if (/INSERT INTO store_payouts/.test(sql)) {
         const id = db.nextId++;
@@ -226,8 +228,8 @@ test('depósito valida monto, referencia y fecha', async () => {
   await assert.rejects(() => settlements.depositStorePayout(sequelize, { payoutId: req.id, amount: 90, reference: 'R', paidAt: '2026-02-31' }), (e) => e.status === 400);
   await assert.rejects(() => settlements.depositStorePayout(sequelize, { payoutId: 999, amount: 90, reference: 'R' }), (e) => e.status === 404);
   assert.strictEqual(db.payouts[0].status, 'requested');
-  const zero = await settlements.depositStorePayout(sequelize, { payoutId: req.id, amount: 0, reference: 'R0' });
-  assert.strictEqual(zero.difference, -90);
+  await assert.rejects(() => settlements.depositStorePayout(sequelize, { payoutId: req.id, amount: 0, reference: 'R0' }), (e) => e.status === 400);
+  assert.strictEqual(db.payouts[0].status, 'requested');
 });
 
 test('rechazar la solicitud devuelve el saldo a la tienda', async () => {
@@ -268,4 +270,56 @@ test('vistas de pagos a tiendas compilan y renderizan', async () => {
     earnings: [],
   });
   assert.ok(!done.includes('/admin/store-payout/save') && done.includes('ya fue procesada'));
+});
+
+test('cupón ambiguo: mismo código de tienda A y de admin, el pedido de la tienda A toma el de la tienda', async () => {
+  const { db, sequelize } = makeDb();
+  db.coupons.push({ code: 'PROMO', restaurant_id: 5 }, { code: 'PROMO', restaurant_id: null }, { code: 'PROMO', restaurant_id: 6 });
+  const a = await settlements.recordStoreEarning(sequelize, order(1, { restaurant_id: 5, coupon_name: 'promo', coupon_amount: 20 }), {});
+  assert.strictEqual(a.coupon_absorbed_by, 'store');
+  assert.strictEqual(db.earnings[0].net_amount, 70);
+  const b = await settlements.recordStoreEarning(sequelize, order(2, { restaurant_id: 6, coupon_name: 'PROMO', coupon_amount: 20 }), {});
+  assert.strictEqual(b.coupon_absorbed_by, 'store');
+  db.restaurants.push({ id: 7, commission_rate: 10 });
+  const c = await settlements.recordStoreEarning(sequelize, order(3, { restaurant_id: 7, coupon_name: 'PROMO', coupon_amount: 20 }), {});
+  assert.strictEqual(c.coupon_absorbed_by, 'platform');
+  assert.deepStrictEqual(c.warnings, []);
+});
+
+test('cupón no identificable: la plataforma lo absorbe y queda aviso', async () => {
+  const { db, sequelize } = makeDb();
+  const warn = console.warn;
+  const logged = [];
+  console.warn = (...a) => logged.push(a.join(' '));
+  try {
+    const r = await settlements.recordStoreEarning(sequelize, order(1, { coupon_name: 'NOEXISTE', coupon_amount: 20 }), {});
+    assert.strictEqual(r.coupon_absorbed_by, 'platform');
+    assert.strictEqual(r.warnings.length, 1);
+    assert.ok(logged.length === 1 && /no identificado/.test(logged[0]));
+    assert.strictEqual(db.earnings[0].net_amount, 90);
+  } finally { console.warn = warn; }
+});
+
+test('recojo en tienda con efectivo: saldo negativo igual a la comisión; MP o billetera liquidan normal', async () => {
+  const { db, sequelize } = makeDb();
+  const cod = await settlements.recordStoreEarning(sequelize, order(1, { delivery_type: 2, payment_mode: 'cod', payable: 100 }), {});
+  assert.strictEqual(cod.net_amount, -10);
+  assert.strictEqual(db.earnings[0].kind, 'cash_pickup_commission');
+  assert.strictEqual(db.earnings[0].commission_amount, 10);
+  await settlements.recordStoreEarning(sequelize, order(2, { delivery_type: 2, payment_mode: 'MERCADOPAGO', payable: 0 }), {});
+  await settlements.recordStoreEarning(sequelize, order(3, { delivery_type: 2, payment_mode: 'WALLET', payable: 0 }), {});
+  await settlements.recordStoreEarning(sequelize, order(4, { delivery_type: 1, payment_mode: 'COD', payable: 110 }), {});
+  assert.deepStrictEqual(db.earnings.map((e) => [e.net_amount, e.kind]), [[-10, 'cash_pickup_commission'], [90, 'sale'], [90, 'sale'], [90, 'sale']]);
+  assert.strictEqual((await settlements.getStoreBalance(sequelize, 5)).available, 260);
+});
+
+test('la deuda por recojo en efectivo se descuenta de la próxima solicitud de pago', async () => {
+  const { db, sequelize } = makeDb();
+  await settlements.recordStoreEarning(sequelize, order(1, { delivery_type: 2, payment_mode: 'COD', payable: 100 }), {});
+  await assert.rejects(() => settlements.requestStorePayout(sequelize, { restaurantId: 5, userId: 9 }), (e) => e.status === 409);
+  await settlements.recordStoreEarning(sequelize, order(2), {});
+  const res = await settlements.requestStorePayout(sequelize, { restaurantId: 5, userId: 9 });
+  assert.strictEqual(res.amount, 80);
+  assert.strictEqual(res.orders, 2);
+  assert.ok(db.earnings.every((e) => e.payout_id === res.id));
 });

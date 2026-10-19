@@ -118,6 +118,19 @@ ENABLE_NOTIFICATION_WORKER=true
 
 Si tienes Redis en VPS: `SESSION_STORE=redis`, `REDIS_URL=...`, `ENABLE_NOTIFICATION_WORKER=false` + worker PM2.
 
+## Despliegue con cambios de base de datos
+
+Cuando un release añade tablas o columnas (caja de repartidores, liquidación a tiendas, `store_earnings.kind`, etc.) el orden es obligatorio:
+
+1. Respaldo previo de la base de datos: `mysqldump -u USUARIO -p NOMBRE_BD > respaldo-AAAAMMDD.sql`
+2. Subir el código nuevo (sin reiniciar aún la app).
+3. Ejecutar `node migrate.js` (idempotente; revisa que termine con `0 errores`).
+4. Reiniciar la app (Stop / Start en cPanel, o `touch tmp/restart.txt`).
+
+Nunca reinicies con el código nuevo antes de migrar: `deliverOrder` y los cierres de caja fallarían con `ER_BAD_FIELD_ERROR` / `ER_NO_SUCH_TABLE` (la consola dice "Falta ejecutar migrate.js").
+
+`migrate.js` también mapea el estado legacy `store_payouts.status = 'approved'` a `'paid'` (completa `paid_amount` con `amount` si estaba vacío). Es idempotente y no borra datos.
+
 ## Despliegue básico
 
 ### Con PM2 (un solo proceso)

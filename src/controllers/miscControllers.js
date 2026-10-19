@@ -810,6 +810,10 @@ exports.deliverOrder = async (req, res) => {
     await emitOrderEvent('delivered', outcome.order);
     res.json({ success: true });
   } catch (err) {
+    const code = err && ((err.original && err.original.code) || (err.parent && err.parent.code) || err.code);
+    if (code === 'ER_BAD_FIELD_ERROR' || code === 'ER_NO_SUCH_TABLE') {
+      console.error('deliverOrder error: Falta ejecutar migrate.js (' + err.message + ')');
+    }
     res.status(500).json({ success: false });
   }
 };

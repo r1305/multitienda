@@ -697,6 +697,7 @@ const tables = [
     coupon_absorbed_by VARCHAR(20) NOT NULL DEFAULT 'platform',
     coupon_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
     net_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    kind VARCHAR(30) NOT NULL DEFAULT 'sale',
     payout_id INT UNSIGNED NULL,
     created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY store_earnings_order_id_unique (order_id),
@@ -760,6 +761,8 @@ const columns = [
   { table: 'orders', column: 'cash_collection_id', ddl: 'ALTER TABLE orders ADD COLUMN cash_collection_id INT UNSIGNED NULL, ADD INDEX orders_cash_collection_idx (cash_collection_id)' },
   { table: 'delivery_earnings', column: 'payout_id', ddl: 'ALTER TABLE delivery_earnings ADD COLUMN payout_id INT UNSIGNED NULL, ADD INDEX delivery_earnings_payout_idx (payout_id)' },
   { table: 'delivery_earnings', column: 'tip_amount', ddl: 'ALTER TABLE delivery_earnings ADD COLUMN tip_amount DECIMAL(10,2) NOT NULL DEFAULT 0' },
+  // kind: 'sale' (liquidación normal) | 'cash_pickup_commission' (comisión adeudada por recojo pagado en efectivo, net_amount negativo)
+  { table: 'store_earnings', column: 'kind', ddl: "ALTER TABLE store_earnings ADD COLUMN kind VARCHAR(30) NOT NULL DEFAULT 'sale'" },
   // store_payouts puede existir ya (instalador/Laravel) con otras columnas: se completan sin tocar datos
   { table: 'store_payouts', column: 'amount', ddl: 'ALTER TABLE store_payouts ADD COLUMN amount DECIMAL(10,2) NOT NULL DEFAULT 0' },
   { table: 'store_payouts', column: 'status', ddl: "ALTER TABLE store_payouts ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'requested'" },
@@ -843,6 +846,31 @@ async function run() {
     }
   } catch (err) {
     console.error('Error store_payouts.status:', err.message);
+    fail++;
+  }
+
+  // Legacy: el instalador usaba status 'approved'; en el nuevo flujo equivale a 'paid'. Idempotente (solo toca filas
+  // 'approved'), sin DELETE. Solo si status ya es VARCHAR (con ENUM 'paid' no sería un valor válido). A esas filas se
+  // les completa paid_amount con amount si estaba vacío, para que el "pagado" de la tienda no quede en 0.
+  try {
+    const [st2] = await sequelize.query(
+      "SELECT DATA_TYPE AS dt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'store_payouts' AND COLUMN_NAME = 'status' LIMIT 1"
+    );
+    if (st2.length && ['varchar', 'char'].includes(String(st2[0].dt).toLowerCase())) {
+      const hasPaidAmount = await columnExists('store_payouts', 'paid_amount');
+      const [, affected] = await sequelize.query(
+        hasPaidAmount
+          ? "UPDATE store_payouts SET status = 'paid', paid_amount = COALESCE(paid_amount, amount) WHERE status = 'approved'"
+          : "UPDATE store_payouts SET status = 'paid' WHERE status = 'approved'"
+      );
+      console.log(`APLICADO: store_payouts 'approved' -> 'paid' (${Number(affected) || 0} filas)`);
+      ok++;
+    } else {
+      console.log("OMITIDO: store_payouts.status no existe o no es VARCHAR; sin mapeo 'approved' -> 'paid'");
+      skipped++;
+    }
+  } catch (err) {
+    console.error("Error mapeo store_payouts 'approved' -> 'paid':", err.message);
     fail++;
   }
 

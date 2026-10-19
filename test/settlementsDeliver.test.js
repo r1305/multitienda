@@ -7,7 +7,7 @@ function stub(relPath, exports) {
   require.cache[file] = { id: file, filename: file, loaded: true, exports };
 }
 
-const state = { order: null, assigned: 14, dg: null, earnings: [], storeEarnings: [], statusUpdates: 0, commits: 0, rollbacks: 0 };
+const state = { order: null, assigned: 14, dg: null, earnings: [], storeEarnings: [], statusUpdates: 0, commits: 0, rollbacks: 0, failCode: null };
 
 const sequelize = {
   async transaction(fn) {
@@ -25,8 +25,9 @@ const sequelize = {
     }
     if (/SELECT id FROM store_earnings WHERE order_id/.test(sql)) return state.storeEarnings.filter((e) => e.order_id === r[0]);
     if (/SELECT commission_rate FROM restaurants/.test(sql)) return [{ commission_rate: 10 }];
-    if (/SELECT restaurant_id FROM coupons/.test(sql)) return r[0] === 'TIENDA5' ? [{ restaurant_id: 5 }] : [{ restaurant_id: null }];
+    if (/FROM coupons WHERE code/.test(sql)) return r[0] === 'TIENDA5' ? [{ id: 1, restaurant_id: 5 }] : [{ id: 2, restaurant_id: null }];
     if (/INSERT INTO store_earnings/.test(sql)) {
+      if (state.failCode) { const e = new Error('Unknown column kind'); e.original = { code: state.failCode }; throw e; }
       if (!state.storeEarnings.some((e) => e.order_id === r[1])) {
         state.storeEarnings.push({ restaurant_id: r[0], order_id: r[1], subtotal: r[2], commission_amount: r[3], coupon_absorbed_by: r[4], coupon_amount: r[5], net_amount: r[6] });
       }
@@ -114,4 +115,26 @@ test('deliverOrder de un pedido ajeno no registra nada', async () => {
   assert.strictEqual(res.statusCode, 409);
   assert.strictEqual(state.storeEarnings.length, 0);
   assert.strictEqual(state.earnings.length, 0);
+});
+
+test('deliverOrder: columna o tabla ausente avisa "Falta ejecutar migrate.js" y responde 500', async () => {
+  const logged = [];
+  const orig = console.error;
+  console.error = (...a) => logged.push(a.join(' '));
+  try {
+    for (const code of ['ER_BAD_FIELD_ERROR', 'ER_NO_SUCH_TABLE']) {
+      reset(baseOrder(), null);
+      state.failCode = code;
+      const res = fakeRes();
+      await controller.deliverOrder({ user: { id: 14 }, body: { order_id: 10 } }, res);
+      assert.strictEqual(res.statusCode, 500);
+      assert.strictEqual(state.rollbacks, 1);
+    }
+    assert.strictEqual(logged.filter((l) => l.includes('Falta ejecutar migrate.js')).length, 2);
+    reset(baseOrder(), null);
+    state.failCode = 'ER_LOCK_DEADLOCK';
+    logged.length = 0;
+    await controller.deliverOrder({ user: { id: 14 }, body: { order_id: 10 } }, fakeRes());
+    assert.strictEqual(logged.length, 0);
+  } finally { console.error = orig; state.failCode = null; }
 });

@@ -98,7 +98,7 @@ test('cierre de caja con diferencia: queda registrada y marca los pedidos', asyn
   const { db, sequelize } = makeDb();
   db.orders.push(cashOrder(1, 30.5), cashOrder(2, 19.5), cashOrder(3, 10, { payment_mode: 'MERCADOPAGO' }));
   db.accept.push({ order_id: 1, user_id: 7 }, { order_id: 2, user_id: 7 }, { order_id: 3, user_id: 7 });
-  const res = await settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: '45.00', note: 'faltó cambio', adminId: 1 });
+  const res = await settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: '45.00', note: 'faltó cambio', adminId: 1, orderIds: [1, 2] });
   assert.strictEqual(res.expected_amount, 50);
   assert.strictEqual(res.received_amount, 45);
   assert.strictEqual(res.difference, -5);
@@ -115,9 +115,9 @@ test('no se puede cerrar un pedido dos veces', async () => {
   const { db, sequelize } = makeDb();
   db.orders.push(cashOrder(1, 30), cashOrder(2, 20));
   db.accept.push({ order_id: 1, user_id: 7 }, { order_id: 2, user_id: 7 });
-  await settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: 50, adminId: 1 });
+  await settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: 50, adminId: 1, orderIds: [1, 2] });
   await assert.rejects(
-    () => settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: 50, adminId: 1 }),
+    () => settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: 50, adminId: 1, orderIds: [1, 2] }),
     (e) => e instanceof settlements.SettlementError && e.status === 409
   );
   await assert.rejects(
@@ -145,10 +145,10 @@ test('cierre rechaza montos inválidos', async () => {
   db.orders.push(cashOrder(1, 30));
   db.accept.push({ order_id: 1, user_id: 7 });
   for (const bad of [-1, 'abc', NaN, Infinity, '', null, undefined]) {
-    await assert.rejects(() => settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: bad }), (e) => e.status === 400);
+    await assert.rejects(() => settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: bad, orderIds: [1] }), (e) => e.status === 400);
   }
   assert.strictEqual(db.collections.length, 0);
-  const ok = await settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: 0 });
+  const ok = await settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: 0, orderIds: [1] });
   assert.strictEqual(ok.difference, -30);
 });
 
@@ -198,4 +198,54 @@ test('vistas admin de caja compilan y renderizan', async () => {
     payouts: [{ id: 1, created_at: new Date(), amount: 9.5, reference: 'R', note: null }],
   });
   assert.ok(html2.includes('close-cash') && html2.includes('pay-earnings') && html2.includes('Confirmar cierre'));
+});
+
+test('cierre sin order_ids no cierra nada (nunca "todos" implícito)', async () => {
+  const { db, sequelize } = makeDb();
+  db.orders.push(cashOrder(1, 30), cashOrder(2, 20));
+  db.accept.push({ order_id: 1, user_id: 7 }, { order_id: 2, user_id: 7 });
+  for (const orderIds of [undefined, null, [], '', 'x', [0], [null]]) {
+    await assert.rejects(
+      () => settlements.closeCashCollection(sequelize, { deliveryGuyId: 7, receivedAmount: 50, adminId: 1, orderIds }),
+      (e) => e instanceof settlements.SettlementError && (e.status === 400 || e.status === 409)
+    );
+  }
+  assert.strictEqual(db.collections.length, 0);
+  assert.ok(db.orders.every((o) => !o.cash_collection_id));
+});
+
+test('controlador closeCash con body vacío da error y no toca la BD', async () => {
+  const file = require.resolve(path.join(__dirname, '..', 'src', 'models'));
+  const prev = require.cache[file];
+  let queries = 0;
+  require.cache[file] = { id: file, filename: file, loaded: true, exports: { sequelize: { async transaction() { queries++; }, async query() { queries++; return []; } } } };
+  const ctrlFile = require.resolve('../src/admin/controllers/settlementsController');
+  delete require.cache[ctrlFile];
+  try {
+    const ctrl = require('../src/admin/controllers/settlementsController');
+    const flashes = [];
+    let redirected = null;
+    const req = { params: { id: '7' }, body: { received_amount: '50' }, session: { user: { id: 1 } }, flash: (k, m) => flashes.push([k, m]) };
+    await ctrl.closeCash(req, { redirect: (u) => { redirected = u; } });
+    assert.strictEqual(queries, 0);
+    assert.strictEqual(flashes[0][0], 'error');
+    assert.strictEqual(redirected, '/admin/delivery-guy/account/7');
+  } finally {
+    delete require.cache[ctrlFile];
+    if (prev) require.cache[file] = prev; else delete require.cache[file];
+  }
+});
+
+test('registerDeliveryPayout no paga dos veces la misma ganancia', async () => {
+  const { db, sequelize } = makeDb();
+  db.earnings.push({ id: 1, user_id: 7, amount: 5 }, { id: 2, user_id: 7, amount: 3.5 });
+  const first = await settlements.registerDeliveryPayout(sequelize, { deliveryGuyId: 7, reference: 'A', adminId: 1 });
+  assert.strictEqual(first.amount, 8.5);
+  const results = await Promise.allSettled([
+    settlements.registerDeliveryPayout(sequelize, { deliveryGuyId: 7, reference: 'B', adminId: 1 }),
+    settlements.registerDeliveryPayout(sequelize, { deliveryGuyId: 7, reference: 'C', adminId: 1 }),
+  ]);
+  assert.ok(results.every((r) => r.status === 'rejected' && r.reason.status === 409));
+  assert.strictEqual(db.payouts.length, 1);
+  assert.ok(db.earnings.every((e) => e.payout_id === first.id));
 });

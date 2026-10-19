@@ -54,26 +54,24 @@ async function listPendingCashOrders(sequelize, deliveryGuyId, t) {
   );
 }
 
-// Cierra caja: marca los pedidos COD pendientes del repartidor con el cierre. Idempotente por pedido
+// Cierra caja: marca los pedidos COD elegidos (orderIds obligatorio, nunca "todos" implícito) con el cierre. Idempotente por pedido
 // (cash_collection_id IS NULL bajo FOR UPDATE): un pedido no puede cerrarse dos veces.
 async function closeCashCollection(sequelize, { deliveryGuyId, receivedAmount, note, adminId, orderIds }) {
   const dgId = toPositiveId(deliveryGuyId);
   if (!dgId) throw new SettlementError('Repartidor inválido');
   const received = parseAmount(receivedAmount);
   if (received === null) throw new SettlementError('Monto recibido inválido');
-  let wanted = null;
-  if (Array.isArray(orderIds) && orderIds.length) {
-    wanted = [...new Set(orderIds.map(toPositiveId))];
-    if (wanted.some((x) => !x)) throw new SettlementError('Pedido inválido');
-  }
+  if (!Array.isArray(orderIds) || !orderIds.length) throw new SettlementError('Selecciona al menos un pedido para cerrar la caja');
+  const wanted = [...new Set(orderIds.map(toPositiveId))];
+  if (wanted.some((x) => !x)) throw new SettlementError('Pedido inválido');
 
   return sequelize.transaction(async (t) => {
     const rows = await sequelize.query(
-      `SELECT o.id, o.payable ${CASH_PENDING_FROM}${wanted ? ' AND o.id IN (?)' : ''} ORDER BY o.id ASC FOR UPDATE`,
-      { replacements: wanted ? [dgId, DEFAULT_CASH_METHOD, wanted] : [dgId, DEFAULT_CASH_METHOD], type: QueryTypes.SELECT, transaction: t }
+      `SELECT o.id, o.payable ${CASH_PENDING_FROM} AND o.id IN (?) ORDER BY o.id ASC FOR UPDATE`,
+      { replacements: [dgId, DEFAULT_CASH_METHOD, wanted], type: QueryTypes.SELECT, transaction: t }
     );
     if (!rows.length) throw new SettlementError('No hay pedidos en efectivo pendientes de cierre', 409);
-    if (wanted && rows.length !== wanted.length) {
+    if (rows.length !== wanted.length) {
       throw new SettlementError('Algunos pedidos ya fueron cerrados o no corresponden al repartidor', 409);
     }
 
@@ -194,6 +192,16 @@ function orderSubTotal(order) {
     - Number(order.restaurant_charge || 0) - Number(order.tip_amount || 0) + Number(order.coupon_amount || 0)));
 }
 
+const CASH_PICKUP_KIND = 'cash_pickup_commission';
+
+// Recojo (delivery_type 2) pagado en efectivo: el dinero lo cobra la tienda, no la plataforma
+function isCashPickup(order) {
+  if (!order || Number(order.delivery_type) !== 2) return false;
+  const mode = typeof order.payment_mode === 'string' ? order.payment_mode.trim().toUpperCase() : '';
+  if (mode !== DEFAULT_CASH_METHOD) return false;
+  return order.payable === undefined || order.payable === null || toMoney(order.payable) > 0;
+}
+
 // Crea el registro de liquidación al entregar un pedido (cualquier forma de pago). Debe llamarse dentro de la
 // transacción que cambia el pedido a entregado. Idempotente por order_id (UNIQUE + NOT EXISTS).
 async function recordStoreEarning(sequelize, order, t) {
@@ -213,31 +221,47 @@ async function recordStoreEarning(sequelize, order, t) {
   );
   const couponAmount = toMoney(order.coupon_amount);
   let couponOwner = 'platform';
+  const warnings = [];
   const code = typeof order.coupon_name === 'string' ? order.coupon_name.trim().toUpperCase() : '';
-  if (couponAmount > 0 && code) {
-    const [coupon] = await sequelize.query(
-      'SELECT restaurant_id FROM coupons WHERE code = ? LIMIT 1',
-      { replacements: [code], type: QueryTypes.SELECT, transaction: t }
-    );
-    if (coupon && toPositiveId(coupon.restaurant_id)) couponOwner = 'store';
+  if (couponAmount > 0) {
+    // `coupons.code` no es único: se limita a cupones de la tienda del pedido o del admin (restaurant_id NULL)
+    // y, si hay de ambos, gana el de la tienda
+    const matches = code
+      ? await sequelize.query(
+        'SELECT id, restaurant_id FROM coupons WHERE code = ? AND (restaurant_id IS NULL OR restaurant_id = ?)',
+        { replacements: [code, restaurantId], type: QueryTypes.SELECT, transaction: t }
+      )
+      : [];
+    if (matches.some((c) => toPositiveId(c.restaurant_id) === restaurantId)) {
+      couponOwner = 'store';
+    } else if (!matches.length) {
+      warnings.push(`cupón "${code}" del pedido ${orderId} no identificado: registrado como absorbido por la plataforma, revisar`);
+      console.warn('[settlements]', warnings[warnings.length - 1]);
+    }
   }
 
+  const cashPickup = isCashPickup(order);
   const s = computeStoreSettlement({
     subTotal: orderSubTotal(order),
     commissionRate: restaurant ? restaurant.commission_rate : 0,
     couponAmount,
     couponOwner,
   });
+  // Recojo en tienda pagado en efectivo: la tienda ya cobró el dinero; la comisión de la plataforma queda como
+  // deuda (net_amount negativo) que se descuenta de sus próximas liquidaciones
+  const row = cashPickup
+    ? { ...s, net_amount: toMoney(-s.commission_amount), kind: CASH_PICKUP_KIND }
+    : { ...s, kind: 'sale' };
   await sequelize.query(
-    `INSERT INTO store_earnings (restaurant_id, order_id, subtotal, commission_amount, coupon_absorbed_by, coupon_amount, net_amount)
-     SELECT ?, ?, ?, ?, ?, ?, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM store_earnings WHERE order_id = ?)`,
+    `INSERT INTO store_earnings (restaurant_id, order_id, subtotal, commission_amount, coupon_absorbed_by, coupon_amount, net_amount, kind)
+     SELECT ?, ?, ?, ?, ?, ?, ?, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM store_earnings WHERE order_id = ?)`,
     {
-      replacements: [restaurantId, orderId, s.subtotal, s.commission_amount, s.coupon_absorbed_by, s.coupon_amount, s.net_amount, orderId],
+      replacements: [restaurantId, orderId, row.subtotal, row.commission_amount, row.coupon_absorbed_by, row.coupon_amount, row.net_amount, row.kind, orderId],
       type: QueryTypes.INSERT,
       transaction: t,
     }
   );
-  return { created: true, ...s };
+  return { created: true, ...row, warnings };
 }
 
 // Saldo de la tienda: disponible = net_amount sin solicitud; solicitado = solicitudes abiertas; pagado = depositado
@@ -295,7 +319,7 @@ async function requestStorePayout(sequelize, { restaurantId, userId, amount }) {
     if (open.length) throw new SettlementError('Ya tienes una solicitud de pago abierta', 409);
 
     const rows = await sequelize.query(
-      'SELECT id, net_amount FROM store_earnings WHERE restaurant_id = ? AND payout_id IS NULL AND net_amount > 0 ORDER BY id ASC FOR UPDATE',
+      'SELECT id, net_amount FROM store_earnings WHERE restaurant_id = ? AND payout_id IS NULL AND net_amount <> 0 ORDER BY id ASC FOR UPDATE',
       { replacements: [rid], type: QueryTypes.SELECT, transaction: t }
     );
     const available = sumBy(rows, 'net_amount');
@@ -315,6 +339,7 @@ async function requestStorePayout(sequelize, { restaurantId, userId, amount }) {
       if (!selected.length) throw new SettlementError('El monto es menor que tu liquidación más antigua', 400);
     }
     const payoutAmount = sumBy(selected, 'net_amount');
+    if (payoutAmount <= 0) throw new SettlementError('El monto seleccionado no cubre las deudas pendientes de tu tienda', 400);
 
     const [payoutId] = await sequelize.query(
       "INSERT INTO store_payouts (restaurant_id, user_id, amount, status, created_at, updated_at) VALUES (?, ?, ?, 'requested', NOW(), NOW())",
@@ -344,7 +369,7 @@ async function depositStorePayout(sequelize, { payoutId, amount, paidAt, referen
   const pid = toPositiveId(payoutId);
   if (!pid) throw new SettlementError('Solicitud inválida');
   const paid = parseAmount(amount);
-  if (paid === null) throw new SettlementError('Monto depositado inválido');
+  if (paid === null || paid <= 0) throw new SettlementError('Monto depositado inválido');
   const ref = cleanText(reference, 255);
   if (!ref) throw new SettlementError('La referencia del depósito es obligatoria');
   const when = parsePaidAt(paidAt);
@@ -404,6 +429,8 @@ async function listStorePayouts(sequelize, restaurantId, limit = 50) {
 module.exports = {
   computeStoreSettlement,
   recordStoreEarning,
+  isCashPickup,
+  CASH_PICKUP_KIND,
   getStoreBalance,
   requestStorePayout,
   depositStorePayout,

@@ -82,7 +82,11 @@ exports.closeCash = async (req, res) => {
   if (!id) return res.redirect('/admin/cash-collections');
   try {
     const raw = req.body.order_ids;
-    const orderIds = raw === undefined ? [] : (Array.isArray(raw) ? raw : [raw]);
+    const orderIds = raw === undefined || raw === null || raw === '' ? [] : (Array.isArray(raw) ? raw : [raw]);
+    if (!orderIds.length) {
+      req.flash('error', 'Selecciona al menos un pedido para cerrar la caja');
+      return res.redirect('/admin/delivery-guy/account/' + id);
+    }
     const result = await settlements.closeCashCollection(sequelize, {
       deliveryGuyId: id,
       receivedAmount: req.body.received_amount,
