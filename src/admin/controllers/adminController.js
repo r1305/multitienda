@@ -1368,7 +1368,7 @@ exports.storePayouts = async (req, res) => {
     const [payouts] = await sequelize.query(`
       SELECT sp.*, r.name as restaurant_name FROM store_payouts sp
       LEFT JOIN restaurants r ON sp.restaurant_id = r.id
-      ORDER BY sp.id DESC
+      ORDER BY (sp.status IN ('requested', 'pending')) DESC, sp.id DESC
     `);
     res.render('admin/storePayouts', { user: req.session.user, payouts, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
@@ -1384,19 +1384,50 @@ exports.viewPayout = async (req, res) => {
       LEFT JOIN restaurants r ON sp.restaurant_id = r.id
       WHERE sp.id = ? LIMIT 1
     `, { replacements: [req.params.id] });
-    res.render('admin/viewPayout', { user: req.session.user, payout: rows[0] || null, success: req.flash('success')[0], error: req.flash('error')[0] });
+    let earnings = [];
+    if (rows[0]) {
+      const [list] = await sequelize.query(
+        'SELECT se.*, o.unique_order_id FROM store_earnings se LEFT JOIN orders o ON o.id = se.order_id WHERE se.payout_id = ? ORDER BY se.id ASC',
+        { replacements: [rows[0].id] }
+      );
+      earnings = list;
+    }
+    res.render('admin/viewPayout', { user: req.session.user, payout: rows[0] || null, earnings, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     req.flash('error', 'Error loading payout');
     res.redirect('/admin/store-payouts');
   }
 };
 
+// Registra el depósito a la tienda: monto, fecha, referencia y nota. La solicitud pasa a 'paid';
+// si el monto depositado difiere del solicitado queda registrada la diferencia.
 exports.updatePayout = async (req, res) => {
+  const settlements = require('../../helpers/settlements');
+  const { id, paid_amount, paid_at, reference, note } = req.body;
   try {
-    const { id, status, transaction_mode, transaction_id, message } = req.body;
-    await sequelize.query('UPDATE store_payouts SET status=?, transaction_mode=?, transaction_id=?, message=?, updated_at=NOW() WHERE id=?', { replacements: [status, transaction_mode||'', transaction_id||'', message||'', id] });
-    req.flash('success', 'Payout updated');
-  } catch (err) { console.error(err); req.flash('error', 'Error updating payout'); }
+    const result = await settlements.depositStorePayout(sequelize, {
+      payoutId: id, amount: paid_amount, paidAt: paid_at, reference, note,
+      adminId: req.session && req.session.user ? req.session.user.id : null,
+    });
+    req.flash('success', 'Depósito registrado' + (result.difference !== 0 ? ' (diferencia ' + result.difference.toFixed(2) + ')' : ''));
+  } catch (err) {
+    if (err instanceof settlements.SettlementError) req.flash('error', err.message);
+    else { console.error(err); req.flash('error', 'Error al registrar el depósito'); }
+    return res.redirect('/admin/store-payout/' + encodeURIComponent(String(id || '')));
+  }
+  res.redirect('/admin/store-payouts');
+};
+
+exports.rejectPayout = async (req, res) => {
+  const settlements = require('../../helpers/settlements');
+  const { id, note } = req.body;
+  try {
+    await settlements.rejectStorePayout(sequelize, { payoutId: id, note, adminId: req.session && req.session.user ? req.session.user.id : null });
+    req.flash('success', 'Solicitud rechazada; el saldo vuelve a estar disponible para la tienda');
+  } catch (err) {
+    if (err instanceof settlements.SettlementError) req.flash('error', err.message);
+    else { console.error(err); req.flash('error', 'Error al rechazar la solicitud'); }
+  }
   res.redirect('/admin/store-payouts');
 };
 

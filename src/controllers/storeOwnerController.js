@@ -10,6 +10,7 @@ const { releaseDueScheduledOrders } = require('../helpers/scheduledOrders');
 const { escapeLike } = require('../helpers/utils');
 const { normalizePrepMinutes, MAX_PREP_MINUTES } = require('../helpers/orderEta');
 const businessTypes = require('../helpers/businessTypes');
+const settlements = require('../helpers/settlements');
 
 exports.login = async (req, res) => {
   try {
@@ -39,7 +40,7 @@ exports.dashboard = async (req, res) => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const [[{ todayOrders }]] = await sequelize.query('SELECT COUNT(*) as todayOrders FROM orders WHERE restaurant_id = ? AND created_at >= ?', { replacements: [restaurant.id, today] });
     const [[{ pendingOrders }]] = await sequelize.query('SELECT COUNT(*) as pendingOrders FROM orders WHERE restaurant_id = ? AND orderstatus_id = 1', { replacements: [restaurant.id] });
-    const [[{ todayEarnings }]] = await sequelize.query('SELECT COALESCE(SUM(total), 0) as todayEarnings FROM orders WHERE restaurant_id = ? AND orderstatus_id = 5 AND created_at >= ?', { replacements: [restaurant.id, today] });
+    const [[{ todayEarnings }]] = await sequelize.query('SELECT COALESCE(SUM(net_amount), 0) as todayEarnings FROM store_earnings WHERE restaurant_id = ? AND created_at >= ?', { replacements: [restaurant.id, today] });
 
     res.json({ success: true, store: restaurant, stats: { todayOrders, pendingOrders, todayEarnings: parseFloat(todayEarnings) } });
   } catch (err) {
@@ -209,7 +210,10 @@ exports.markSelfpickupOrderCompleted = async (req, res) => {
     if (Number(order.delivery_type) !== 2) {
       return res.status(409).json({ success: false, message: 'El pedido no es de recojo en tienda' });
     }
-    await states.transition(order, [states.STATUS.SELFPICKUP_READY], states.STATUS.DELIVERED, 'store', null, { where: { restaurant_id: restaurant.id } });
+    await sequelize.transaction(async (t) => {
+      await states.transition(order, [states.STATUS.SELFPICKUP_READY], states.STATUS.DELIVERED, 'store', t, { where: { restaurant_id: restaurant.id } });
+      await settlements.recordStoreEarning(sequelize, order, t);
+    });
     await emitOrderEvent('delivered', order);
     res.json({ success: true });
   } catch (err) {
@@ -351,10 +355,24 @@ exports.replyToRating = async (req, res) => {
   }
 };
 
+// La tienda solicita el pago de su saldo disponible. El monto sale de store_earnings (BD); el body solo puede
+// pedir un monto menor o igual al saldo. Una sola solicitud abierta por tienda.
 exports.sendPayoutRequest = async (req, res) => {
   try {
-    res.json({ success: true, message: 'Payout request sent' });
+    const restaurant = await getOwnerRestaurant(req.user.id);
+    if (!restaurant) return res.status(403).json({ success: false });
+    const result = await settlements.requestStorePayout(sequelize, {
+      restaurantId: restaurant.id,
+      userId: req.user.id,
+      amount: req.body ? req.body.amount : undefined,
+    });
+    res.json({ success: true, message: 'Solicitud de pago enviada', payout: result });
   } catch (err) {
+    if (err instanceof settlements.SettlementError) {
+      // 200 con success:false: el cliente (API.request) descarta el cuerpo de las respuestas HTTP de error
+      return res.json({ success: false, message: err.message });
+    }
+    console.error('sendPayoutRequest error:', err.message);
     res.status(500).json({ success: false });
   }
 };
@@ -502,7 +520,7 @@ exports.getEarnings = async (req, res) => {
     }
 
     const [rows] = await sequelize.query(
-      'SELECT DATE(created_at) as day, SUM(total) as earnings, COUNT(*) as cnt FROM orders WHERE orderstatus_id = 5 AND restaurant_id = ? AND DATE(created_at) >= ? AND DATE(created_at) <= ? GROUP BY DATE(created_at) ORDER BY day ASC',
+      'SELECT DATE(created_at) as day, SUM(net_amount) as earnings, COUNT(*) as cnt FROM store_earnings WHERE restaurant_id = ? AND DATE(created_at) >= ? AND DATE(created_at) <= ? GROUP BY DATE(created_at) ORDER BY day ASC',
       { replacements: [restaurant.id, startStr, endStr] }
     );
 
@@ -527,8 +545,13 @@ exports.getEarnings = async (req, res) => {
       current.setDate(current.getDate() + 1);
     }
 
-    res.json({ labels, values, total, orderCount });
+    const [balance, payouts] = await Promise.all([
+      settlements.getStoreBalance(sequelize, restaurant.id),
+      settlements.listStorePayouts(sequelize, restaurant.id, 30),
+    ]);
+    res.json({ labels, values, total, orderCount, balance, payouts, commission_rate: parseFloat(restaurant.commission_rate || 0) });
   } catch (err) {
+    console.error('getEarnings error:', err.message);
     res.status(500).json({ labels: [], values: [], total: 0, orderCount: 0 });
   }
 };

@@ -341,6 +341,7 @@ router.post('/admin/notifications/send', adminController.sendNotification);
 router.get('/admin/store-payouts', adminController.storePayouts);
 router.get('/admin/store-payout/:id', adminController.viewPayout);
 router.post('/admin/store-payout/save', adminController.updatePayout);
+router.post('/admin/store-payout/reject', adminController.rejectPayout);
 
 // Category Slider
 router.get('/admin/store-category-slider', adminController.categorySlider);

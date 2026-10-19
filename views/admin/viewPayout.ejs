@@ -1,34 +1,70 @@
-<% var active = 'payouts'; var pageTitle = 'View Payout #' + (typeof payout !== 'undefined' && payout ? payout.id : ''); %>
+<% var active = 'payouts'; var pageTitle = 'Solicitud de pago #' + (typeof payout !== 'undefined' && payout ? payout.id : ''); %>
 <% var scripts = ''; %>
 <%
+var cur = typeof currency !== 'undefined' ? currency : '$';
+function money(v) { return esc(cur) + esc(parseFloat(v || 0).toFixed(2)); }
 var body = '';
 if (typeof payout !== 'undefined' && payout) {
+  var open = payout.status === 'requested' || payout.status === 'pending';
+  var stLabel = open ? 'Solicitado' : payout.status === 'paid' ? 'Pagado' : payout.status === 'rejected' ? 'Rechazado' : (payout.status || '-');
+  var stClass = open ? 'warning' : payout.status === 'paid' ? 'success' : 'secondary';
+  var todayLima = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
   body = `
+  <div class="mb-3"><a href="/admin/store-payouts" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver a pagos</a></div>
   <div class="row">
     <div class="col-md-6">
-      <div class="card"><div class="card-header">Payout Details</div><div class="card-body">
-        <p><strong>Store:</strong> ${esc(payout.restaurant_name || '-')}</p>
-        <p><strong>Amount:</strong> ${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(payout.amount || 0).toFixed(2))}</p>
-        <p><strong>Status:</strong> <span class="badge badge-${esc(payout.status == 'completed' ? 'success' : 'warning')}">${esc(payout.status || 'pending')}</span></p>
-        <p><strong>Transaction Mode:</strong> ${esc(payout.transaction_mode || '-')}</p>
-        <p><strong>Transaction ID:</strong> ${esc(payout.transaction_id || '-')}</p>
-        <p><strong>Message:</strong> ${esc(payout.message || '-')}</p>
-        <p><strong>Date:</strong> ${esc(payout.created_at ? new Date(payout.created_at).toLocaleString() : '-')}</p>
+      <div class="card"><div class="card-header">Detalle de la solicitud</div><div class="card-body">
+        <p><strong>Tienda:</strong> ${esc(payout.restaurant_name || '-')}</p>
+        <p><strong>Monto solicitado:</strong> ${money(payout.amount)}</p>
+        <p><strong>Estado:</strong> <span class="badge badge-${esc(stClass)}">${esc(stLabel)}</span></p>
+        <p><strong>Solicitada:</strong> ${esc(payout.created_at ? new Date(payout.created_at).toLocaleString('es-PE', { timeZone: 'America/Lima' }) : '-')}</p>
+        <p><strong>Depositado:</strong> ${payout.paid_amount === null || payout.paid_amount === undefined ? '-' : money(payout.paid_amount)}</p>
+        <p><strong>Diferencia:</strong> ${payout.difference === null || payout.difference === undefined ? '-' : money(payout.difference)}</p>
+        <p><strong>Fecha del depósito:</strong> ${esc(payout.paid_at ? new Date(payout.paid_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' }) : '-')}</p>
+        <p><strong>Referencia:</strong> ${esc(payout.reference || '-')}</p>
+        <p class="mb-0"><strong>Nota:</strong> ${esc(payout.notes || '-')}</p>
       </div></div>
     </div>
-    <div class="col-md-6">
-      <div class="card"><div class="card-header">Update Payout</div><div class="card-body">
+    <div class="col-md-6">`;
+  if (open) {
+    body += `
+      <div class="card"><div class="card-header">Registrar depósito</div><div class="card-body">
         <form method="POST" action="/admin/store-payout/save">
           <input type="hidden" name="id" value="${esc(payout.id)}">
-          <div class="form-group"><label>Status</label><select name="status" class="form-control"><option value="pending" ${esc(payout.status=='pending'?'selected':'')}>Pending</option><option value="completed" ${esc(payout.status=='completed'?'selected':'')}>Completed</option><option value="rejected" ${esc(payout.status=='rejected'?'selected':'')}>Rejected</option></select></div>
-          <div class="form-group"><label>Transaction Mode</label><input type="text" name="transaction_mode" class="form-control" value="${esc(payout.transaction_mode || '')}"></div>
-          <div class="form-group"><label>Transaction ID</label><input type="text" name="transaction_id" class="form-control" value="${esc(payout.transaction_id || '')}"></div>
-          <div class="form-group"><label>Message</label><textarea name="message" class="form-control" rows="3">${esc(payout.message || '')}</textarea></div>
-          <button type="submit" class="btn btn-primary btn-block">Update Payout</button>
+          <div class="form-group"><label>Monto depositado</label><input type="number" step="0.01" min="0" max="99999999" name="paid_amount" class="form-control" value="${esc(parseFloat(payout.amount || 0).toFixed(2))}" required></div>
+          <div class="form-group"><label>Fecha del depósito</label><input type="date" name="paid_at" class="form-control" value="${esc(todayLima)}" required></div>
+          <div class="form-group"><label>Referencia</label><input type="text" name="reference" maxlength="255" class="form-control" required></div>
+          <div class="form-group"><label>Nota (opcional)</label><textarea name="note" maxlength="500" class="form-control" rows="2"></textarea></div>
+          <button type="submit" class="btn btn-success btn-block" onclick="return confirm('Registrar el depósito y marcar la solicitud como pagada?')">Registrar depósito</button>
+          <small class="text-muted">Si el monto es distinto al solicitado, la diferencia queda registrada.</small>
         </form>
       </div></div>
+      <div class="card"><div class="card-header">Rechazar solicitud</div><div class="card-body">
+        <form method="POST" action="/admin/store-payout/reject">
+          <input type="hidden" name="id" value="${esc(payout.id)}">
+          <div class="form-group"><label>Motivo (opcional)</label><input type="text" name="note" maxlength="500" class="form-control"></div>
+          <button type="submit" class="btn btn-outline-danger btn-block" onclick="return confirm('Rechazar la solicitud? El saldo vuelve a la tienda.')">Rechazar</button>
+        </form>
+      </div></div>`;
+  } else {
+    body += '<div class="card"><div class="card-body text-muted">Esta solicitud ya fue procesada.</div></div>';
+  }
+  body += `
     </div>
-  </div>`;
+  </div>
+  <div class="card">
+    <div class="card-header">Pedidos incluidos</div>
+    <div class="card-body"><div class="table-responsive"><table class="table table-sm table-hover">
+      <thead><tr><th>Pedido</th><th>Subtotal</th><th>Comisión</th><th>Cupón</th><th>Asume cupón</th><th>Neto tienda</th></tr></thead><tbody>`;
+  if (typeof earnings !== 'undefined' && earnings.length) {
+    earnings.forEach(function(e) {
+      body += `<tr><td>#${esc(e.unique_order_id || e.order_id)}</td><td>${money(e.subtotal)}</td><td>${money(e.commission_amount)}</td><td>${money(e.coupon_amount)}</td>
+        <td>${esc(e.coupon_absorbed_by === 'store' ? 'Tienda' : 'Plataforma')}</td><td><strong>${money(e.net_amount)}</strong></td></tr>`;
+    });
+  } else {
+    body += '<tr><td colspan="6" class="text-center text-muted">Sin pedidos asociados</td></tr>';
+  }
+  body += `</tbody></table></div></div></div>`;
 }
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

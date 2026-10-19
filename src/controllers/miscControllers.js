@@ -800,6 +800,8 @@ exports.deliverOrder = async (req, res) => {
           { replacements: [req.user.id, orderId, payout.amount, payout.tip, (dgDetails[0] && dgDetails[0].commission_type) || 'fixed', orderId], transaction: t }
         );
       }
+      // Liquidación a la tienda (subtotal - comisión - cupón de tienda); idempotente por order_id
+      await require('../helpers/settlements').recordStoreEarning(sequelize, order, t);
       return { status: 200, order };
     });
 

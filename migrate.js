@@ -687,6 +687,40 @@ const tables = [
     KEY delivery_payouts_delivery_guy_idx (delivery_guy_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  // Lo que le corresponde a cada tienda por pedido entregado (subtotal - comisión - cupón de la tienda)
+  `CREATE TABLE IF NOT EXISTS store_earnings (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    restaurant_id INT UNSIGNED NOT NULL,
+    order_id INT UNSIGNED NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+    commission_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    coupon_absorbed_by VARCHAR(20) NOT NULL DEFAULT 'platform',
+    coupon_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    net_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    payout_id INT UNSIGNED NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY store_earnings_order_id_unique (order_id),
+    KEY store_earnings_restaurant_payout_idx (restaurant_id, payout_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // Solicitudes de pago de las tiendas y su depósito (status: requested | paid | rejected)
+  `CREATE TABLE IF NOT EXISTS store_payouts (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    restaurant_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NULL,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'requested',
+    notes TEXT NULL,
+    reference VARCHAR(255) NULL,
+    paid_at DATETIME NULL,
+    paid_amount DECIMAL(10,2) NULL,
+    difference DECIMAL(10,2) NULL,
+    paid_by INT UNSIGNED NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY store_payouts_restaurant_status_idx (restaurant_id, status)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   // Seed: default roles
   `INSERT IGNORE INTO roles (name, guard_name, created_at, updated_at) VALUES
     ('Admin', 'web', NOW(), NOW()),
@@ -726,6 +760,18 @@ const columns = [
   { table: 'orders', column: 'cash_collection_id', ddl: 'ALTER TABLE orders ADD COLUMN cash_collection_id INT UNSIGNED NULL, ADD INDEX orders_cash_collection_idx (cash_collection_id)' },
   { table: 'delivery_earnings', column: 'payout_id', ddl: 'ALTER TABLE delivery_earnings ADD COLUMN payout_id INT UNSIGNED NULL, ADD INDEX delivery_earnings_payout_idx (payout_id)' },
   { table: 'delivery_earnings', column: 'tip_amount', ddl: 'ALTER TABLE delivery_earnings ADD COLUMN tip_amount DECIMAL(10,2) NOT NULL DEFAULT 0' },
+  // store_payouts puede existir ya (instalador/Laravel) con otras columnas: se completan sin tocar datos
+  { table: 'store_payouts', column: 'amount', ddl: 'ALTER TABLE store_payouts ADD COLUMN amount DECIMAL(10,2) NOT NULL DEFAULT 0' },
+  { table: 'store_payouts', column: 'status', ddl: "ALTER TABLE store_payouts ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'requested'" },
+  { table: 'store_payouts', column: 'user_id', ddl: 'ALTER TABLE store_payouts ADD COLUMN user_id INT UNSIGNED NULL' },
+  { table: 'store_payouts', column: 'notes', ddl: 'ALTER TABLE store_payouts ADD COLUMN notes TEXT NULL' },
+  { table: 'store_payouts', column: 'reference', ddl: 'ALTER TABLE store_payouts ADD COLUMN reference VARCHAR(255) NULL' },
+  { table: 'store_payouts', column: 'paid_at', ddl: 'ALTER TABLE store_payouts ADD COLUMN paid_at DATETIME NULL' },
+  { table: 'store_payouts', column: 'paid_amount', ddl: 'ALTER TABLE store_payouts ADD COLUMN paid_amount DECIMAL(10,2) NULL' },
+  { table: 'store_payouts', column: 'difference', ddl: 'ALTER TABLE store_payouts ADD COLUMN difference DECIMAL(10,2) NULL' },
+  { table: 'store_payouts', column: 'paid_by', ddl: 'ALTER TABLE store_payouts ADD COLUMN paid_by INT UNSIGNED NULL' },
+  { table: 'store_payouts', column: 'created_at', ddl: 'ALTER TABLE store_payouts ADD COLUMN created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP' },
+  { table: 'store_payouts', column: 'updated_at', ddl: 'ALTER TABLE store_payouts ADD COLUMN updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP' },
 ];
 
 const uniques = [
@@ -777,6 +823,27 @@ async function run() {
       console.error(`Error columna ${c.table}.${c.column}:`, err.message);
       fail++;
     }
+  }
+
+  // store_payouts.status viene como ENUM('pending','approved','rejected') del instalador: pasa a VARCHAR conservando valores
+  try {
+    const [st] = await sequelize.query(
+      "SELECT DATA_TYPE AS dt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'store_payouts' AND COLUMN_NAME = 'status' LIMIT 1"
+    );
+    if (st.length && String(st[0].dt).toLowerCase() === 'enum') {
+      await sequelize.query("ALTER TABLE store_payouts MODIFY COLUMN status VARCHAR(20) NOT NULL DEFAULT 'requested'");
+      console.log('APLICADO: store_payouts.status de ENUM a VARCHAR(20)');
+      ok++;
+    } else if (st.length && !['varchar', 'char'].includes(String(st[0].dt).toLowerCase())) {
+      console.warn(`AVISO: store_payouts.status es ${st[0].dt}; convertir a VARCHAR(20) a mano.`);
+      skipped++;
+    } else {
+      console.log('OMITIDO: store_payouts.status ya es VARCHAR');
+      skipped++;
+    }
+  } catch (err) {
+    console.error('Error store_payouts.status:', err.message);
+    fail++;
   }
 
   for (const u of uniques) {

@@ -1,29 +1,38 @@
-<% var active = 'payouts'; var pageTitle = 'Store Payouts'; %>
-<% var scripts = '<script>$(document).ready(function(){ if($("#payoutsTable tbody tr").length > 1) { $("#payoutsTable").DataTable({order:[[0,"desc"]]}); } });</script>'; %>
+<% var active = 'payouts'; var pageTitle = 'Pagos a tiendas'; %>
+<% var scripts = '<script>$(document).ready(function(){ if($("#payoutsTable tbody tr").length > 1) { $("#payoutsTable").DataTable({order:[]}); } });</script>'; %>
 <%
+var cur = typeof currency !== 'undefined' ? currency : '$';
+var statusLabels = { requested: ['Solicitado', 'warning'], pending: ['Solicitado', 'warning'], paid: ['Pagado', 'success'], rejected: ['Rechazado', 'secondary'] };
 var body = `
 <div class="card">
     <div class="card-body">
+        <div class="table-responsive">
         <table class="table table-hover" id="payoutsTable">
-            <thead><tr><th>ID</th><th>Store</th><th>Amount</th><th>Status</th><th>Transaction</th><th>Date</th><th>Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Tienda</th><th>Solicitado</th><th>Estado</th><th>Depositado</th><th>Diferencia</th><th>Referencia</th><th>Fecha</th><th></th></tr></thead>
             <tbody>`;
 
 if (typeof payouts !== 'undefined' && payouts.length) {
   payouts.forEach(function(p) {
+    var st = statusLabels[p.status] || [p.status || '-', 'secondary'];
+    var paid = p.paid_amount === null || p.paid_amount === undefined ? '-' : esc(cur) + esc(parseFloat(p.paid_amount).toFixed(2));
+    var diff = p.difference === null || p.difference === undefined ? '-' : esc(cur) + esc(parseFloat(p.difference).toFixed(2));
+    var open = p.status === 'requested' || p.status === 'pending';
     body += `<tr>
       <td>${esc(p.id)}</td>
       <td>${esc(p.restaurant_name || '-')}</td>
-      <td>${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(parseFloat(p.amount || 0).toFixed(2))}</td>
-      <td><span class="badge badge-${esc(p.status == 'completed' ? 'success' : p.status == 'pending' ? 'warning' : 'secondary')}">${esc(p.status || 'pending')}</span></td>
-      <td>${esc(p.transaction_id || '-')}</td>
-      <td>${esc(p.created_at ? new Date(p.created_at).toLocaleDateString() : '-')}</td>
-      <td><a href="/admin/store-payout/${esc(p.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+      <td>${esc(cur)}${esc(parseFloat(p.amount || 0).toFixed(2))}</td>
+      <td><span class="badge badge-${esc(st[1])}">${esc(st[0])}</span></td>
+      <td>${paid}</td>
+      <td>${diff}</td>
+      <td>${esc(p.reference || '-')}</td>
+      <td>${esc(p.created_at ? new Date(p.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima' }) : '-')}</td>
+      <td><a href="/admin/store-payout/${esc(p.id)}" class="btn btn-sm ${open ? 'btn-primary' : 'btn-outline-primary'}">${open ? 'Registrar depósito' : '<i class="fas fa-eye"></i>'}</a></td>
     </tr>`;
   });
 } else {
-  body += '<tr><td colspan="7" class="text-center text-muted py-4">No payouts found</td></tr>';
+  body += '<tr><td colspan="9" class="text-center text-muted py-4">No hay solicitudes de pago</td></tr>';
 }
 
-body += `</tbody></table></div></div>`;
+body += `</tbody></table></div></div></div>`;
 %>
 <%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

@@ -454,6 +454,27 @@ const StoreOwnerEarningsPage = {
             <div class="so-stat"><div class="so-stat-value" style="color:#4caf50">{{Store.formatPrice(total)}}</div><div class="so-stat-label">Total del periodo</div></div>
             <div class="so-stat"><div class="so-stat-value" style="color:var(--primary)">{{orderCount}}</div><div class="so-stat-label">Pedidos</div></div>
           </div>
+          <div v-if="balance" class="so-card">
+            <div class="so-card-header"><span>Mi saldo</span></div>
+            <div class="so-card-body">
+              <div class="so-stats" style="margin-bottom:12px">
+                <div class="so-stat"><div class="so-stat-value" style="color:#4caf50">{{Store.formatPrice(balance.available)}}</div><div class="so-stat-label">Disponible</div></div>
+                <div class="so-stat"><div class="so-stat-value" style="color:#ff9800">{{Store.formatPrice(balance.requested)}}</div><div class="so-stat-label">Solicitado</div></div>
+                <div class="so-stat"><div class="so-stat-value">{{Store.formatPrice(balance.paid)}}</div><div class="so-stat-label">Pagado</div></div>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Recibes el subtotal de tus productos menos la comisión de la plataforma ({{commissionRate}}%). El envío y la propina no pagan comisión.</div>
+              <button class="so-btn so-btn-success" :disabled="requesting || !(balance.available > 0)" @click="requestPayout"><i class="fas fa-hand-holding-usd"></i> {{requesting ? 'Enviando...' : 'Solicitar pago de ' + Store.formatPrice(balance.available)}}</button>
+              <div v-if="payoutMsg" style="margin-top:8px;font-size:13px" :style="{color: payoutOk ? '#2e7d32' : '#c62828'}">{{payoutMsg}}</div>
+              <div v-if="payouts.length" style="margin-top:16px">
+                <div style="font-size:13px;font-weight:600;margin-bottom:6px">Historial de solicitudes</div>
+                <div v-for="p in payouts" :key="p.id" style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+                  <div style="display:flex;justify-content:space-between"><span>{{formatDay(p.created_at)}} &middot; {{Store.formatPrice(p.amount)}}</span><strong :style="{color: p.status==='paid' ? '#4caf50' : p.status==='rejected' ? '#9e9e9e' : '#ff9800'}">{{payoutStatus(p.status)}}</strong></div>
+                  <div v-if="p.status==='paid'" style="font-size:12px;color:var(--muted)">Depositado {{Store.formatPrice(p.paid_amount)}} el {{formatDay(p.paid_at)}} &middot; Ref. {{p.reference}}<span v-if="Number(p.difference) !== 0"> &middot; Diferencia {{Store.formatPrice(p.difference)}}</span></div>
+                  <div v-else-if="p.status==='rejected' && p.notes" style="font-size:12px;color:var(--muted)">{{p.notes}}</div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="so-card">
             <div class="so-card-header">
               <span>Ganancias</span>
@@ -477,7 +498,7 @@ const StoreOwnerEarningsPage = {
   setup() { return { Store }; },
   data() {
     const today = new Date().toISOString().split('T')[0];
-    return { loading: true, total: 0, orderCount: 0, chartData: { labels: [], values: [] }, activeFilter: 'week', dateFrom: today, dateTo: today, chart: null, filters: [{ id: 'week', label: '7d' }, { id: 'month', label: '30d' }, { id: 'custom', label: 'Rango' }] };
+    return { balance: null, payouts: [], commissionRate: 0, requesting: false, payoutMsg: '', payoutOk: false, loading: true, total: 0, orderCount: 0, chartData: { labels: [], values: [] }, activeFilter: 'week', dateFrom: today, dateTo: today, chart: null, filters: [{ id: 'week', label: '7d' }, { id: 'month', label: '30d' }, { id: 'custom', label: 'Rango' }] };
   },
   async mounted() {
     if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; }
@@ -493,10 +514,26 @@ const StoreOwnerEarningsPage = {
         if (this.activeFilter === 'custom') url += '&from=' + this.dateFrom + '&to=' + this.dateTo;
         const res = await API.post(url, { token });
         this.total = res.total || 0; this.orderCount = res.orderCount || 0;
+        this.balance = res.balance || null; this.payouts = res.payouts || []; this.commissionRate = res.commission_rate || 0;
         this.chartData = { labels: res.labels || [], values: res.values || [] };
         this.$nextTick(() => this.loadChart());
       } catch(e) {}
       this.loading = false;
+    },
+    payoutStatus(s) { return { requested: 'Solicitado', pending: 'Solicitado', paid: 'Pagado', rejected: 'Rechazado' }[s] || s; },
+    formatDay(d) { return d ? new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/Lima' }) : ''; },
+    async requestPayout() {
+      if (this.requesting) return;
+      if (!confirm('Solicitar el pago de tu saldo disponible?')) return;
+      this.requesting = true; this.payoutMsg = '';
+      try {
+        const token = localStorage.getItem('storeOwnerToken');
+        const res = await API.post('/store-owner/send-payout-request', { token });
+        this.payoutOk = !!(res && res.success);
+        this.payoutMsg = (res && res.message) || (this.payoutOk ? 'Solicitud enviada' : 'No se pudo enviar la solicitud');
+        if (this.payoutOk) await this.loadData();
+      } catch(e) { this.payoutOk = false; this.payoutMsg = 'No se pudo enviar la solicitud, intenta de nuevo'; }
+      this.requesting = false;
     },
     loadChart() {
       const canvas = document.getElementById('earningsChart');

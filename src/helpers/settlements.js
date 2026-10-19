@@ -166,7 +166,250 @@ async function listDeliveryPayouts(sequelize, deliveryGuyId, limit = 50) {
   );
 }
 
+// ─── Liquidación a tiendas ───────────────────────────────────────────────────
+
+const OPEN_PAYOUT = "('requested', 'pending')";
+
+// Tienda recibe: subtotal de productos - comisión (commission_rate % sobre el subtotal, sin envío ni propina).
+// Cupón del admin (coupons.restaurant_id NULL): lo absorbe la plataforma. Cupón de la tienda: se descuenta a la tienda.
+function computeStoreSettlement({ subTotal, commissionRate, couponAmount, couponOwner }) {
+  const sub = toMoney(Math.max(0, Number(subTotal) || 0));
+  const rate = Math.min(100, Math.max(0, Number(commissionRate) || 0));
+  const commission = toMoney(sub * rate / 100);
+  const coupon = toMoney(Math.max(0, Number(couponAmount) || 0));
+  const absorbedBy = couponOwner === 'store' ? 'store' : 'platform';
+  const storeCoupon = absorbedBy === 'store' ? coupon : 0;
+  return {
+    subtotal: sub,
+    commission_amount: commission,
+    coupon_absorbed_by: absorbedBy,
+    coupon_amount: coupon,
+    net_amount: toMoney(Math.max(0, sub - storeCoupon - commission)),
+  };
+}
+
+function orderSubTotal(order) {
+  if (order.sub_total !== undefined && order.sub_total !== null && order.sub_total !== '') return toMoney(order.sub_total);
+  return toMoney(Math.max(0, Number(order.total || 0) - Number(order.delivery_charge || 0)
+    - Number(order.restaurant_charge || 0) - Number(order.tip_amount || 0) + Number(order.coupon_amount || 0)));
+}
+
+// Crea el registro de liquidación al entregar un pedido (cualquier forma de pago). Debe llamarse dentro de la
+// transacción que cambia el pedido a entregado. Idempotente por order_id (UNIQUE + NOT EXISTS).
+async function recordStoreEarning(sequelize, order, t) {
+  const restaurantId = toPositiveId(order && order.restaurant_id);
+  const orderId = toPositiveId(order && order.id);
+  if (!restaurantId || !orderId) return { created: false };
+
+  const existing = await sequelize.query(
+    'SELECT id FROM store_earnings WHERE order_id = ? LIMIT 1',
+    { replacements: [orderId], type: QueryTypes.SELECT, transaction: t }
+  );
+  if (existing.length) return { created: false };
+
+  const [restaurant] = await sequelize.query(
+    'SELECT commission_rate FROM restaurants WHERE id = ? LIMIT 1',
+    { replacements: [restaurantId], type: QueryTypes.SELECT, transaction: t }
+  );
+  const couponAmount = toMoney(order.coupon_amount);
+  let couponOwner = 'platform';
+  const code = typeof order.coupon_name === 'string' ? order.coupon_name.trim().toUpperCase() : '';
+  if (couponAmount > 0 && code) {
+    const [coupon] = await sequelize.query(
+      'SELECT restaurant_id FROM coupons WHERE code = ? LIMIT 1',
+      { replacements: [code], type: QueryTypes.SELECT, transaction: t }
+    );
+    if (coupon && toPositiveId(coupon.restaurant_id)) couponOwner = 'store';
+  }
+
+  const s = computeStoreSettlement({
+    subTotal: orderSubTotal(order),
+    commissionRate: restaurant ? restaurant.commission_rate : 0,
+    couponAmount,
+    couponOwner,
+  });
+  await sequelize.query(
+    `INSERT INTO store_earnings (restaurant_id, order_id, subtotal, commission_amount, coupon_absorbed_by, coupon_amount, net_amount)
+     SELECT ?, ?, ?, ?, ?, ?, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM store_earnings WHERE order_id = ?)`,
+    {
+      replacements: [restaurantId, orderId, s.subtotal, s.commission_amount, s.coupon_absorbed_by, s.coupon_amount, s.net_amount, orderId],
+      type: QueryTypes.INSERT,
+      transaction: t,
+    }
+  );
+  return { created: true, ...s };
+}
+
+// Saldo de la tienda: disponible = net_amount sin solicitud; solicitado = solicitudes abiertas; pagado = depositado
+async function getStoreBalance(sequelize, restaurantId) {
+  const rid = toPositiveId(restaurantId);
+  if (!rid) throw new SettlementError('Tienda inválida');
+  const [total] = await sequelize.query(
+    'SELECT COALESCE(SUM(net_amount), 0) AS v, COUNT(*) AS orders FROM store_earnings WHERE restaurant_id = ?',
+    { replacements: [rid], type: QueryTypes.SELECT }
+  );
+  const [available] = await sequelize.query(
+    'SELECT COALESCE(SUM(net_amount), 0) AS v, COUNT(*) AS orders FROM store_earnings WHERE restaurant_id = ? AND payout_id IS NULL',
+    { replacements: [rid], type: QueryTypes.SELECT }
+  );
+  const [requested] = await sequelize.query(
+    `SELECT COALESCE(SUM(amount), 0) AS v FROM store_payouts WHERE restaurant_id = ? AND status IN ${OPEN_PAYOUT}`,
+    { replacements: [rid], type: QueryTypes.SELECT }
+  );
+  const [paid] = await sequelize.query(
+    "SELECT COALESCE(SUM(paid_amount), 0) AS v FROM store_payouts WHERE restaurant_id = ? AND status = 'paid'",
+    { replacements: [rid], type: QueryTypes.SELECT }
+  );
+  return {
+    total_net: toMoney(total && total.v),
+    orders: Number((total && total.orders) || 0),
+    available: toMoney(available && available.v),
+    available_orders: Number((available && available.orders) || 0),
+    requested: toMoney(requested && requested.v),
+    paid: toMoney(paid && paid.v),
+  };
+}
+
+// La tienda pide el pago de su saldo disponible (o de un monto menor: se toman liquidaciones completas, de la más
+// antigua a la más nueva, sin pasar el monto indicado). Una sola solicitud abierta por tienda (bloqueo de la fila).
+async function requestStorePayout(sequelize, { restaurantId, userId, amount }) {
+  const rid = toPositiveId(restaurantId);
+  if (!rid) throw new SettlementError('Tienda inválida');
+  let wanted = null;
+  if (amount !== undefined && amount !== null && amount !== '') {
+    wanted = parseAmount(amount);
+    if (wanted === null || wanted <= 0) throw new SettlementError('Monto inválido');
+  }
+
+  return sequelize.transaction(async (t) => {
+    const locked = await sequelize.query(
+      'SELECT id FROM restaurants WHERE id = ? LIMIT 1 FOR UPDATE',
+      { replacements: [rid], type: QueryTypes.SELECT, transaction: t }
+    );
+    if (!locked.length) throw new SettlementError('Tienda no encontrada', 404);
+
+    const open = await sequelize.query(
+      `SELECT id FROM store_payouts WHERE restaurant_id = ? AND status IN ${OPEN_PAYOUT} LIMIT 1`,
+      { replacements: [rid], type: QueryTypes.SELECT, transaction: t }
+    );
+    if (open.length) throw new SettlementError('Ya tienes una solicitud de pago abierta', 409);
+
+    const rows = await sequelize.query(
+      'SELECT id, net_amount FROM store_earnings WHERE restaurant_id = ? AND payout_id IS NULL AND net_amount > 0 ORDER BY id ASC FOR UPDATE',
+      { replacements: [rid], type: QueryTypes.SELECT, transaction: t }
+    );
+    const available = sumBy(rows, 'net_amount');
+    if (!rows.length || available <= 0) throw new SettlementError('No tienes saldo disponible para solicitar', 409);
+    if (wanted !== null && wanted > available) throw new SettlementError('El monto supera tu saldo disponible', 400);
+
+    let selected = rows;
+    if (wanted !== null && wanted < available) {
+      selected = [];
+      let acc = 0;
+      for (const r of rows) {
+        const next = toMoney(acc + Number(r.net_amount));
+        if (next > wanted) break;
+        selected.push(r);
+        acc = next;
+      }
+      if (!selected.length) throw new SettlementError('El monto es menor que tu liquidación más antigua', 400);
+    }
+    const payoutAmount = sumBy(selected, 'net_amount');
+
+    const [payoutId] = await sequelize.query(
+      "INSERT INTO store_payouts (restaurant_id, user_id, amount, status, created_at, updated_at) VALUES (?, ?, ?, 'requested', NOW(), NOW())",
+      { replacements: [rid, toPositiveId(userId), payoutAmount], type: QueryTypes.INSERT, transaction: t }
+    );
+    const [, affected] = await sequelize.query(
+      'UPDATE store_earnings SET payout_id = ? WHERE id IN (?) AND restaurant_id = ? AND payout_id IS NULL',
+      { replacements: [payoutId, ids(selected), rid], type: QueryTypes.UPDATE, transaction: t }
+    );
+    if (affected !== selected.length) throw new SettlementError('Tu saldo cambió durante la solicitud, reintenta', 409);
+    return { id: payoutId, amount: payoutAmount, orders: selected.length, available };
+  });
+}
+
+function parsePaidAt(v) {
+  if (v === undefined || v === null || String(v).trim() === '') return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v).trim());
+  if (!m) return undefined;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  if (d.getUTCFullYear() !== Number(m[1]) || d.getUTCMonth() !== Number(m[2]) - 1 || d.getUTCDate() !== Number(m[3])) return undefined;
+  return `${m[1]}-${m[2]}-${m[3]} 00:00:00`;
+}
+
+// El admin registra el depósito: la solicitud pasa a 'paid'. Si el monto depositado difiere del solicitado
+// queda registrada la diferencia (paid_amount - amount).
+async function depositStorePayout(sequelize, { payoutId, amount, paidAt, reference, note, adminId }) {
+  const pid = toPositiveId(payoutId);
+  if (!pid) throw new SettlementError('Solicitud inválida');
+  const paid = parseAmount(amount);
+  if (paid === null) throw new SettlementError('Monto depositado inválido');
+  const ref = cleanText(reference, 255);
+  if (!ref) throw new SettlementError('La referencia del depósito es obligatoria');
+  const when = parsePaidAt(paidAt);
+  if (when === undefined) throw new SettlementError('Fecha de depósito inválida');
+
+  return sequelize.transaction(async (t) => {
+    const [payout] = await sequelize.query(
+      'SELECT id, amount, status FROM store_payouts WHERE id = ? LIMIT 1 FOR UPDATE',
+      { replacements: [pid], type: QueryTypes.SELECT, transaction: t }
+    );
+    if (!payout) throw new SettlementError('Solicitud no encontrada', 404);
+    if (!['requested', 'pending'].includes(payout.status)) throw new SettlementError('La solicitud ya fue procesada', 409);
+
+    const difference = toMoney(paid - toMoney(payout.amount));
+    const [, affected] = await sequelize.query(
+      `UPDATE store_payouts SET status = 'paid', paid_amount = ?, difference = ?, reference = ?,
+         paid_at = COALESCE(?, NOW()), notes = ?, paid_by = ?, updated_at = NOW()
+       WHERE id = ? AND status IN ${OPEN_PAYOUT}`,
+      { replacements: [paid, difference, ref, when, cleanText(note, 500) || null, toPositiveId(adminId), pid], type: QueryTypes.UPDATE, transaction: t }
+    );
+    if (affected !== 1) throw new SettlementError('La solicitud ya fue procesada', 409);
+    return { id: pid, requested: toMoney(payout.amount), paid_amount: paid, difference };
+  });
+}
+
+// El admin rechaza la solicitud: las liquidaciones quedan otra vez disponibles para la tienda
+async function rejectStorePayout(sequelize, { payoutId, note, adminId }) {
+  const pid = toPositiveId(payoutId);
+  if (!pid) throw new SettlementError('Solicitud inválida');
+  return sequelize.transaction(async (t) => {
+    const [payout] = await sequelize.query(
+      'SELECT id, status FROM store_payouts WHERE id = ? LIMIT 1 FOR UPDATE',
+      { replacements: [pid], type: QueryTypes.SELECT, transaction: t }
+    );
+    if (!payout) throw new SettlementError('Solicitud no encontrada', 404);
+    if (!['requested', 'pending'].includes(payout.status)) throw new SettlementError('La solicitud ya fue procesada', 409);
+    await sequelize.query(
+      "UPDATE store_payouts SET status = 'rejected', notes = ?, paid_by = ?, updated_at = NOW() WHERE id = ?",
+      { replacements: [cleanText(note, 500) || null, toPositiveId(adminId), pid], type: QueryTypes.UPDATE, transaction: t }
+    );
+    await sequelize.query(
+      'UPDATE store_earnings SET payout_id = NULL WHERE payout_id = ?',
+      { replacements: [pid], type: QueryTypes.UPDATE, transaction: t }
+    );
+    return { id: pid };
+  });
+}
+
+async function listStorePayouts(sequelize, restaurantId, limit = 50) {
+  return sequelize.query(
+    `SELECT id, amount, status, paid_amount, difference, reference, paid_at, notes, created_at, updated_at
+     FROM store_payouts WHERE restaurant_id = ? ORDER BY id DESC LIMIT ?`,
+    { replacements: [toPositiveId(restaurantId), limit], type: QueryTypes.SELECT }
+  );
+}
+
 module.exports = {
+  computeStoreSettlement,
+  recordStoreEarning,
+  getStoreBalance,
+  requestStorePayout,
+  depositStorePayout,
+  rejectStorePayout,
+  listStorePayouts,
+  parsePaidAt,
   SettlementError,
   parseAmount,
   cleanText,
