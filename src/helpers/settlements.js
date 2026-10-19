@@ -199,7 +199,10 @@ function isCashPickup(order) {
   if (!order || Number(order.delivery_type) !== 2) return false;
   const mode = typeof order.payment_mode === 'string' ? order.payment_mode.trim().toUpperCase() : '';
   if (mode !== DEFAULT_CASH_METHOD) return false;
-  return order.payable === undefined || order.payable === null || toMoney(order.payable) > 0;
+  if (order.payable === undefined || order.payable === null) {
+    throw new Error(`isCashPickup: falta payable en el pedido ${order.id}`);
+  }
+  return toMoney(order.payable) > 0;
 }
 
 // Crea el registro de liquidación al entregar un pedido (cualquier forma de pago). Debe llamarse dentro de la
@@ -248,9 +251,14 @@ async function recordStoreEarning(sequelize, order, t) {
     couponOwner,
   });
   // Recojo en tienda pagado en efectivo: la tienda ya cobró el dinero; la comisión de la plataforma queda como
-  // deuda (net_amount negativo) que se descuenta de sus próximas liquidaciones
+  // deuda (net_amount negativo) que se descuenta de sus próximas liquidaciones. Si el cupón es de la plataforma,
+  // la tienda cobró payable (ya sin cupón), así que la plataforma le repone el valor del cupón
   const row = cashPickup
-    ? { ...s, net_amount: toMoney(-s.commission_amount), kind: CASH_PICKUP_KIND }
+    ? {
+      ...s,
+      net_amount: toMoney((s.coupon_absorbed_by === 'platform' ? s.coupon_amount : 0) - s.commission_amount),
+      kind: CASH_PICKUP_KIND,
+    }
     : { ...s, kind: 'sale' };
   await sequelize.query(
     `INSERT INTO store_earnings (restaurant_id, order_id, subtotal, commission_amount, coupon_absorbed_by, coupon_amount, net_amount, kind)
