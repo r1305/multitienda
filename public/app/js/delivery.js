@@ -249,7 +249,7 @@ const DeliveryOrdersPage = {
       }
       this.pushLoading = false;
     },
-    getLocation() { if (!navigator.geolocation) { this.gpsReady = true; this.refresh(); return; } navigator.geolocation.getCurrentPosition((pos) => { this.lat = pos.coords.latitude; this.lng = pos.coords.longitude; this.gpsReady = true; this.refresh(); }, () => { this.gpsReady = true; this.refresh(); }, { timeout: 10000 }); },
+    async getLocation() { try { const c = await window.obtenerPosicion(); this.lat = c.latitude; this.lng = c.longitude; } catch (e) { console.warn('GPS: no se pudo obtener la ubicación', e); } this.gpsReady = true; this.refresh(); },
     async refresh() {
       this.loading = !this.allOrders.length && !this.myOrders.length;
       try {
@@ -385,7 +385,7 @@ const DeliveryOrderDetailPage = {
     },
     startGpsTracking() { if (this.gpsInterval || this.gpsWatcherId || this.gpsWatcherPending) return; if (this.startNativeWatcher()) return; this.sendGps(); this.gpsInterval = setInterval(() => this.sendGps(), 30000); },
     stopGpsTracking() { this.stopNativeWatcher(); if (this.gpsInterval) { clearInterval(this.gpsInterval); this.gpsInterval = null; } },
-    sendGps() { if (!navigator.geolocation) return; navigator.geolocation.getCurrentPosition(async (pos) => { try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/set-delivery-guy-gps-location', { token, latitude: pos.coords.latitude, longitude: pos.coords.longitude, heading: pos.coords.heading || 0 }); } catch (e) { console.warn('GPS: no se pudo enviar la ubicación', e); } }, () => {}, { enableHighAccuracy: true, timeout: 8000 }); },
+    async sendGps() { try { const c = await window.obtenerPosicion({ timeout: 8000 }); const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/set-delivery-guy-gps-location', { token, latitude: c.latitude, longitude: c.longitude, heading: c.heading || 0 }); } catch (e) { console.warn('GPS: no se pudo enviar la ubicación', e); } },
     async loadMessages() { try { const token = localStorage.getItem('deliveryToken'); const res = await API.post('/conversation/chat', { token, order_id: this.order.id }); this.messages = Array.isArray(res) ? res : []; this.$nextTick(() => { if (this.$refs.chatBox) this.$refs.chatBox.scrollTop = this.$refs.chatBox.scrollHeight; }); } catch(e) {} },
     async sendMessage() { if (!this.chatMsg.trim()) return; try { const token = localStorage.getItem('deliveryToken'); await API.post('/conversation/send', { token, order_id: this.order.id, message: this.chatMsg.trim() }); this.chatMsg = ''; await this.loadMessages(); } catch(e) {} },
     formatTime(d) { if (!d) return ''; return new Date(d).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }); }

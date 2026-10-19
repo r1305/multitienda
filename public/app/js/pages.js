@@ -133,21 +133,22 @@ const LocationPage = {
       Store.setLocation({ lat: parseFloat(a.latitude), lng: parseFloat(a.longitude), address: a.address, house: a.house, tag: a.tag });
       this.$router.push('/');
     },
-    useGPS() {
-      if (!navigator.geolocation) return alert('GPS no disponible');
+    async useGPS() {
       this.gpsLoading = true;
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude, longitude } = pos.coords;
-          let address = latitude.toFixed(4) + ', ' + longitude.toFixed(4);
-          try { const res = await API.coordinateToAddress(latitude, longitude); if (res) address = res; } catch(e) {}
-          Store.setLocation({ lat: latitude, lng: longitude, address });
-          this.gpsLoading = false;
-          this.$router.push('/');
-        },
-        () => { this.gpsLoading = false; alert('No se pudo obtener la ubicacion'); },
-        { timeout: 10000 }
-      );
+      try {
+        const { latitude, longitude } = await window.obtenerPosicion();
+        let address = latitude.toFixed(4) + ', ' + longitude.toFixed(4);
+        try { const res = await API.coordinateToAddress(latitude, longitude); if (res) address = res; } catch(e) {}
+        Store.setLocation({ lat: latitude, lng: longitude, address });
+        this.gpsLoading = false;
+        this.$router.push('/');
+      } catch (e) {
+        this.gpsLoading = false;
+        const msg = String((e && e.message) || e || '');
+        if (msg === 'PERMISO_DENEGADO') alert('Activa el permiso de ubicación para Multitienda en los Ajustes del teléfono.');
+        else if (/location services|servicios de ubicaci/i.test(msg)) alert('Los servicios de ubicación están desactivados. Enciende el GPS e inténtalo de nuevo.');
+        else alert('No se pudo obtener la ubicación');
+      }
     }
   }
 };
