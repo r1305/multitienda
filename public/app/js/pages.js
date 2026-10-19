@@ -144,10 +144,12 @@ const LocationPage = {
         this.$router.push('/');
       } catch (e) {
         this.gpsLoading = false;
+        console.error('GPS', e);
         const msg = String((e && e.message) || e || '');
-        if (msg === 'PERMISO_DENEGADO') alert('Activa el permiso de ubicación para Multitienda en los Ajustes del teléfono.');
+        if (msg === 'PLUGIN_GEOLOCATION_NO_DISPONIBLE') alert('La función de ubicación no está disponible en esta versión de la app');
+        else if (msg === 'PERMISO_DENEGADO') alert('Activa el permiso de ubicación para Multitienda en los Ajustes del teléfono.');
         else if (/location services|servicios de ubicaci/i.test(msg)) alert('Los servicios de ubicación están desactivados. Enciende el GPS e inténtalo de nuevo.');
-        else alert('No se pudo obtener la ubicación');
+        else alert(`No se pudo obtener la ubicación (${e?.message || e})`);
       }
     }
   }

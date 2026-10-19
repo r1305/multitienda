@@ -2,8 +2,10 @@ window.obtenerPosicion = async function obtenerPosicion(opts) {
   const o = Object.assign({ enableHighAccuracy: true, timeout: 10000 }, opts || {});
   const cap = window.Capacitor;
   const nativo = cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform();
-  const plugin = nativo && cap.Plugins && cap.Plugins.Geolocation;
-  if (plugin) {
+  if (nativo) {
+    let plugin = cap.Plugins && cap.Plugins.Geolocation;
+    if (!plugin && typeof cap.registerPlugin === 'function') plugin = cap.registerPlugin('Geolocation');
+    if (!plugin) throw new Error('PLUGIN_GEOLOCATION_NO_DISPONIBLE');
     const concedido = (p) => p && (p.location === 'granted' || p.coarseLocation === 'granted');
     let perm = await plugin.checkPermissions();
     if (!concedido(perm)) {
