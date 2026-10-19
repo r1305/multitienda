@@ -1,27 +1,37 @@
 <% var active = 'delivery'; var pageTitle = 'Delivery Guys'; %>
 <% var mc = typeof mapCenter !== 'undefined' ? mapCenter : { lat: 9.9281, lng: -84.0907 }; %>
+<% var gKey = (typeof settings !== 'undefined' && settings && settings.googleApiKey) ? String(settings.googleApiKey) : ''; %>
+<% var gKeyJs = JSON.stringify(gKey).replace(/</g, '\u003c'); %>
 <% var scripts = `
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 $(function(){
   wireAdminTableSearchSimple("#deliveryTableSearch", "#deliveryTable");
 
   var mapEl = document.getElementById("deliveryGuysMap");
-  if (!mapEl || typeof L === "undefined") return;
+  var statusEl0 = document.getElementById("deliveryMapStatus");
+  if (!mapEl) return;
+  var gKey = ${gKeyJs};
+  if (!gKey) { if (statusEl0) statusEl0.textContent = "Falta la clave de Google Maps (Ajustes > Map API Key)"; return; }
+  window.gm_authFailure = function() { if (statusEl0) statusEl0.textContent = "Google Maps rechazo la clave (API no habilitada o referrer no permitido)"; };
+  window.__adminGmapsLoaded = initDeliveryMap;
+  var gs = document.createElement("script");
+  gs.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(gKey) + "&callback=__adminGmapsLoaded";
+  gs.async = true;
+  gs.onerror = function() { if (statusEl0) statusEl0.textContent = "No se pudo cargar Google Maps"; };
+  document.head.appendChild(gs);
 
-  var defaultCenter = [${esc(mc.lat)}, ${esc(mc.lng)}];
-  var map = L.map("deliveryGuysMap", { scrollWheelZoom: true }).setView(defaultCenter, 12);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap"
-  }).addTo(map);
+  function initDeliveryMap() {
+  var defaultCenter = { lat: ${esc(mc.lat)}, lng: ${esc(mc.lng)} };
+  var map = new google.maps.Map(mapEl, { center: defaultCenter, zoom: 12, scrollwheel: true, streetViewControl: false, mapTypeControl: false });
+  var infoWindow = new google.maps.InfoWindow();
 
   var markers = {};
   var pollMs = 15000;
   var staleMs = 5 * 60 * 1000;
   var userMovedMap = false;
-  map.on("dragstart zoomstart", function() { userMovedMap = true; });
+  map.addListener("dragstart", function() { userMovedMap = true; });
+  map.addListener("zoom_changed", function() { if (!programmaticMove) userMovedMap = true; });
+  var programmaticMove = false;
 
   function esc(s) {
     if (!s) return "";
@@ -34,10 +44,14 @@ $(function(){
     return driver.live ? "#28a745" : "#17a2b8";
   }
 
+  function markerIcon(color) {
+    return { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: color, fillOpacity: 0.85, strokeColor: color, strokeWeight: 2 };
+  }
+
   function formatUpdated(ts) {
-    if (!ts) return "Sin hora de actualizaci\u00f3n";
+    if (!ts) return "Sin hora de actualización";
     var d = new Date(ts);
-    if (isNaN(d.getTime())) return "Sin hora de actualizaci\u00f3n";
+    if (isNaN(d.getTime())) return "Sin hora de actualización";
     return d.toLocaleString();
   }
 
@@ -50,40 +64,43 @@ $(function(){
         var seen = {};
         drivers.forEach(function(d) {
           seen[d.id] = true;
-          var pos = [d.lat, d.lng];
+          var pos = { lat: Number(d.lat), lng: Number(d.lng) };
           var popup = "<strong>" + esc(d.name) + "</strong><br>" +
             (d.phone ? esc(d.phone) + "<br>" : "") +
-            (d.vehicle ? "Veh\u00edculo: " + esc(d.vehicle) + "<br>" : "") +
+            (d.vehicle ? "Vehículo: " + esc(d.vehicle) + "<br>" : "") +
             "<small>" + formatUpdated(d.updated_at) + (d.live ? " (en vivo)" : "") + "</small>";
           var color = markerColor(d);
           if (markers[d.id]) {
-            markers[d.id].setLatLng(pos);
-            markers[d.id].setPopupContent(popup);
-            markers[d.id].setStyle({ fillColor: color, color: color });
+            markers[d.id].marker.setPosition(pos);
+            markers[d.id].marker.setIcon(markerIcon(color));
+            markers[d.id].popup = popup;
           } else {
-            markers[d.id] = L.circleMarker(pos, {
-              radius: 9,
-              fillColor: color,
-              color: color,
-              weight: 2,
-              opacity: 1,
-              fillOpacity: 0.85
-            }).addTo(map).bindPopup(popup);
+            var m = new google.maps.Marker({ position: pos, map: map, icon: markerIcon(color) });
+            var entry = { marker: m, popup: popup };
+            m.addListener("click", function() { infoWindow.setContent(entry.popup); infoWindow.open(map, m); });
+            markers[d.id] = entry;
           }
         });
         Object.keys(markers).forEach(function(id) {
           if (!seen[id]) {
-            map.removeLayer(markers[id]);
+            markers[id].marker.setMap(null);
             delete markers[id];
           }
         });
         if (drivers.length && !userMovedMap) {
-          var bounds = L.latLngBounds(drivers.map(function(d) { return [d.lat, d.lng]; }));
-          if (drivers.length === 1) map.setView(bounds.getCenter(), 14);
-          else map.fitBounds(bounds.pad(0.15));
+          programmaticMove = true;
+          if (drivers.length === 1) {
+            map.setCenter({ lat: Number(drivers[0].lat), lng: Number(drivers[0].lng) });
+            map.setZoom(14);
+          } else {
+            var bounds = new google.maps.LatLngBounds();
+            drivers.forEach(function(d) { bounds.extend({ lat: Number(d.lat), lng: Number(d.lng) }); });
+            map.fitBounds(bounds, 40);
+          }
+          setTimeout(function() { programmaticMove = false; }, 500);
         }
         if (statusEl) {
-          statusEl.textContent = drivers.length + " en mapa / " + (data.total || 0) + " repartidores \u00b7 actualizado " + new Date().toLocaleTimeString();
+          statusEl.textContent = drivers.length + " en mapa / " + (data.total || 0) + " repartidores · actualizado " + new Date().toLocaleTimeString();
         }
       })
       .catch(function() {
@@ -93,7 +110,7 @@ $(function(){
 
   refreshMap();
   setInterval(refreshMap, pollMs);
-  setTimeout(function() { map.invalidateSize(); }, 300);
+  }
 });
 </script>`; %>
 <%
