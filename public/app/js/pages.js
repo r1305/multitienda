@@ -870,11 +870,13 @@ const OrderDetailPage = {
     },
     loadGoogleMaps() {
       const apiKey = Store.settings.googleApiKey;
-      if (!apiKey) return;
+      if (!apiKey) { console.error('[Maps] googleApiKey vacia: no llega desde /settings (revisar PUBLIC_SETTINGS_KEYS o ajustes admin)'); return; }
       if (window.google && window.google.maps) { this.googleLoaded = true; this.$nextTick(() => this.initMap()); return; }
       const s = document.createElement('script');
       s.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&callback=__gmapsLoaded';
       s.async = true;
+      s.onerror = () => console.error('[Maps] No se pudo cargar maps.googleapis.com (CSP, red o bloqueador)');
+      window.gm_authFailure = () => console.error('[Maps] gm_authFailure: clave invalida, API no habilitada o referrer no permitido');
       window.__gmapsLoaded = () => { this.googleLoaded = true; this.$nextTick(() => this.initMap()); };
       document.head.appendChild(s);
     },

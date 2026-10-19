@@ -16,6 +16,7 @@ const PUBLIC_SETTINGS_KEYS = [
   'firebaseApiKey', 'firebaseAuthDomain', 'firebaseProjectId', 'firebaseStorageBucket',
   'firebaseMessagingSenderId', 'firebaseAppId', 'firebaseMeasurementId', 'firebaseVapidKey',
   'faviconUrl', 'logoUrl', 'listingImageUrl', 'primaryColor',
+  'googleApiKey',
 ];
 
 exports.getSettings = async (req, res) => {
