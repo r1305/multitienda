@@ -1514,7 +1514,7 @@ exports.saveSettings = async (req, res) => {
     const fields = req.body;
     const ALLOWED_KEYS = [
       'storeName', 'currencySymbol', 'currencyId', 'currencyFormat',
-      'googleApiKey', 'walletName', 'uploadImageQuality', 'primaryColor',
+      'googleApiKey', 'googleMapId', 'walletName', 'uploadImageQuality', 'primaryColor',
       'enableDeliveryPin', 'deliveryRadius',
       'firebaseApiKey', 'firebaseAuthDomain', 'firebaseProjectId', 'firebaseStorageBucket',
       'firebaseMessagingSenderId', 'firebaseAppId', 'firebaseMeasurementId', 'firebaseVapidKey',

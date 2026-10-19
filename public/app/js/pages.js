@@ -873,24 +873,32 @@ const OrderDetailPage = {
       if (!apiKey) { console.error('[Maps] googleApiKey vacia: no llega desde /settings (revisar PUBLIC_SETTINGS_KEYS o ajustes admin)'); return; }
       if (window.google && window.google.maps) { this.googleLoaded = true; this.$nextTick(() => this.initMap()); return; }
       const s = document.createElement('script');
-      s.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&callback=__gmapsLoaded';
+      s.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=marker&loading=async&callback=__gmapsLoaded';
       s.async = true;
       s.onerror = () => console.error('[Maps] No se pudo cargar maps.googleapis.com (CSP, red o bloqueador)');
       window.gm_authFailure = () => console.error('[Maps] gm_authFailure: clave invalida, API no habilitada o referrer no permitido');
       window.__gmapsLoaded = () => { this.googleLoaded = true; this.$nextTick(() => this.initMap()); };
       document.head.appendChild(s);
     },
+    mapDot(color) {
+      const el = document.createElement('div');
+      el.style.cssText = 'width:32px;height:32px;border-radius:50%;background:' + color + ';color:#fff;font-weight:700;font-size:16px;line-height:32px;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)';
+      el.textContent = 'R';
+      return el;
+    },
     initMap() {
       if (!this.order || !window.google) return;
       const mapEl = document.getElementById('orderMap');
       if (!mapEl) return;
+      const mapId = Store.settings.googleMapId;
+      if (!mapId) { mapEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:#666">Falta el Map ID de Google Maps en Ajustes.</div>'; return; }
       const rest = this.order.restaurant;
       let loc = null;
       try { loc = this.order.location ? JSON.parse(this.order.location) : null; } catch(e) {}
       const center = rest ? { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) } : (loc ? { lat: loc.lat, lng: loc.lng } : { lat: 0, lng: 0 });
-      this.map = new google.maps.Map(mapEl, { zoom: 14, center, disableDefaultUI: true, zoomControl: true });
-      if (rest) new google.maps.Marker({ position: { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) }, map: this.map, title: rest.name, icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#4caf50"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">R</text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
-      if (loc) new google.maps.Marker({ position: { lat: loc.lat, lng: loc.lng }, map: this.map, title: 'Tu ubicacion', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#2196f3"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">R</text></svg>'), scaledSize: new google.maps.Size(40, 40) } });
+      this.map = new google.maps.Map(mapEl, { zoom: 14, center, mapId, disableDefaultUI: true, zoomControl: true });
+      if (rest) new google.maps.marker.AdvancedMarkerElement({ position: { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) }, map: this.map, title: rest.name, content: this.mapDot('#4caf50') });
+      if (loc) new google.maps.marker.AdvancedMarkerElement({ position: { lat: loc.lat, lng: loc.lng }, map: this.map, title: 'Tu ubicacion', content: this.mapDot('#2196f3') });
       // Fit bounds
       if (rest && loc) {
         const bounds = new google.maps.LatLngBounds();
@@ -907,8 +915,8 @@ const OrderDetailPage = {
           const gps = await API.post('/delivery/get-delivery-guy-gps-location', { token: Store.user.auth_token, order_id: this.order.id });
           if (gps && gps.delivery_lat && gps.delivery_long) {
             const pos = { lat: parseFloat(gps.delivery_lat), lng: parseFloat(gps.delivery_long) };
-            if (this.deliveryMarker) { this.deliveryMarker.setPosition(pos); }
-            else { this.deliveryMarker = new google.maps.Marker({ position: pos, map: this.map, title: 'Repartidor', icon: { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"><circle cx="32" cy="32" r="30" fill="#ff5722"/><text x="32" y="40" text-anchor="middle" font-size="28" fill="white">R</text></svg>'), scaledSize: new google.maps.Size(40, 40) } }); }
+            if (this.deliveryMarker) { this.deliveryMarker.position = pos; }
+            else { this.deliveryMarker = new google.maps.marker.AdvancedMarkerElement({ position: pos, map: this.map, title: 'Repartidor', content: this.mapDot('#ff5722') }); }
             // Draw route when picked up (status 4)
             if (this.order.orderstatus_id === 4) {
               let loc = null;

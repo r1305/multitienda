@@ -2,6 +2,8 @@
 <% var mc = typeof mapCenter !== 'undefined' ? mapCenter : { lat: 9.9281, lng: -84.0907 }; %>
 <% var gKey = (typeof settings !== 'undefined' && settings && settings.googleApiKey) ? String(settings.googleApiKey) : ''; %>
 <% var gKeyJs = JSON.stringify(gKey).replace(/</g, '\u003c'); %>
+<% var gMapId = (typeof settings !== 'undefined' && settings && settings.googleMapId) ? String(settings.googleMapId) : ''; %>
+<% var gMapIdJs = JSON.stringify(gMapId).replace(/</g, '\u003c'); %>
 <% var scripts = `
 <script>
 $(function(){
@@ -12,17 +14,19 @@ $(function(){
   if (!mapEl) return;
   var gKey = ${gKeyJs};
   if (!gKey) { if (statusEl0) statusEl0.textContent = "Falta la clave de Google Maps (Ajustes > Map API Key)"; return; }
+  var gMapId = ${gMapIdJs};
+  if (!gMapId) { mapEl.innerHTML = "<div style='padding:20px;text-align:center'>Falta el Map ID de Google Maps en Ajustes.</div>"; if (statusEl0) statusEl0.textContent = "Falta el Map ID de Google Maps en Ajustes."; return; }
   window.gm_authFailure = function() { if (statusEl0) statusEl0.textContent = "Google Maps rechazo la clave (API no habilitada o referrer no permitido)"; };
   window.__adminGmapsLoaded = initDeliveryMap;
   var gs = document.createElement("script");
-  gs.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(gKey) + "&callback=__adminGmapsLoaded";
+  gs.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(gKey) + "&libraries=marker&loading=async&callback=__adminGmapsLoaded";
   gs.async = true;
   gs.onerror = function() { if (statusEl0) statusEl0.textContent = "No se pudo cargar Google Maps"; };
   document.head.appendChild(gs);
 
   function initDeliveryMap() {
   var defaultCenter = { lat: ${esc(mc.lat)}, lng: ${esc(mc.lng)} };
-  var map = new google.maps.Map(mapEl, { center: defaultCenter, zoom: 12, scrollwheel: true, streetViewControl: false, mapTypeControl: false });
+  var map = new google.maps.Map(mapEl, { center: defaultCenter, zoom: 12, mapId: gMapId, scrollwheel: true, streetViewControl: false, mapTypeControl: false });
   var infoWindow = new google.maps.InfoWindow();
 
   var markers = {};
@@ -44,8 +48,10 @@ $(function(){
     return driver.live ? "#28a745" : "#17a2b8";
   }
 
-  function markerIcon(color) {
-    return { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: color, fillOpacity: 0.85, strokeColor: color, strokeWeight: 2 };
+  function markerContent(color) {
+    var el = document.createElement("div");
+    el.style.cssText = "width:18px;height:18px;border-radius:50%;border:2px solid " + color + ";background:" + color + ";opacity:0.85;";
+    return el;
   }
 
   function formatUpdated(ts) {
@@ -71,19 +77,19 @@ $(function(){
             "<small>" + formatUpdated(d.updated_at) + (d.live ? " (en vivo)" : "") + "</small>";
           var color = markerColor(d);
           if (markers[d.id]) {
-            markers[d.id].marker.setPosition(pos);
-            markers[d.id].marker.setIcon(markerIcon(color));
+            markers[d.id].marker.position = pos;
+            markers[d.id].marker.content = markerContent(color);
             markers[d.id].popup = popup;
           } else {
-            var m = new google.maps.Marker({ position: pos, map: map, icon: markerIcon(color) });
+            var m = new google.maps.marker.AdvancedMarkerElement({ position: pos, map: map, content: markerContent(color) });
             var entry = { marker: m, popup: popup };
-            m.addListener("click", function() { infoWindow.setContent(entry.popup); infoWindow.open(map, m); });
+            m.addListener("gmp-click", function() { infoWindow.setContent(entry.popup); infoWindow.open(map, m); });
             markers[d.id] = entry;
           }
         });
         Object.keys(markers).forEach(function(id) {
           if (!seen[id]) {
-            markers[id].marker.setMap(null);
+            markers[id].marker.map = null;
             delete markers[id];
           }
         });
