@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const adminController = require('../controllers/adminController');
+const settlementsController = require('../controllers/settlementsController');
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
@@ -279,6 +280,12 @@ router.get('/admin/delivery-guys', adminController.deliveryGuys);
 router.post('/admin/user/approve/:id', adminController.approveUser);
 router.post('/admin/delivery-guy/commission/save', adminController.saveDeliveryCommission);
 router.get('/admin/delivery-guy/earnings/:id', adminController.deliveryGuyEarnings);
+
+// Caja de repartidores: cierres de efectivo y liquidación de ganancias (solo admin, POST con CSRF)
+router.get('/admin/cash-collections', settlementsController.cashCollections);
+router.get('/admin/delivery-guy/account/:id', settlementsController.deliveryAccount);
+router.post('/admin/delivery-guy/account/:id/close-cash', settlementsController.closeCash);
+router.post('/admin/delivery-guy/account/:id/pay-earnings', settlementsController.payDeliveryEarnings);
 
 // Store Owners
 router.get('/admin/store-owners', adminController.storeOwners);

@@ -171,6 +171,7 @@ if (typeof deliveryGuys !== 'undefined' && deliveryGuys.length) {
       <td>
         ${approveBtn}
         <a href="/admin/delivery-guy/earnings/${esc(dg.id)}" class="btn btn-sm btn-outline-success" title="Ganancias"><i class="fas fa-chart-line"></i></a>
+        <a href="/admin/delivery-guy/account/${esc(dg.id)}" class="btn btn-sm btn-outline-warning" title="Caja y pagos"><i class="fas fa-cash-register"></i></a>
         <button class="btn btn-sm btn-outline-info" data-toggle="modal" data-target="#commModal${esc(dg.id)}" title="Comisi\u00f3n"><i class="fas fa-percentage"></i></button>
         <a href="/admin/user/edit/${esc(dg.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
         <form method="POST" action="/admin/user/ban/${esc(dg.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-${esc(dg.is_active !== 0 ? 'danger' : 'success')}"><i class="fas fa-${esc(dg.is_active !== 0 ? 'ban' : 'check')}"></i></button></form>

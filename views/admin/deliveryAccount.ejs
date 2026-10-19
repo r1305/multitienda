@@ -1,0 +1,116 @@
+<% var active = 'cashcollections'; var pageTitle = 'Cuenta - ' + (typeof guy !== 'undefined' && guy ? guy.name : ''); %>
+<% var scripts = `<script>
+function toggleAllCash(src){ document.querySelectorAll('.cash-order-check').forEach(function(c){ c.checked = src.checked; }); recalcCash(); }
+function recalcCash(){
+  var sum = 0, n = 0;
+  document.querySelectorAll('.cash-order-check').forEach(function(c){ if (c.checked) { sum += parseFloat(c.getAttribute('data-amount')) || 0; n++; } });
+  var el = document.getElementById('cashExpected'); if (el) el.textContent = sum.toFixed(2);
+  var cnt = document.getElementById('cashCount'); if (cnt) cnt.textContent = n;
+  var inp = document.getElementById('receivedAmount'); if (inp && !inp.dataset.touched) inp.value = sum.toFixed(2);
+}
+document.addEventListener('DOMContentLoaded', function(){
+  var inp = document.getElementById('receivedAmount');
+  if (inp) inp.addEventListener('input', function(){ inp.dataset.touched = '1'; });
+  recalcCash();
+});
+</script>`; %>
+<%
+var cur = typeof currency !== 'undefined' ? currency : '$';
+function money(v) { return esc(cur) + esc(parseFloat(v || 0).toFixed(2)); }
+function fdate(v) { return esc(v ? new Date(v).toLocaleString('es-PE', { timeZone: 'America/Lima' }) : '-'); }
+var body = '';
+if (typeof guy !== 'undefined' && guy) {
+  var b = balance;
+  body = `
+  <div class="mb-3">
+    <a href="/admin/cash-collections" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver a la caja</a>
+    <a href="/admin/delivery-guy/earnings/${esc(guy.id)}" class="btn btn-sm btn-outline-success"><i class="fas fa-chart-line"></i> Gráfico de ganancias</a>
+  </div>
+  <div class="row">
+    <div class="col-md-6"><div class="card"><div class="card-header">Efectivo</div><div class="card-body">
+      <p class="mb-1"><strong>Por entregar a la plataforma:</strong> <span style="color:#e65100;font-size:18px">${money(b.cash_pending)}</span> <small class="text-muted">(${esc(b.cash_pending_orders)} pedidos)</small></p>
+      <p class="mb-0"><strong>Efectivo entregado (cierres):</strong> ${money(b.cash_delivered)} <small class="text-muted">(${esc(b.cash_closings)} cierres)</small></p>
+    </div></div></div>
+    <div class="col-md-6"><div class="card"><div class="card-header">Ganancias</div><div class="card-body">
+      <p class="mb-1"><strong>Acumuladas:</strong> ${money(b.earnings_total)} <small class="text-muted">(incluye ${money(b.earnings_tips)} en propinas)</small></p>
+      <p class="mb-1"><strong>Pendientes de pago:</strong> <span style="color:#28a745;font-size:18px">${money(b.earnings_pending)}</span></p>
+      <p class="mb-0"><strong>Pagadas:</strong> ${money(b.earnings_paid)}</p>
+    </div></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Cierre de caja</div>
+    <div class="card-body">`;
+  if (pendingOrders.length) {
+    body += `<form method="POST" action="/admin/delivery-guy/account/${esc(guy.id)}/close-cash">
+      <div class="table-responsive"><table class="table table-sm">
+        <thead><tr><th><input type="checkbox" checked onclick="toggleAllCash(this)"></th><th>Pedido</th><th>Entregado</th><th>A cobrar en efectivo</th></tr></thead><tbody>`;
+    pendingOrders.forEach(function(o) {
+      body += `<tr>
+        <td><input type="checkbox" class="cash-order-check" name="order_ids" value="${esc(o.id)}" data-amount="${esc(parseFloat(o.payable || 0).toFixed(2))}" checked onclick="recalcCash()"></td>
+        <td>#${esc(o.unique_order_id || o.id)}</td>
+        <td>${fdate(o.updated_at || o.created_at)}</td>
+        <td>${money(o.payable)}</td>
+      </tr>`;
+    });
+    body += `</tbody></table></div>
+      <p class="mb-2">Esperado: <strong>${esc(cur)}<span id="cashExpected">0.00</span></strong> en <span id="cashCount">0</span> pedidos (el servidor recalcula el total al confirmar).</p>
+      <div class="form-row">
+        <div class="form-group col-md-4"><label>Monto recibido</label><input type="number" step="0.01" min="0" max="99999999" id="receivedAmount" name="received_amount" class="form-control" required></div>
+        <div class="form-group col-md-8"><label>Nota (opcional)</label><input type="text" name="note" maxlength="500" class="form-control"></div>
+      </div>
+      <button type="submit" class="btn btn-primary" onclick="return confirm('Confirmar el cierre de caja con los pedidos seleccionados?')"><i class="fas fa-check"></i> Confirmar cierre</button>
+      <small class="text-muted ml-2">Si hay diferencia queda registrada; no bloquea el cierre.</small>
+    </form>`;
+  } else {
+    body += '<p class="text-muted mb-0">No hay pedidos en efectivo pendientes de cierre.</p>';
+  }
+  body += `</div></div>
+
+  <div class="card">
+    <div class="card-header">Historial de cierres</div>
+    <div class="card-body"><div class="table-responsive"><table class="table table-sm table-hover">
+      <thead><tr><th>#</th><th>Fecha</th><th>Pedidos</th><th>Esperado</th><th>Recibido</th><th>Diferencia</th><th>Nota</th></tr></thead><tbody>`;
+  if (closings.length) {
+    closings.forEach(function(c) {
+      var d = parseFloat(c.difference || 0);
+      body += `<tr><td>${esc(c.id)}</td><td>${fdate(c.created_at)}</td><td>${esc(c.orders_count || 0)}</td><td>${money(c.expected_amount)}</td><td>${money(c.received_amount)}</td>
+        <td style="color:${d < 0 ? '#dc3545' : d > 0 ? '#28a745' : 'inherit'}">${money(c.difference)}</td><td>${esc(c.note || '-')}</td></tr>`;
+    });
+  } else {
+    body += '<tr><td colspan="7" class="text-center text-muted">Sin cierres</td></tr>';
+  }
+  body += `</tbody></table></div></div></div>
+
+  <div class="card">
+    <div class="card-header">Liquidar ganancias</div>
+    <div class="card-body">`;
+  if (parseFloat(b.earnings_pending) > 0) {
+    body += `<form method="POST" action="/admin/delivery-guy/account/${esc(guy.id)}/pay-earnings">
+      <p>Se pagará el total pendiente: <strong>${money(b.earnings_pending)}</strong> (incluye propinas). El monto lo calcula el servidor.</p>
+      <div class="form-row">
+        <div class="form-group col-md-4"><label>Referencia del pago</label><input type="text" name="reference" maxlength="255" class="form-control" required></div>
+        <div class="form-group col-md-8"><label>Nota (opcional)</label><input type="text" name="note" maxlength="500" class="form-control"></div>
+      </div>
+      <button type="submit" class="btn btn-success" onclick="return confirm('Registrar el pago de las ganancias pendientes?')"><i class="fas fa-money-bill-wave"></i> Registrar pago</button>
+    </form>`;
+  } else {
+    body += '<p class="text-muted mb-0">No hay ganancias pendientes de pago.</p>';
+  }
+  body += `</div></div>
+
+  <div class="card">
+    <div class="card-header">Historial de pagos</div>
+    <div class="card-body"><div class="table-responsive"><table class="table table-sm table-hover">
+      <thead><tr><th>#</th><th>Fecha</th><th>Monto</th><th>Referencia</th><th>Nota</th></tr></thead><tbody>`;
+  if (payouts.length) {
+    payouts.forEach(function(p) {
+      body += `<tr><td>${esc(p.id)}</td><td>${fdate(p.created_at)}</td><td>${money(p.amount)}</td><td>${esc(p.reference || '-')}</td><td>${esc(p.note || '-')}</td></tr>`;
+    });
+  } else {
+    body += '<tr><td colspan="5" class="text-center text-muted">Sin pagos</td></tr>';
+  }
+  body += `</tbody></table></div></div></div>`;
+}
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

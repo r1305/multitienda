@@ -662,6 +662,31 @@ const tables = [
     ('Ferretería', 1),
     ('Panadería', 1)`,
 
+  // Cierres de caja: el repartidor entrega a la plataforma el efectivo cobrado
+  `CREATE TABLE IF NOT EXISTS cash_collections (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    delivery_guy_id INT UNSIGNED NOT NULL,
+    expected_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    received_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    difference DECIMAL(10,2) NOT NULL DEFAULT 0,
+    note VARCHAR(500) NULL,
+    created_by INT UNSIGNED NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY cash_collections_delivery_guy_idx (delivery_guy_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // Liquidaciones de ganancias del repartidor (pago registrado por el admin)
+  `CREATE TABLE IF NOT EXISTS delivery_payouts (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    delivery_guy_id INT UNSIGNED NOT NULL,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    reference VARCHAR(255) NULL,
+    note VARCHAR(500) NULL,
+    created_by INT UNSIGNED NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY delivery_payouts_delivery_guy_idx (delivery_guy_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   // Seed: default roles
   `INSERT IGNORE INTO roles (name, guard_name, created_at, updated_at) VALUES
     ('Admin', 'web', NOW(), NOW()),
@@ -698,6 +723,9 @@ const columns = [
   { table: 'ratings', column: 'reply', ddl: 'ALTER TABLE ratings ADD COLUMN reply TEXT NULL' },
   { table: 'payment_gateways', column: 'account_number', ddl: 'ALTER TABLE payment_gateways ADD COLUMN account_number VARCHAR(255) NULL' },
   { table: 'payment_gateways', column: 'phone_number', ddl: 'ALTER TABLE payment_gateways ADD COLUMN phone_number VARCHAR(255) NULL' },
+  { table: 'orders', column: 'cash_collection_id', ddl: 'ALTER TABLE orders ADD COLUMN cash_collection_id INT UNSIGNED NULL, ADD INDEX orders_cash_collection_idx (cash_collection_id)' },
+  { table: 'delivery_earnings', column: 'payout_id', ddl: 'ALTER TABLE delivery_earnings ADD COLUMN payout_id INT UNSIGNED NULL, ADD INDEX delivery_earnings_payout_idx (payout_id)' },
+  { table: 'delivery_earnings', column: 'tip_amount', ddl: 'ALTER TABLE delivery_earnings ADD COLUMN tip_amount DECIMAL(10,2) NOT NULL DEFAULT 0' },
 ];
 
 const uniques = [

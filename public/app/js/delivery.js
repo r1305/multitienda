@@ -311,8 +311,14 @@ const DeliveryOrderDetailPage = {
             <div class="bill-row"><span>Envio</span><span>{{Store.formatPrice(order.delivery_charge || 0)}}</span></div>
             <div v-if="order.restaurant_charge > 0" class="bill-row"><span>Cargo servicio</span><span>{{Store.formatPrice(order.restaurant_charge)}}</span></div>
             <div v-if="order.coupon_amount > 0" class="bill-row"><span>Cupon</span><span style="color:green">-{{Store.formatPrice(order.coupon_amount)}}</span></div>
+            <div v-if="order.tip_amount > 0" class="bill-row"><span>Propina (100% para ti)</span><span>{{Store.formatPrice(order.tip_amount)}}</span></div>
             <div class="bill-row total"><span>Total</span><span>{{Store.formatPrice(order.total)}}</span></div>
             <div class="bill-row"><span>Pago</span><span>{{order.payment_mode || 'COD'}}</span></div>
+          </div>
+          <div v-if="cashToCollect > 0" style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:12px;margin-bottom:10px;text-align:center">
+            <div style="font-size:12px;color:#8d6e00">A cobrar en efectivo</div>
+            <div style="font-size:22px;font-weight:700;color:#e65100">{{Store.formatPrice(cashToCollect)}}</div>
+            <div style="font-size:11px;color:#8d6e00;margin-top:2px">Este efectivo se entrega a la plataforma en el cierre de caja</div>
           </div>
           <div v-if="order.order_comment" style="background:#fff3e0;border-radius:8px;padding:10px;margin-bottom:10px;font-size:13px"><i class="fas fa-comment" style="color:#ff9800;margin-right:6px"></i>{{order.order_comment}}</div>
         </div>
@@ -345,6 +351,7 @@ const DeliveryOrderDetailPage = {
     statusText() { return {2:'Esperando repartidor',12:'Esperando repartidor',3:'Asignado',4:'En camino',5:'Entregado'}[this.order?.orderstatus_id] || ''; },
     statusColor() { return {2:'#ff9800',12:'#ff9800',3:'#2196f3',4:'#ff9800',5:'#4caf50'}[this.order?.orderstatus_id] || '#9e9e9e'; },
     myId() { const u = JSON.parse(localStorage.getItem('deliveryUser') || '{}'); return u.id; },
+    cashToCollect() { const o = this.order; if (!o) return 0; const cash = String(o.payment_mode || '').trim().toUpperCase() === 'COD'; const p = parseFloat(o.payable) || 0; return cash && p > 0 ? p : 0; },
     customerCoords() { if (!this.order || !this.order.location) return null; try { return JSON.parse(this.order.location); } catch(e) { return null; } }
   },
   async mounted() {
@@ -441,6 +448,28 @@ const DeliveryEarningsPage = {
             <div style="font-size:11px;color:var(--muted)">Esta semana</div>
           </div>
         </div>
+        <div v-if="balance" style="padding:0 16px;margin-bottom:16px">
+          <div class="section-title" style="padding-left:0">Mi saldo</div>
+          <div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:12px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:13px"><span>Efectivo por entregar</span><strong style="color:#e65100">{{Store.formatPrice(balance.cash_pending)}}</strong></div>
+            <div style="font-size:11px;color:#8d6e00;margin-top:2px">{{balance.cash_pending_orders}} pedidos sin cierre de caja</div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:8px"><span>Efectivo entregado</span><strong>{{Store.formatPrice(balance.cash_delivered)}}</strong></div>
+          </div>
+          <div style="background:var(--bg);border-radius:8px;padding:12px">
+            <div style="display:flex;justify-content:space-between;font-size:13px"><span>Ganancias acumuladas</span><strong>{{Store.formatPrice(balance.earnings_total)}}</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px"><span>Incluye propinas</span><span>{{Store.formatPrice(balance.earnings_tips)}}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:8px"><span>Pendiente de pago</span><strong style="color:#2196f3">{{Store.formatPrice(balance.earnings_pending)}}</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px"><span>Pagado</span><strong style="color:#4caf50">{{Store.formatPrice(balance.earnings_paid)}}</strong></div>
+          </div>
+          <div v-if="closings.length" style="margin-top:12px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Ultimos cierres de caja</div>
+            <div v-for="c in closings.slice(0,5)" :key="c.id" style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)"><span>{{formatDate(c.created_at)}}</span><span>{{Store.formatPrice(c.received_amount)}}</span></div>
+          </div>
+          <div v-if="payouts.length" style="margin-top:12px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Ultimos pagos recibidos</div>
+            <div v-for="p in payouts.slice(0,5)" :key="p.id" style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)"><span>{{formatDate(p.created_at)}} &middot; {{p.reference}}</span><span>{{Store.formatPrice(p.amount)}}</span></div>
+          </div>
+        </div>
         <div class="section-title">Ultimas entregas</div>
         <div v-if="!orders.length" class="empty-state" style="padding:20px"><p>Sin entregas aun</p></div>
         <div style="padding:0 16px">
@@ -456,7 +485,7 @@ const DeliveryEarningsPage = {
     </div>`,
   components: { AppHeader },
   setup() { return { Store }; },
-  data() { return { orders: [], loading: true, totalEarnings: 0, todayEarnings: 0, weekEarnings: 0, totalDeliveries: 0 }; },
+  data() { return { balance: null, closings: [], payouts: [], orders: [], loading: true, totalEarnings: 0, todayEarnings: 0, weekEarnings: 0, totalDeliveries: 0 }; },
   async mounted() {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
     try {
@@ -467,6 +496,11 @@ const DeliveryEarningsPage = {
       this.todayEarnings = res.todayEarnings || 0;
       this.weekEarnings = res.weekEarnings || 0;
       this.totalDeliveries = res.totalDeliveries || 0;
+    } catch(e) {}
+    try {
+      const token = localStorage.getItem('deliveryToken');
+      const b = await API.post('/delivery/get-balance', { token });
+      if (b && b.success) { this.balance = b.balance; this.closings = b.closings || []; this.payouts = b.payouts || []; }
     } catch(e) {}
     this.loading = false;
   },

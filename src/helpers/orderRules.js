@@ -195,6 +195,13 @@ function computeDeliveryEarning(dg, order) {
   return toMoney(Math.max(0, earning));
 }
 
+// Regla: la propina va 100% al repartidor y se suma a su ganancia. tip_commission_rate ya no se usa.
+function computeDeliveryPayout(dg, order) {
+  const commission = computeDeliveryEarning(dg, order);
+  const tip = toMoney(Math.max(0, parseFloat((order && order.tip_amount) || 0) || 0));
+  return { commission, tip, amount: toMoney(commission + tip) };
+}
+
 const COORD_TOLERANCE = 0.000001;
 
 function pickDeliveryAddress(savedAddresses, { addressId, lat, lng, defaultAddressId } = {}) {
@@ -236,5 +243,6 @@ module.exports = {
   splitWalletPayment,
   refundableAmount,
   computeDeliveryEarning,
+  computeDeliveryPayout,
   pickDeliveryAddress,
 };

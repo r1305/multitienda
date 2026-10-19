@@ -1,0 +1,32 @@
+<% var active = 'cashcollections'; var pageTitle = 'Caja de repartidores'; %>
+<% var scripts = ''; %>
+<%
+var cur = typeof currency !== 'undefined' ? currency : '$';
+var body = `
+<div class="card">
+    <div class="card-header">Efectivo por entregar y ganancias pendientes por repartidor</div>
+    <div class="card-body">
+        <div class="table-responsive">
+        <table class="table table-hover">
+            <thead><tr><th>ID</th><th>Repartidor</th><th>Teléfono</th><th>Efectivo por entregar</th><th>Pedidos sin cierre</th><th>Ganancias por pagar</th><th></th></tr></thead>
+            <tbody>`;
+
+if (typeof guys !== 'undefined' && guys.length) {
+  guys.forEach(function(g) {
+    body += `<tr>
+      <td>${esc(g.id)}</td>
+      <td><strong>${esc(g.name)}</strong></td>
+      <td>${esc(g.phone || '-')}</td>
+      <td><strong style="color:#e65100">${esc(cur)}${esc(parseFloat(g.cash_pending || 0).toFixed(2))}</strong></td>
+      <td>${esc(g.cash_orders || 0)}</td>
+      <td><strong style="color:#28a745">${esc(cur)}${esc(parseFloat(g.earnings_pending || 0).toFixed(2))}</strong></td>
+      <td><a href="/admin/delivery-guy/account/${esc(g.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-cash-register"></i> Abrir cuenta</a></td>
+    </tr>`;
+  });
+} else {
+  body += '<tr><td colspan="7" class="text-center text-muted py-4">No hay repartidores</td></tr>';
+}
+
+body += `</tbody></table></div></div></div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

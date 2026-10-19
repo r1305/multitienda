@@ -122,6 +122,7 @@ router.post('/delivery/toggle-delivery-guy-status', auth, deliveryOnly, misc.upd
 router.post('/delivery/get-completed-orders', auth, deliveryOnly, misc.getCompletedOrders);
 router.post('/delivery/get-active-orders', auth, deliveryOnly, misc.getActiveDeliveryOrders);
 router.post('/delivery/get-earnings', auth, deliveryOnly, misc.getDeliveryEarnings);
+router.post('/delivery/get-balance', auth, deliveryOnly, misc.getDeliveryBalance);
 router.post('/conversation/chat', auth, misc.deliveryCustomerChat);
 router.post('/conversation/send', auth, misc.sendChatMessage);
 router.post('/change-avatar', auth, user.changeAvatar);

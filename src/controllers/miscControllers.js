@@ -767,7 +767,7 @@ exports.deliverOrder = async (req, res) => {
   try {
     const orderId = toOrderId(req.body.order_id);
     if (!orderId) return res.status(400).json({ success: false, message: 'Pedido inválido' });
-    const { computeDeliveryEarning } = require('../helpers/orderRules');
+    const { computeDeliveryPayout } = require('../helpers/orderRules');
     const pinSetting = await Setting.findOne({ where: { key: 'enableDeliveryPin' }, attributes: ['value'] });
     const pinRequired = !!pinSetting && String(pinSetting.value) === 'true';
 
@@ -792,12 +792,12 @@ exports.deliverOrder = async (req, res) => {
         'SELECT commission_type, fixed_commission, commission_rate, percentage_base, dynamic_base_distance, dynamic_base_price, dynamic_price_per_km FROM delivery_guy_details WHERE user_id = ? LIMIT 1',
         { replacements: [req.user.id], type: QueryTypes.SELECT, transaction: t }
       );
-      const earning = computeDeliveryEarning(dgDetails[0], order);
-      if (earning > 0) {
-        // Pendiente manual: UNIQUE(order_id) en delivery_earnings; mientras tanto el NOT EXISTS evita el doble pago
+      // Ganancia = comisión del repartidor + 100% de la propina. UNIQUE(order_id) + NOT EXISTS evitan el doble pago
+      const payout = computeDeliveryPayout(dgDetails[0], order);
+      if (payout.amount > 0) {
         await sequelize.query(
-          'INSERT INTO delivery_earnings (user_id, order_id, amount, commission_type) SELECT ?, ?, ?, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM delivery_earnings WHERE order_id = ?)',
-          { replacements: [req.user.id, orderId, earning, dgDetails[0].commission_type || 'fixed', orderId], transaction: t }
+          'INSERT INTO delivery_earnings (user_id, order_id, amount, tip_amount, commission_type) SELECT ?, ?, ?, ?, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM delivery_earnings WHERE order_id = ?)',
+          { replacements: [req.user.id, orderId, payout.amount, payout.tip, (dgDetails[0] && dgDetails[0].commission_type) || 'fixed', orderId], transaction: t }
         );
       }
       return { status: 200, order };
@@ -831,6 +831,22 @@ exports.getActiveDeliveryOrders = async (req, res) => {
     res.json(orders);
   } catch (err) {
     res.status(500).json([]);
+  }
+};
+
+// Saldo propio del repartidor: efectivo por entregar, cierres, ganancias y pagos. Solo lee req.user.id.
+exports.getDeliveryBalance = async (req, res) => {
+  try {
+    const settlements = require('../helpers/settlements');
+    const [balance, closings, payouts] = await Promise.all([
+      settlements.getDeliveryBalance(sequelize, req.user.id),
+      settlements.listCashCollections(sequelize, req.user.id, 20),
+      settlements.listDeliveryPayouts(sequelize, req.user.id, 20),
+    ]);
+    res.json({ success: true, balance, closings, payouts });
+  } catch (err) {
+    console.error('getDeliveryBalance error:', err.message);
+    res.status(500).json({ success: false });
   }
 };
 
