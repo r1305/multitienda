@@ -28,7 +28,7 @@ if (typeof stores !== 'undefined' && stores.length) {
       <td>${img}</td>
       <td><strong>${esc(s.name)}</strong> <span class="badge badge-info">${esc(s.business_type_name || 'Restaurante')}</span><br><small class="text-muted">${esc(s.address || '')}</small></td>
       <td><span class="badge badge-${esc(!s.is_accepted ? 'secondary' : (s.is_active ? 'success' : 'danger'))}">${esc(!s.is_accepted ? 'Disabled' : (s.is_active ? 'Open' : 'Closed'))}</span></td>
-      <td><strong style="color:#28a745">${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(earnings)}</strong></td>
+      <td><strong class="text-success">${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(earnings)}</strong></td>
       <td>
         <a href="/admin/store/edit/${esc(s.id)}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>
         <a href="/admin/store/earnings/${esc(s.id)}" class="btn btn-sm btn-outline-success" title="Ganancias"><i class="fas fa-chart-line"></i></a>

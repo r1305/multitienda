@@ -29,6 +29,7 @@ function loadChart(filter) {
   fetch(url).then(r => r.json()).then(data => {
     const ctx = document.getElementById('earningsChart').getContext('2d');
     if (earningsChart) earningsChart.destroy();
+    const T = window.adminChartTheme();
     earningsChart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -36,8 +37,8 @@ function loadChart(filter) {
         datasets: [{
           label: 'Ganancias',
           data: data.values,
-          backgroundColor: 'rgba(40,167,69,.7)',
-          borderColor: '#28a745',
+          backgroundColor: T.barAlt,
+          borderColor: T.barAltBorder,
           borderWidth: 1,
           borderRadius: 4
         }]
@@ -45,10 +46,11 @@ function loadChart(filter) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? false : undefined,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { callback: v => '${esc(typeof currency !== "undefined" ? currency : "$")}' + v } },
-          x: { grid: { display: false } }
+          y: { beginAtZero: true, grid: { color: T.grid }, ticks: { color: T.text, callback: v => '${esc(typeof currency !== "undefined" ? currency : "$")}' + v } },
+          x: { grid: { display: false }, ticks: { color: T.text } }
         }
       }
     });
@@ -62,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('dateTo').value = today;
   loadChart('week');
 });
+document.addEventListener('admin:theme', function() { var b = document.querySelector('.filter-btn.active'); loadChart(b ? b.dataset.filter : 'week'); });
 </script>`;
 
 var body = '';
@@ -86,7 +89,7 @@ if (typeof store !== 'undefined' && store) {
     <div class="card-body">
       <div id="customRange" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
         <input type="date" id="dateFrom" class="form-control form-control-sm" style="width:auto" value="${esc(today)}">
-        <span style="color:#888">a</span>
+        <span class="text-muted">a</span>
         <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto" value="${esc(today)}">
         <button class="btn btn-sm btn-success" onclick="loadChart('custom')"><i class="fas fa-search"></i> Buscar</button>
       </div>

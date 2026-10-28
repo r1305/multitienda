@@ -29,9 +29,9 @@ function loadChart(filter) {
   fetch(url).then(r => r.json()).then(data => {
     const ctx = document.getElementById('earningsChart').getContext('2d');
     if (earningsChart) earningsChart.destroy();
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const gridColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)';
-    const textColor = isDark ? '#aaa' : '#666';
+    const T = window.adminChartTheme();
+    const gridColor = T.grid;
+    const textColor = T.text;
     earningsChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -39,19 +39,19 @@ function loadChart(filter) {
         datasets: [{
           label: 'Ganancias',
           data: data.values,
-          borderColor: '#007bff',
-          backgroundColor: 'rgba(0,123,255,.08)',
+          borderColor: T.line,
+          backgroundColor: T.fill,
           fill: true,
           tension: 0.4,
           pointRadius: 3,
-          pointBackgroundColor: '#007bff',
+          pointBackgroundColor: T.line,
           borderWidth: 2
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        animation: { duration: 600 },
+        animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? false : { duration: 600 },
         plugins: { legend: { display: false } },
         scales: {
           y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, callback: v => '${esc(currency)}' + v } },
@@ -64,6 +64,7 @@ function loadChart(filter) {
 }
 
 document.addEventListener('DOMContentLoaded', function() { loadChart('week'); refreshOrderElapsedCells(); setInterval(refreshOrderElapsedCells, 30000); });
+document.addEventListener('admin:theme', function() { var b = document.querySelector('.filter-btn.active'); loadChart(b ? b.dataset.filter : 'week'); });
 
 window.formatOrderElapsed = function(createdAt, statusId, updatedAt) {
   if (!createdAt) return '-';
@@ -98,42 +99,13 @@ function statusText(id) {
   const map = {1:'Nuevo',2:'Aceptado',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pend.',9:'Pago fallido',10:'Programado',11:'Confirmado',12:'En preparación'};
   return map[id] || '-';
 }
-</script>
-<style>
-.stat-card { border-left: 4px solid; transition: transform .15s; }
-.stat-card:hover { transform: translateY(-2px); }
-.stat-card .card-body { gap: 14px !important; }
-.stat-card.blue { border-left-color: #007bff; }
-.stat-card.green { border-left-color: #28a745; }
-.stat-card.orange { border-left-color: #fd7e14; }
-.stat-card.red { border-left-color: #dc3545; }
-.stat-card.purple { border-left-color: #6f42c1; }
-.stat-card.teal { border-left-color: #20c997; }
-.stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-.stat-icon.blue { background: rgba(0,123,255,.1); color: #007bff; }
-.stat-icon.green { background: rgba(40,167,69,.1); color: #28a745; }
-.stat-icon.orange { background: rgba(253,126,20,.1); color: #fd7e14; }
-.stat-icon.red { background: rgba(220,53,69,.1); color: #dc3545; }
-.stat-icon.purple { background: rgba(111,66,193,.1); color: #6f42c1; }
-.stat-icon.teal { background: rgba(32,201,151,.1); color: #20c997; }
-.quick-link { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border-radius: 10px; text-decoration: none; color: inherit; transition: background .15s; font-size: 12px; font-weight: 500; text-align: center; }
-.quick-link:hover { background: rgba(0,123,255,.06); text-decoration: none; color: inherit; }
-.quick-link i { font-size: 22px; color: var(--primary); }
-[data-theme="dark"] .quick-link:hover { background: rgba(255,255,255,.05); }
-[data-theme="dark"] .stat-icon.blue { background: rgba(0,123,255,.15); }
-[data-theme="dark"] .stat-icon.green { background: rgba(40,167,69,.15); }
-[data-theme="dark"] .stat-icon.orange { background: rgba(253,126,20,.15); }
-[data-theme="dark"] .stat-icon.red { background: rgba(220,53,69,.15); }
-[data-theme="dark"] .stat-icon.purple { background: rgba(111,66,193,.15); }
-[data-theme="dark"] .stat-icon.teal { background: rgba(32,201,151,.15); }
-.badge-purple { background: #6f42c1; color: #fff; }
-</style>`;
+</script>`;
 
 var body = `
 <!-- Welcome & Today Summary -->
 <div class="row align-items-center mb-3">
   <div class="col">
-    <h4 style="font-weight:700;margin:0">Bienvenido, ${esc(typeof user !== 'undefined' && user ? user.name : 'Admin')}</h4>
+    <h4 class="welcome-title">Bienvenido, ${esc(typeof user !== 'undefined' && user ? user.name : 'Admin')}</h4>
     <p class="text-muted mb-0" style="font-size:13px">Resumen general de tu plataforma</p>
   </div>
   <div class="col-auto">
@@ -254,7 +226,7 @@ var body = `
       <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto">
       <button class="btn btn-sm btn-primary" onclick="loadChart('custom')"><i class="fas fa-search"></i></button>
     </div>
-    <div style="position:relative;height:260px">
+    <div class="chart-box">
       <canvas id="earningsChart"></canvas>
     </div>
   </div>
@@ -262,7 +234,7 @@ var body = `
 
 <!-- Quick Links -->
 <div class="card mb-3">
-  <div class="card-header"><i class="fas fa-bolt mr-1" style="color:#fd7e14"></i> Accesos rápidos</div>
+  <div class="card-header"><i class="fas fa-bolt mr-1 text-orange" aria-hidden="true"></i> Accesos rápidos</div>
   <div class="card-body" style="padding:12px">
     <div class="row">
       <div class="col-4 col-md-2"><a href="/admin/orders" class="quick-link"><i class="fas fa-receipt"></i>Pedidos</a></div>
@@ -299,7 +271,7 @@ var body = `
                 <td><strong>${esc(currency)}${esc(parseFloat(o.total||0).toFixed(2))}</strong></td>
                 <td><span class="badge badge-${esc(({1:'info',2:'warning',3:'warning',4:'warning',5:'success',6:'danger',7:'success',8:'secondary',10:'purple',11:'info',12:'warning'})[o.orderstatus_id]||'secondary')}">${esc(({1:'Nuevo',2:'Aceptado',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pend.',10:'Programado',11:'Confirmado',12:'En preparación'})[o.orderstatus_id]||'-')}</span></td>
                 <td><span class="text-nowrap" style="font-size:12px" data-order-elapsed data-created="${esc(o.created_at || '')}" data-status="${esc(o.orderstatus_id)}" data-updated="${esc(o.updated_at || '')}">${esc(elapsed)}</span></td>
-                <td style="font-size:11px;color:#888">${esc(new Date(o.created_at).toLocaleDateString('es',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))}</td>
+                <td class="text-muted text-xs">${esc(new Date(o.created_at).toLocaleDateString('es',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))}</td>
               </tr>`;
               }).join('')}
               ${(typeof recentOrders === 'undefined' || !recentOrders.length) ? '<tr><td colspan="7" class="text-center text-muted py-4">Sin pedidos</td></tr>' : ''}
@@ -315,20 +287,20 @@ var body = `
     <!-- Top Stores -->
     <div class="card mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fas fa-trophy mr-1" style="color:#fd7e14"></i> Top tiendas</span>
+        <span><i class="fas fa-trophy mr-1 text-orange" aria-hidden="true"></i> Top tiendas</span>
         <a href="/admin/stores" class="btn btn-sm btn-outline-secondary">Ver</a>
       </div>
       <div class="card-body p-0">
         <div style="padding:0">
           ${(typeof topStores !== 'undefined' ? topStores : []).map((s, i) => `
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,.04)">
-            <span style="font-size:12px;font-weight:700;color:#888;width:18px">${esc(i+1)}</span>
+          <div class="list-row">
+            <span class="list-rank">${esc(i+1)}</span>
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.name)}</div>
-              <div style="font-size:11px;color:#888">${esc(s.order_count)} pedidos</div>
+              <div class="text-muted text-xs">${esc(s.order_count)} pedidos</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:13px;font-weight:600;color:#28a745">${esc(currency)}${esc(parseFloat(s.revenue||0).toFixed(0))}</div>
+              <div class="text-success" style="font-size:13px;font-weight:600">${esc(currency)}${esc(parseFloat(s.revenue||0).toFixed(0))}</div>
               <span class="badge badge-${esc(s.is_active ? 'success' : 'danger')}" style="font-size:9px">${esc(s.is_active ? 'Abierto' : 'Cerrado')}</span>
             </div>
           </div>`).join('')}
@@ -345,11 +317,11 @@ var body = `
       </div>
       <div class="card-body p-0">
         ${(typeof activeDelivery !== 'undefined' ? activeDelivery : []).map(d => `
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,.04)">
-          <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,123,255,.1);display:flex;align-items:center;justify-content:center"><i class="fas fa-user" style="font-size:12px;color:#007bff"></i></div>
+        <div class="list-row">
+          <div class="list-avatar" aria-hidden="true"><i class="fas fa-user"></i></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:500">${esc(d.name)}</div>
-            <div style="font-size:11px;color:#888">${esc(d.phone || '')}</div>
+            <div class="text-muted text-xs">${esc(d.phone || '')}</div>
           </div>
           <div>
             ${d.active_orders > 0 ? '<span class="badge badge-warning">'+d.active_orders+' en ruta</span>' : (d.is_live ? '<span class="badge badge-success">En línea</span>' : (d.has_location ? '<span class="badge badge-info">Con ubicación</span>' : '<span class="badge badge-secondary">Sin GPS</span>'))}

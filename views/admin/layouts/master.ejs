@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -13,122 +13,23 @@
     <link rel="stylesheet" href="<%= bp %>/assets/vendor/fontawesome-free-6.5.0-web/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap4.min.css">
-    <style>
-        :root { --sidebar-width: 260px; --primary: #007bff; --dark: #1e2a38; --dark-hover: #2c3e50; --topbar-height: 56px; }
-        * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; margin: 0; font-size: 14px; }
-
-        /* Sidebar */
-        .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background: var(--dark); overflow-y: auto; z-index: 1000; transition: transform .3s ease; padding-bottom: 20px; }
-        .sidebar-brand { padding: 18px 20px 24px; color: #fff; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: 8px; }
-        .sidebar-brand i { font-size: 20px; color: var(--primary); }
-        .sidebar a { color: #8a9bb5; padding: 11px 20px; display: flex; align-items: center; gap: 12px; text-decoration: none; font-size: 13px; font-weight: 500; border-left: 3px solid transparent; transition: all .15s; }
-        .sidebar form.logout-form { margin: 0; }
-        .sidebar form.logout-form button { color: #8a9bb5; padding: 11px 20px; display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; border: 0; border-left: 3px solid transparent; background: none; width: 100%; text-align: left; cursor: pointer; transition: all .15s; }
-        .sidebar form.logout-form button:hover { color: #fff; background: var(--dark-hover); }
-        .sidebar form.logout-form button i { width: 20px; text-align: center; font-size: 14px; }
-        .sidebar a:hover { color: #fff; background: var(--dark-hover); }
-        .sidebar a.active { color: #fff; background: var(--dark-hover); border-left-color: var(--primary); }
-        .sidebar a i { width: 20px; text-align: center; font-size: 14px; }
-        .sidebar-section { padding: 12px 20px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #5a6b7f; font-weight: 600; }
-        .sidebar hr { border-color: rgba(255,255,255,.06); margin: 8px 20px; }
-
-        /* Main content */
-        .main-content { margin-left: var(--sidebar-width); min-width: 0; max-width: 100%; min-height: 100vh; transition: margin .3s ease; }
-
-        /* Top bar */
-        .top-bar { position: sticky; top: 0; z-index: 900; background: #fff; padding: 0 20px; height: var(--topbar-height); display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
-        .top-bar h5 { font-size: 16px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .top-bar-user { font-size: 13px; color: #6c757d; display: flex; align-items: center; gap: 8px; }
-        .top-bar-user .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; }
-        .hamburger { display: none; background: none; border: none; font-size: 20px; color: var(--dark); padding: 8px; cursor: pointer; }
-
-        /* Cards & Tables */
-        .card { border: none; border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,.04); margin-bottom: 16px; overflow: hidden; }
-        .card-header { background: #fff; border-bottom: 1px solid #f0f0f0; font-weight: 600; font-size: 14px; padding: 14px 16px; }
-        .card-body { padding: 16px; overflow-x: auto; }
-        .table { font-size: 13px; }
-        .table th { border-top: none; font-size: 11px; text-transform: uppercase; color: #8a9bb5; font-weight: 600; letter-spacing: .5px; white-space: nowrap; }
-        .table td { vertical-align: middle; }
-        .btn { font-size: 13px; border-radius: 6px; }
-        .btn-sm { padding: 5px 10px; font-size: 12px; }
-        .btn-primary { background: var(--primary); border: none; }
-        .badge { font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: 500; }
-        .alert { border: none; border-radius: 8px; font-size: 13px; }
-        .form-control { font-size: 14px; border-radius: 6px; }
-        .modal-content { border-radius: 12px; }
-
-        /* Overlay for mobile */
-        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; }
-
-        /* Responsive */
-        @media (max-width: 991px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.open { transform: translateX(0); }
-            .sidebar-overlay.open { display: block; }
-            .main-content { margin-left: 0; }
-            .hamburger { display: block; }
-            .top-bar { padding: 0 12px; }
-            .top-bar h5 { font-size: 15px; }
-            .card-body { padding: 12px; }
-        }
-        @media (max-width: 576px) {
-            .top-bar-user span { display: none; }
-            .table-responsive { font-size: 12px; }
-            .btn-sm { padding: 4px 8px; }
-        }
-        @media (min-width: 992px) {
-            .sidebar { transform: translateX(0) !important; }
-        }
-
-        /* DataTables responsive */
-        .dataTables_wrapper { font-size: 13px; }
-        .dataTables_filter input { border-radius: 6px; font-size: 13px; }
-        .dataTables_length select { border-radius: 6px; }
-        div.dataTables_wrapper div.dataTables_info { font-size: 12px; }
-        .admin-list-search { position: relative; min-width: 200px; max-width: 320px; flex: 1 1 200px; }
-        .admin-list-search .fa-search { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #8a9bb5; font-size: 12px; pointer-events: none; }
-        .admin-list-search input { padding-left: 30px; }
-        #deliveryGuysMap { z-index: 1; }
-
-        /* Dark Mode */
-        [data-theme="dark"] body { background: #121212; color: #e0e0e0; }
-        [data-theme="dark"] .top-bar { background: #1e1e1e; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-        [data-theme="dark"] .top-bar h5 { color: #e0e0e0; }
-        [data-theme="dark"] .card { background: #1e1e1e; box-shadow: 0 1px 6px rgba(0,0,0,.2); }
-        [data-theme="dark"] .card-header { background: #1e1e1e; border-color: #333; color: #e0e0e0; }
-        [data-theme="dark"] .card-body { color: #e0e0e0; }
-        [data-theme="dark"] .table { color: #e0e0e0; }
-        [data-theme="dark"] .table th { color: #999; border-color: #333; }
-        [data-theme="dark"] .table td { border-color: #2a2a2a; }
-        [data-theme="dark"] .table-hover tbody tr:hover { background: #2a2a2a; }
-        [data-theme="dark"] .form-control { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
-        [data-theme="dark"] .form-control:focus { background: #333; color: #e0e0e0; border-color: var(--primary); }
-        [data-theme="dark"] .modal-content { background: #1e1e1e; color: #e0e0e0; }
-        [data-theme="dark"] .modal-header { border-color: #333; }
-        [data-theme="dark"] .modal-footer { border-color: #333; }
-        [data-theme="dark"] .close { color: #e0e0e0; }
-        [data-theme="dark"] .alert-success { background: #1b3a1b; color: #66bb6a; }
-        [data-theme="dark"] .alert-danger { background: #3a1b1b; color: #ef5350; }
-        [data-theme="dark"] .alert-warning { background: #3a3a1b; color: #ffb74d; }
-        [data-theme="dark"] .custom-select, [data-theme="dark"] select.form-control { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
-        [data-theme="dark"] .dataTables_wrapper .dataTables_filter input { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
-        [data-theme="dark"] .dataTables_wrapper .dataTables_length select { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
-        [data-theme="dark"] .page-link { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
-        [data-theme="dark"] .page-item.active .page-link { background: var(--primary); border-color: var(--primary); }
-        [data-theme="dark"] .hamburger { color: #e0e0e0; }
-        [data-theme="dark"] .btn-outline-secondary { color: #ccc; border-color: #555; }
-        .theme-toggle { background: none; border: none; font-size: 18px; cursor: pointer; color: #6c757d; padding: 8px; }
-        [data-theme="dark"] .theme-toggle { color: #ffc107; }
-    </style>
+    <link rel="stylesheet" href="<%= bp %>/assets/css/admin-futuro.css">
+    <script>
+      (function() {
+        var t = null;
+        try { t = localStorage.getItem('adminTheme'); } catch (e) {}
+        if (t !== 'light' && t !== 'dark') t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
 </head>
 <body>
     <!-- Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
     <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-brand"><% if (settings && settings.logoUrl) { %><img src="<%= settings.logoUrl %>" height="24" style="border-radius:4px;vertical-align:middle;margin-right:8px"><% } else { %><i class="fas fa-store"></i> <% } %> Multitienda</div>
+    <nav class="sidebar" id="sidebar" aria-label="Menú de administración">
+        <div class="sidebar-brand"><% if (settings && settings.logoUrl) { %><img src="<%= settings.logoUrl %>" height="28" alt=""><% } else { %><span class="brand-mark" aria-hidden="true"><i class="fas fa-store"></i></span><% } %><span>Multitienda<span class="brand-sub">Control center</span></span></div>
         <div class="sidebar-section">Principal</div>
         <a href="<%= bp %>/admin/dashboard" class="<%= typeof active !== 'undefined' && active === 'dashboard' ? 'active' : '' %>"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
         <a href="<%= bp %>/admin/orders" class="<%= typeof active !== 'undefined' && active === 'orders' ? 'active' : '' %>"><i class="fas fa-shopping-cart"></i> Pedidos</a>
@@ -164,18 +65,18 @@
     <!-- Main -->
     <div class="main-content">
         <div class="top-bar">
-            <div style="display:flex;align-items:center;gap:12px;min-width:0">
-                <button class="hamburger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <div class="top-bar-left">
+                <button type="button" class="hamburger" onclick="toggleSidebar()" aria-label="Abrir menú" aria-controls="sidebar"><i class="fas fa-bars" aria-hidden="true"></i></button>
                 <h5><%= typeof pageTitle !== 'undefined' ? pageTitle : 'Admin' %></h5>
             </div>
             <div class="top-bar-user">
-                <button class="theme-toggle" onclick="toggleTheme()" title="Modo oscuro"><i class="fas" id="themeIcon"></i></button>
+                <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Cambiar tema" aria-label="Cambiar tema"><i class="fas" id="themeIcon" aria-hidden="true"></i></button>
                 <span><%= typeof user !== 'undefined' && user ? user.name : 'Admin' %></span>
-                <div class="avatar"><%= typeof user !== 'undefined' && user ? user.name[0].toUpperCase() : 'A' %></div>
+                <div class="avatar" aria-hidden="true"><%= typeof user !== 'undefined' && user ? user.name[0].toUpperCase() : 'A' %></div>
             </div>
         </div>
 
-        <div style="padding:16px">
+        <main class="content-wrap">
             <% if (typeof success !== 'undefined' && success) { %>
                 <div class="alert alert-success alert-dismissible fade show"><%= success %><button type="button" class="close" data-dismiss="alert">&times;</button></div>
             <% } %>
@@ -187,7 +88,7 @@
             <% } %>
 
             <%- body %>
-        </div>
+        </main>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -262,14 +163,23 @@
       function toggleTheme() {
         var t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', t);
-        localStorage.setItem('adminTheme', t);
+        try { localStorage.setItem('adminTheme', t); } catch (e) {}
         updateThemeIcon();
+        document.dispatchEvent(new CustomEvent('admin:theme', { detail: t }));
       }
       function updateThemeIcon() {
         var icon = document.getElementById('themeIcon');
-        if (icon) icon.className = 'fas ' + (document.documentElement.getAttribute('data-theme') === 'dark' ? 'fa-sun' : 'fa-moon');
+        var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (icon) icon.className = 'fas ' + (dark ? 'fa-sun' : 'fa-moon');
+        var btn = document.getElementById('themeToggle');
+        if (btn) { btn.setAttribute('aria-label', dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'); btn.title = btn.getAttribute('aria-label'); }
       }
-      (function() { var t = localStorage.getItem('adminTheme') || 'light'; document.documentElement.setAttribute('data-theme', t); updateThemeIcon(); })();
+      window.adminChartTheme = function() {
+        var cs = getComputedStyle(document.documentElement);
+        var v = function(n) { return cs.getPropertyValue(n).trim(); };
+        return { line: v('--chart-line'), fill: v('--chart-fill'), bar: v('--chart-bar'), barAlt: v('--chart-bar-alt'), barAltBorder: v('--chart-bar-alt-border'), grid: v('--chart-grid'), text: v('--chart-text') };
+      };
+      updateThemeIcon();
 
     </script>
     <script>

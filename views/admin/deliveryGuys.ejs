@@ -166,7 +166,7 @@ if (typeof deliveryGuys !== 'undefined' && deliveryGuys.length) {
       <td>${escHtml(dg.phone) || '-'}</td>
       <td>${escHtml(dg.vehicle_number) || '-'}</td>
       <td><span class="badge badge-info">${esc(commLabel)}</span><br><small class="text-muted">${esc(commType)}</small></td>
-      <td><strong style="color:#28a745">${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(dgEarnings)}</strong></td>
+      <td><strong class="text-success">${esc(typeof currency !== 'undefined' ? currency : '$')}${esc(dgEarnings)}</strong></td>
       <td>${statusBadge}</td>
       <td>
         ${approveBtn}
