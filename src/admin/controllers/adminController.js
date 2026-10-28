@@ -818,6 +818,14 @@ exports.deliveryGuys = async (req, res) => {
     console.warn('deliveryGuys mapCenter:', geoErr.message);
   }
 
+  const settings = Object.assign({}, res.locals.settings);
+  try {
+    const [mapRows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('googleApiKey','googleMapId')");
+    mapRows.forEach((r) => { settings[r.key] = r.value; });
+  } catch (mapErr) {
+    console.warn('deliveryGuys map settings:', mapErr.message);
+  }
+
   const deliveryGuysFrom = `
       FROM users u
       INNER JOIN model_has_roles mr ON u.id = mr.model_id
@@ -868,6 +876,7 @@ exports.deliveryGuys = async (req, res) => {
       user: req.session.user,
       deliveryGuys,
       mapCenter,
+      settings,
       success: req.flash('success')[0],
       error: req.flash('error')[0],
     });
@@ -877,6 +886,7 @@ exports.deliveryGuys = async (req, res) => {
       user: req.session.user,
       deliveryGuys: [],
       mapCenter,
+      settings,
       success: null,
       error: 'Error loading delivery guys',
     });
