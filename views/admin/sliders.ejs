@@ -45,7 +45,7 @@ if (typeof sliders !== 'undefined' && sliders.length) {
         <span><strong>${esc(s.name)}</strong></span>
         <div>
           <a href="/admin/slider/edit/${esc(s.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
-          <form method="POST" action="/admin/slider/delete/${esc(s.id)}" class="d-inline" onsubmit="return confirm('Eliminar slider?')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
+          <form method="POST" action="/admin/slider/delete/${esc(s.id)}" class="d-inline" data-confirm="Eliminar slider?"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
         </div>
       </div>
       <div class="card-body"><div class="row">${slidesHtml}</div></div>

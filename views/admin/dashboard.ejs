@@ -214,9 +214,9 @@ var body = `
       <span id="totalEarnings" class="ml-2 badge badge-primary" style="font-size:12px">${esc(currency)}0.00</span>
     </div>
     <div class="d-flex flex-wrap" style="gap:6px">
-      <button class="btn btn-sm btn-outline-primary filter-btn active" data-filter="week" onclick="loadChart('week')">7d</button>
-      <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="month" onclick="loadChart('month')">30d</button>
-      <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="custom" onclick="loadChart('custom')">Rango</button>
+      <button class="btn btn-sm btn-outline-primary filter-btn active" data-filter="week" data-chart="week">7d</button>
+      <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="month" data-chart="month">30d</button>
+      <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="custom" data-chart="custom">Rango</button>
     </div>
   </div>
   <div class="card-body">
@@ -224,7 +224,7 @@ var body = `
       <input type="date" id="dateFrom" class="form-control form-control-sm" style="width:auto">
       <span class="text-muted">a</span>
       <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto">
-      <button class="btn btn-sm btn-primary" onclick="loadChart('custom')"><i class="fas fa-search"></i></button>
+      <button class="btn btn-sm btn-primary" data-chart="custom"><i class="fas fa-search"></i></button>
     </div>
     <div class="chart-box">
       <canvas id="earningsChart"></canvas>
@@ -264,7 +264,7 @@ var body = `
                 const elapsed = elapsedFn(o.created_at, o.orderstatus_id, o.updated_at);
                 const orderUrl = o.unique_order_id || o.id;
                 return `
-              <tr style="cursor:pointer" onclick="location.href='/admin/order/${esc(orderUrl)}'">
+              <tr style="cursor:pointer" data-href="/admin/order/${esc(orderUrl)}">
                 <td><strong>${esc(o.unique_order_id || o.id)}</strong></td>
                 <td>${esc(o.user_name || '-')}</td>
                 <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.restaurant_name || '-')}</td>

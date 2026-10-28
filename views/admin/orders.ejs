@@ -71,7 +71,7 @@ if (typeof orders !== 'undefined' && orders.length) {
         var sel = o.delivery_guy_id == dg.id ? ' selected' : '';
         dgSelect += '<option value="' + esc(dg.id) + '"' + sel + '>' + esc(dg.name || '') + '</option>';
       });
-      assignHtml = `<form method="POST" action="/admin/order/assign-delivery" class="d-flex align-items-center mt-1" style="gap:4px;max-width:200px" onclick="event.stopPropagation()">
+      assignHtml = `<form method="POST" action="/admin/order/assign-delivery" class="d-flex align-items-center mt-1" style="gap:4px;max-width:200px">
         <input type="hidden" name="order_id" value="${esc(o.id)}">
         <input type="hidden" name="return_to" value="orders">
         <select name="user_id" class="form-control form-control-sm" required style="min-width:110px">${dgSelect}</select>

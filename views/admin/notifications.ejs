@@ -18,7 +18,7 @@ var body = `
                     </div>
                     <div class="form-group">
                         <label>Enviar a</label>
-                        <select name="target" class="form-control" id="targetSelect" onchange="toggleTarget()">
+                        <select name="target" class="form-control" id="targetSelect" data-fn-change="toggleTarget">
                             <option value="all">Todos los usuarios</option>
                             <option value="customers">Solo Clientes</option>
                             <option value="delivery">Solo Repartidores</option>
@@ -107,7 +107,7 @@ body += `</tbody>
             </table>
         </div>
         <div class="p-3 border-top">
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="fillDeliveryIds()">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-fn-click="fillDeliveryIds">
                 <i class="fas fa-list mr-1"></i> Copiar todos los IDs al envío específico
             </button>
         </div>

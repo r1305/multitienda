@@ -26,8 +26,8 @@ var body = `
                             <div class="form-group"><label>Store Name</label><input type="text" name="storeName" class="form-control" value="${esc(s.storeName)}"></div>
                             <div class="form-group"><label>Primary Color (Buttons & Accents)</label>
                                 <div style="display:flex;gap:8px;align-items:center">
-                                    <input type="color" name="primaryColor" value="${esc(s.primaryColor || '#ff5722')}" style="width:48px;height:36px;border:1px solid #ccc;border-radius:6px;cursor:pointer;padding:2px" oninput="this.nextElementSibling.value=this.value">
-                                    <input type="text" class="form-control" value="${esc(s.primaryColor || '#ff5722')}" style="max-width:120px" oninput="this.previousElementSibling.value=this.value">
+                                    <input type="color" name="primaryColor" value="${esc(s.primaryColor || '#ff5722')}" style="width:48px;height:36px;border:1px solid #ccc;border-radius:6px;cursor:pointer;padding:2px" data-sync="next">
+                                    <input type="text" class="form-control" value="${esc(s.primaryColor || '#ff5722')}" style="max-width:120px" data-sync="previous">
                                 </div>
                                 <p class="text-muted" style="font-size:11px;margin-top:4px">Color principal de botones, badges, tabs y acentos de la app.</p>
                             </div>
@@ -141,7 +141,7 @@ var body = `
     <div class="card-header bg-danger text-white"><i class="fas fa-exclamation-triangle"></i> Zona Peligrosa</div>
     <div class="card-body">
         <p class="text-muted" style="font-size:13px;margin-bottom:12px">Esto eliminara TODOS los datos (pedidos, tiendas, items, usuarios) excepto el superadmin. Las imagenes subidas tambien seran eliminadas. Esta accion no se puede deshacer.</p>
-        <form method="POST" action="${esc(_b)}/admin/clean-data" onsubmit="return confirm('ATENCION: Esto eliminara TODOS los datos. Esta seguro?')" style="display:flex;gap:8px;align-items:center">
+        <form method="POST" action="${esc(_b)}/admin/clean-data" data-confirm="ATENCION: Esto eliminara TODOS los datos. Esta seguro?" style="display:flex;gap:8px;align-items:center">
             <input type="text" name="pin_code" placeholder="PIN Code" required class="form-control" style="max-width:150px">
             <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Clean Data</button>
         </form>

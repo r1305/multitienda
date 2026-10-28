@@ -23,7 +23,7 @@ if (typeof translations !== 'undefined' && translations.length) {
         <a href="/admin/translation/edit/${esc(t.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
         <form method="POST" action="/admin/translation/make-default/${esc(t.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-success" title="Make Default"><i class="fas fa-check"></i></button></form>
         <form method="POST" action="/admin/translation/disable/${esc(t.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-warning"><i class="fas fa-ban"></i></button></form>
-        <form method="POST" action="/admin/translation/delete/${esc(t.id)}" class="d-inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
+        <form method="POST" action="/admin/translation/delete/${esc(t.id)}" class="d-inline" data-confirm="Delete?"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
       </td>
     </tr>`;
   });

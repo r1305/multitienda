@@ -35,7 +35,7 @@ if (typeof payout !== 'undefined' && payout) {
           <div class="form-group"><label>Fecha del depósito</label><input type="date" name="paid_at" class="form-control" value="${esc(todayLima)}" required></div>
           <div class="form-group"><label>Referencia</label><input type="text" name="reference" maxlength="255" class="form-control" required></div>
           <div class="form-group"><label>Nota (opcional)</label><textarea name="note" maxlength="500" class="form-control" rows="2"></textarea></div>
-          <button type="submit" class="btn btn-success btn-block" onclick="return confirm('Registrar el depósito y marcar la solicitud como pagada?')">Registrar depósito</button>
+          <button type="submit" class="btn btn-success btn-block" data-confirm="Registrar el depósito y marcar la solicitud como pagada?">Registrar depósito</button>
           <small class="text-muted">Si el monto es distinto al solicitado, la diferencia queda registrada.</small>
         </form>
       </div></div>
@@ -43,7 +43,7 @@ if (typeof payout !== 'undefined' && payout) {
         <form method="POST" action="/admin/store-payout/reject">
           <input type="hidden" name="id" value="${esc(payout.id)}">
           <div class="form-group"><label>Motivo (opcional)</label><input type="text" name="note" maxlength="500" class="form-control"></div>
-          <button type="submit" class="btn btn-outline-danger btn-block" onclick="return confirm('Rechazar la solicitud? El saldo vuelve a la tienda.')">Rechazar</button>
+          <button type="submit" class="btn btn-outline-danger btn-block" data-confirm="Rechazar la solicitud? El saldo vuelve a la tienda.">Rechazar</button>
         </form>
       </div></div>`;
   } else {

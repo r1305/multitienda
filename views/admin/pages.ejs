@@ -31,7 +31,7 @@ if (typeof pages !== 'undefined' && pages.length) {
       <td><code>${esc(p.slug)}</code></td>
       <td>
         <a href="/admin/page/edit/${esc(p.id)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
-        <form method="POST" action="/admin/page/delete/${esc(p.id)}" class="d-inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
+        <form method="POST" action="/admin/page/delete/${esc(p.id)}" class="d-inline" data-confirm="Delete?"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
       </td>
     </tr>`;
   });

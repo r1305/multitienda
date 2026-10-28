@@ -58,7 +58,7 @@ if (typeof gateways !== 'undefined' && gateways.length) {
       <td>
         <button class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#editPay${esc(gw.id)}"><i class="fas fa-edit"></i></button>
         <form method="POST" action="/admin/payment-method/toggle/${esc(gw.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-warning"><i class="fas fa-power-off"></i></button></form>
-        <form method="POST" action="/admin/payment-method/delete/${esc(gw.id)}" class="d-inline" onsubmit="return confirm('Eliminar?')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
+        <form method="POST" action="/admin/payment-method/delete/${esc(gw.id)}" class="d-inline" data-confirm="Eliminar?"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
       </td>
     </tr>
     <div class="modal fade" id="editPay${esc(gw.id)}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">

@@ -32,7 +32,7 @@ if (typeof categories !== 'undefined' && categories.length) {
       <td><span class="badge badge-${esc(c.is_active ? 'success' : 'danger')}">${esc(c.is_active ? 'Active' : 'Inactive')}</span></td>
       <td>
         <form method="POST" action="/admin/store-category-slider/disable/${esc(c.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-warning"><i class="fas fa-ban"></i></button></form>
-        <form method="POST" action="/admin/store-category-slider/delete/${esc(c.id)}" class="d-inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
+        <form method="POST" action="/admin/store-category-slider/delete/${esc(c.id)}" class="d-inline" data-confirm="Delete?"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></form>
       </td>
     </tr>`;
   });

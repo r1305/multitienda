@@ -40,7 +40,7 @@ if (typeof locations !== 'undefined' && locations.length) {
       <td>
         <a href="/admin/popular-geo-location/edit/${esc(l.id)}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fas fa-edit"></i></a>
         <form method="POST" action="/admin/popular-geo-location/make-default/${esc(l.id)}" class="d-inline"><button type="submit" class="btn btn-sm btn-outline-success" title="Make Primary"><i class="fas fa-check"></i></button></form>
-        <form method="POST" action="/admin/popular-geo-location/delete/${esc(l.id)}" class="d-inline" onsubmit="return confirm('Are you sure?')"><button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></button></form>
+        <form method="POST" action="/admin/popular-geo-location/delete/${esc(l.id)}" class="d-inline" data-confirm="Are you sure?"><button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></button></form>
       </td>
     </tr>`;
   });

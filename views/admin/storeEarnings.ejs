@@ -81,9 +81,9 @@ if (typeof store !== 'undefined' && store) {
         <span id="orderCount" class="ml-1 badge badge-secondary" style="font-size:11px">0 pedidos</span>
       </div>
       <div class="d-flex flex-wrap" style="gap:6px">
-        <button class="btn btn-sm btn-outline-success filter-btn active" data-filter="week" onclick="loadChart('week')">7 dias</button>
-        <button class="btn btn-sm btn-outline-success filter-btn" data-filter="month" onclick="loadChart('month')">30 dias</button>
-        <button class="btn btn-sm btn-outline-success filter-btn" data-filter="custom" onclick="loadChart('custom')">Rango</button>
+        <button class="btn btn-sm btn-outline-success filter-btn active" data-filter="week" data-chart="week">7 dias</button>
+        <button class="btn btn-sm btn-outline-success filter-btn" data-filter="month" data-chart="month">30 dias</button>
+        <button class="btn btn-sm btn-outline-success filter-btn" data-filter="custom" data-chart="custom">Rango</button>
       </div>
     </div>
     <div class="card-body">
@@ -91,7 +91,7 @@ if (typeof store !== 'undefined' && store) {
         <input type="date" id="dateFrom" class="form-control form-control-sm" style="width:auto" value="${esc(today)}">
         <span class="text-muted">a</span>
         <input type="date" id="dateTo" class="form-control form-control-sm" style="width:auto" value="${esc(today)}">
-        <button class="btn btn-sm btn-success" onclick="loadChart('custom')"><i class="fas fa-search"></i> Buscar</button>
+        <button class="btn btn-sm btn-success" data-chart="custom"><i class="fas fa-search"></i> Buscar</button>
       </div>
       <div style="position:relative;height:300px">
         <canvas id="earningsChart"></canvas>

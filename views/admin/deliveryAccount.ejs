@@ -44,10 +44,10 @@ if (typeof guy !== 'undefined' && guy) {
   if (pendingOrders.length) {
     body += `<form method="POST" action="/admin/delivery-guy/account/${esc(guy.id)}/close-cash">
       <div class="table-responsive"><table class="table table-sm">
-        <thead><tr><th><input type="checkbox" checked onclick="toggleAllCash(this)"></th><th>Pedido</th><th>Entregado</th><th>A cobrar en efectivo</th></tr></thead><tbody>`;
+        <thead><tr><th><input type="checkbox" checked data-fn-click="toggleAllCash"></th><th>Pedido</th><th>Entregado</th><th>A cobrar en efectivo</th></tr></thead><tbody>`;
     pendingOrders.forEach(function(o) {
       body += `<tr>
-        <td><input type="checkbox" class="cash-order-check" name="order_ids" value="${esc(o.id)}" data-amount="${esc(parseFloat(o.payable || 0).toFixed(2))}" checked onclick="recalcCash()"></td>
+        <td><input type="checkbox" class="cash-order-check" name="order_ids" value="${esc(o.id)}" data-amount="${esc(parseFloat(o.payable || 0).toFixed(2))}" checked data-fn-click="recalcCash"></td>
         <td>#${esc(o.unique_order_id || o.id)}</td>
         <td>${fdate(o.updated_at || o.created_at)}</td>
         <td>${money(o.payable)}</td>
@@ -59,7 +59,7 @@ if (typeof guy !== 'undefined' && guy) {
         <div class="form-group col-md-4"><label>Monto recibido</label><input type="number" step="0.01" min="0" max="99999999" id="receivedAmount" name="received_amount" class="form-control" required></div>
         <div class="form-group col-md-8"><label>Nota (opcional)</label><input type="text" name="note" maxlength="500" class="form-control"></div>
       </div>
-      <button type="submit" class="btn btn-primary" onclick="return confirm('Confirmar el cierre de caja con los pedidos seleccionados?')"><i class="fas fa-check"></i> Confirmar cierre</button>
+      <button type="submit" class="btn btn-primary" data-confirm="Confirmar el cierre de caja con los pedidos seleccionados?"><i class="fas fa-check"></i> Confirmar cierre</button>
       <small class="text-muted ml-2">Si hay diferencia queda registrada; no bloquea el cierre.</small>
     </form>`;
   } else {
@@ -92,7 +92,7 @@ if (typeof guy !== 'undefined' && guy) {
         <div class="form-group col-md-4"><label>Referencia del pago</label><input type="text" name="reference" maxlength="255" class="form-control" required></div>
         <div class="form-group col-md-8"><label>Nota (opcional)</label><input type="text" name="note" maxlength="500" class="form-control"></div>
       </div>
-      <button type="submit" class="btn btn-success" onclick="return confirm('Registrar el pago de las ganancias pendientes?')"><i class="fas fa-money-bill-wave"></i> Registrar pago</button>
+      <button type="submit" class="btn btn-success" data-confirm="Registrar el pago de las ganancias pendientes?"><i class="fas fa-money-bill-wave"></i> Registrar pago</button>
     </form>`;
   } else {
     body += '<p class="text-muted mb-0">No hay ganancias pendientes de pago.</p>';
