@@ -1,6 +1,8 @@
 require('dotenv').config();
 const { sequelize } = require('./src/models');
 
+const ES_TRANSLATION_SQL = JSON.stringify(require('./db/translation-es.json')).replace(/\\/g, '\\\\').replace(/'/g, "''");
+
 const tables = [
   `CREATE TABLE IF NOT EXISTS users (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -766,6 +768,17 @@ const tables = [
       UNION ALL SELECT 'uploadImageQuality', '75'
       UNION ALL SELECT 'googleApiKey', ''
     ) s WHERE NOT EXISTS (SELECT 1 FROM settings x WHERE x.\`key\` = s.k)`,
+
+  `UPDATE translations SET is_default = 0
+    WHERE is_default = 1 AND (SELECT c FROM (SELECT COUNT(*) AS c FROM translations WHERE language_code = 'es') t) = 0`,
+
+  `INSERT INTO translations (language_name, language_code, is_default, is_active, translation_data, created_at, updated_at)
+    SELECT 'Español', 'es', 1, 1, '${ES_TRANSLATION_SQL}', NOW(), NOW() FROM DUAL
+    WHERE NOT EXISTS (SELECT 1 FROM translations WHERE language_code = 'es')`,
+
+  `UPDATE translations SET is_default = 1
+    WHERE language_code = 'es' AND (SELECT c FROM (SELECT COUNT(*) AS c FROM translations WHERE is_default = 1) t) = 0
+    ORDER BY id LIMIT 1`,
 
   `INSERT INTO translations (language_name, language_code, is_default, is_active, translation_data, created_at, updated_at)
     SELECT 'English', 'en', 1, 1, '{"orderPaymentWalletComment":"Payment for order ","orderPartialPaymentWalletComment":"Partial payment for order ","orderRefundWalletComment":"Refund for order ","orderPartialRefundWalletComment":"Partial refund for order "}', NOW(), NOW() FROM DUAL
