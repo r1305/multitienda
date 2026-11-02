@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "migrate.js": {
-    "mtime": 1792416646.1584191,
-    "seen": 1793163517.2919052,
-    "ast_hash": "9b82203581b161609462a2c8f7dd1a4b",
+    "mtime": 1793585102.9316778,
+    "seen": 1793585332.1734226,
+    "ast_hash": "d5a709fd65b03bde704e894188095ed4",
     "semantic_hash": ""
   },
   "package.json": {
@@ -8442,9 +8442,9 @@
     "semantic_hash": ""
   },
   "src/admin/controllers/adminController.js": {
-    "mtime": 1792384446.4046626,
-    "seen": 1793163517.5848854,
-    "ast_hash": "14fcbd458b64d0b98afeeac04b8938d0",
+    "mtime": 1793165714.3124578,
+    "seen": 1793165857.438844,
+    "ast_hash": "4462d919cf0ac1709ade35aa571330b5",
     "semantic_hash": ""
   },
   "src/admin/controllers/authController.js": {
@@ -8592,9 +8592,9 @@
     "semantic_hash": ""
   },
   "src/routes/install.js": {
-    "mtime": 1784304457.388595,
-    "seen": 1792293140.012039,
-    "ast_hash": "944c61910d56767a65c8178e25be9183",
+    "mtime": 1793585061.6768427,
+    "seen": 1793585332.4626093,
+    "ast_hash": "f25dda6a34021d9f00e5950e6e6775e1",
     "semantic_hash": ""
   },
   "views/admin/addonCategories.ejs": {
@@ -8604,9 +8604,9 @@
     "semantic_hash": ""
   },
   "views/admin/categorySlider.ejs": {
-    "mtime": 1792298348.3045259,
-    "seen": 1792299495.7484381,
-    "ast_hash": "ed5edbc60916a90e8b3f695730453a17",
+    "mtime": 1793165144.997507,
+    "seen": 1793165857.4487655,
+    "ast_hash": "618b19b14aa9197b91471fa9ca5fa4c6",
     "semantic_hash": ""
   },
   "views/admin/coupons.ejs": {
@@ -8616,21 +8616,21 @@
     "semantic_hash": ""
   },
   "views/admin/dashboard.ejs": {
-    "mtime": 1793163349.4624586,
-    "seen": 1793163517.5968769,
-    "ast_hash": "4bbecda5a91477c8cc576182e92a161c",
+    "mtime": 1793165144.9985178,
+    "seen": 1793165857.4489682,
+    "ast_hash": "66d6de4177b00e45eae2452cb7e0c561",
     "semantic_hash": ""
   },
   "views/admin/deliveryEarnings.ejs": {
-    "mtime": 1793163361.0958643,
-    "seen": 1793163517.5968976,
-    "ast_hash": "e86e2fc554b0c25345739e62d8d17525",
+    "mtime": 1793165145.0005171,
+    "seen": 1793165857.448981,
+    "ast_hash": "df3edc5993adc5c2d9b6f0bca9147f5f",
     "semantic_hash": ""
   },
   "views/admin/deliveryGuys.ejs": {
-    "mtime": 1793163361.0981445,
-    "seen": 1793163517.5969007,
-    "ast_hash": "376a52e306db53a6802409af31c7dc44",
+    "mtime": 1793165153.979443,
+    "seen": 1793165857.4489868,
+    "ast_hash": "25de27321a5973d139359965014eed55",
     "semantic_hash": ""
   },
   "views/admin/editAddonCategory.ejs": {
@@ -8688,57 +8688,57 @@
     "semantic_hash": ""
   },
   "views/admin/layouts/master.ejs": {
-    "mtime": 1793163327.4338584,
-    "seen": 1793163517.5985785,
-    "ast_hash": "c9b52af59df6fc2d4b7b88ca55736d1d",
+    "mtime": 1793165145.009809,
+    "seen": 1793165857.4508464,
+    "ast_hash": "73f84e4a996c1d3dd8fc510b6b388dbd",
     "semantic_hash": ""
   },
   "views/admin/notifications.ejs": {
-    "mtime": 1792296895.585616,
-    "seen": 1792297180.0633047,
-    "ast_hash": "636c783f6c8ff95776b1d412f07d12bd",
+    "mtime": 1793165145.002517,
+    "seen": 1793165857.4508545,
+    "ast_hash": "92f242d6b0cf26366c06a551ae450937",
     "semantic_hash": ""
   },
   "views/admin/orders.ejs": {
-    "mtime": 1792304337.314266,
-    "seen": 1792379005.396008,
-    "ast_hash": "0e42348d06634b6ae9db47d11cb1ea4e",
+    "mtime": 1793165145.0035164,
+    "seen": 1793165857.45086,
+    "ast_hash": "3d73047751ae56e72815c2ac1704f3e7",
     "semantic_hash": ""
   },
   "views/admin/pages.ejs": {
-    "mtime": 1792299088.7617717,
-    "seen": 1792299495.7503378,
-    "ast_hash": "1e31448e82d11f915537c71722f60a15",
+    "mtime": 1793165145.0035164,
+    "seen": 1793165857.4508662,
+    "ast_hash": "086b4130da32b08cd2a44723b30ddf4f",
     "semantic_hash": ""
   },
   "views/admin/paymentMethods.ejs": {
-    "mtime": 1792378743.9387429,
-    "seen": 1792379005.3961284,
-    "ast_hash": "6507e6347c8df7a4c4ae7f244dc1ffbc",
+    "mtime": 1793165145.0045173,
+    "seen": 1793165857.450875,
+    "ast_hash": "b0e9df28dc7b33fda38b37cdb5b7f27a",
     "semantic_hash": ""
   },
   "views/admin/popularGeoLocations.ejs": {
-    "mtime": 1792299088.7627783,
-    "seen": 1792299495.750348,
-    "ast_hash": "6e3f921b385c99f8b04cecd85b102acf",
+    "mtime": 1793165145.0045173,
+    "seen": 1793165857.4508815,
+    "ast_hash": "9be1726ac6b2ecb3a1c788a7f89fdebd",
     "semantic_hash": ""
   },
   "views/admin/settings.ejs": {
-    "mtime": 1792382841.2893376,
-    "seen": 1793163517.599282,
-    "ast_hash": "3f5a71163e671f32fa73509585b5c621",
+    "mtime": 1793165145.0055163,
+    "seen": 1793165857.4508877,
+    "ast_hash": "41bc575b25cefe1ed623094396d69159",
     "semantic_hash": ""
   },
   "views/admin/sliders.ejs": {
-    "mtime": 1792298348.3045259,
-    "seen": 1792299495.7504783,
-    "ast_hash": "6a7e3d1d00e1a9f1e02710e9cfcf1757",
+    "mtime": 1793165145.0055163,
+    "seen": 1793165857.450894,
+    "ast_hash": "ae6b5cfbed0b01e3fc48ebe2f04c3c6a",
     "semantic_hash": ""
   },
   "views/admin/storeEarnings.ejs": {
-    "mtime": 1793163361.0971437,
-    "seen": 1793163517.5994048,
-    "ast_hash": "6993aa10011976f062aa9d44992a6e6b",
+    "mtime": 1793165145.006809,
+    "seen": 1793165857.4509003,
+    "ast_hash": "3ffddef863c0d93e496833d26ef2b7d8",
     "semantic_hash": ""
   },
   "views/admin/storeOwnerStores.ejs": {
@@ -8766,9 +8766,9 @@
     "semantic_hash": ""
   },
   "views/admin/translations.ejs": {
-    "mtime": 1792298348.3138876,
-    "seen": 1792299495.750992,
-    "ast_hash": "7a0b0c24533006798d5a66bc773a0123",
+    "mtime": 1793165145.0078094,
+    "seen": 1793165857.4519126,
+    "ast_hash": "66093668d9a0c9dfa104e8fb500336ef",
     "semantic_hash": ""
   },
   "views/admin/users.ejs": {
@@ -8784,9 +8784,9 @@
     "semantic_hash": ""
   },
   "views/admin/viewPayout.ejs": {
-    "mtime": 1792384466.2076921,
-    "seen": 1793163517.6000125,
-    "ast_hash": "276a77aa8dbe2610c148e1294bcd161b",
+    "mtime": 1793165145.008809,
+    "seen": 1793165857.452407,
+    "ast_hash": "852c016b7849d6261e713919b5ca49db",
     "semantic_hash": ""
   },
   "views/auth/login.ejs": {
@@ -10278,9 +10278,21 @@
     "semantic_hash": ""
   },
   "views/admin/deliveryAccount.ejs": {
-    "mtime": 1792384277.212422,
-    "seen": 1793163517.5968943,
-    "ast_hash": "7494f8c51766012e145f7e5fc7a48750",
+    "mtime": 1793165144.9995172,
+    "seen": 1793165857.4489746,
+    "ast_hash": "9f8325a8d3320065441d2476870ff8de",
+    "semantic_hash": ""
+  },
+  "scripts/create-tables.js": {
+    "mtime": 1793585028.7508495,
+    "seen": 1793585332.4537125,
+    "ast_hash": "da27aa56655831310c4fa07f33fe33a2",
+    "semantic_hash": ""
+  },
+  "test/migrateSchema.test.js": {
+    "mtime": 1793585121.8704076,
+    "seen": 1793585332.463442,
+    "ast_hash": "fa6520789088c0a7ebaed4a1ad9b54bf",
     "semantic_hash": ""
   }
 }

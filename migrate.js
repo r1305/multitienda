@@ -646,6 +646,24 @@ const tables = [
     PRIMARY KEY (permission_id, role_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  `CREATE TABLE IF NOT EXISTS restaurant_user (
+    restaurant_id INT UNSIGNED,
+    user_id INT UNSIGNED
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS delivery_ignored_orders (
+    user_id INT UNSIGNED,
+    order_id INT UNSIGNED
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS chats (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id INT UNSIGNED,
+    sender_id INT UNSIGNED,
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS business_types (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -722,38 +740,65 @@ const tables = [
     KEY store_payouts_restaurant_status_idx (restaurant_id, status)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
-  // Seed: default roles
-  `INSERT IGNORE INTO roles (name, guard_name, created_at, updated_at) VALUES
-    ('Admin', 'web', NOW(), NOW()),
-    ('Customer', 'web', NOW(), NOW()),
-    ('Store Owner', 'web', NOW(), NOW()),
-    ('Delivery Guy', 'web', NOW(), NOW())`,
+  // Seeds con WHERE NOT EXISTS: roles/settings/translations del instalador no tienen UNIQUE y INSERT IGNORE duplicaba filas
+  `INSERT INTO roles (name, guard_name, created_at, updated_at)
+    SELECT s.name, 'web', NOW(), NOW() FROM (
+      SELECT 'Admin' AS name UNION ALL SELECT 'Customer' UNION ALL SELECT 'Store Owner' UNION ALL SELECT 'Delivery Guy'
+    ) s WHERE NOT EXISTS (SELECT 1 FROM roles r WHERE r.name = s.name)`,
 
-  // Seed: default settings
-  `INSERT IGNORE INTO settings (\`key\`, \`value\`, created_at, updated_at) VALUES
-    ('taxApplicable', 'false', NOW(), NOW()),
-    ('taxPercentage', '0', NOW(), NOW()),
-    ('enablePushNotificationOrders', 'false', NOW(), NOW()),
-    ('randomizeStores', 'false', NOW(), NOW()),
-    ('sortDeliveryStoresByDistance', 'false', NOW(), NOW()),
-    ('sortSelfpickupStoresByDistance', 'false', NOW(), NOW()),
-    ('showInActiveItemsToo', 'false', NOW(), NOW()),
-    ('enGDMA', 'false', NOW(), NOW()),
-    ('enDelChrRnd', 'false', NOW(), NOW()),
-    ('smsRestaurantNotify', 'false', NOW(), NOW())`,
+  `INSERT INTO settings (\`key\`, \`value\`, created_at, updated_at)
+    SELECT s.k, s.v, NOW(), NOW() FROM (
+      SELECT 'taxApplicable' AS k, 'false' AS v
+      UNION ALL SELECT 'taxPercentage', '0'
+      UNION ALL SELECT 'enablePushNotificationOrders', 'false'
+      UNION ALL SELECT 'randomizeStores', 'false'
+      UNION ALL SELECT 'sortDeliveryStoresByDistance', 'false'
+      UNION ALL SELECT 'sortSelfpickupStoresByDistance', 'false'
+      UNION ALL SELECT 'showInActiveItemsToo', 'false'
+      UNION ALL SELECT 'enGDMA', 'false'
+      UNION ALL SELECT 'enDelChrRnd', 'false'
+      UNION ALL SELECT 'smsRestaurantNotify', 'false'
+      UNION ALL SELECT 'currencySymbol', '$'
+      UNION ALL SELECT 'currencyFormat', '$'
+      UNION ALL SELECT 'currencySymbolAlign', 'left'
+      UNION ALL SELECT 'deliveryRadius', '10'
+      UNION ALL SELECT 'enableDeliveryPin', 'false'
+      UNION ALL SELECT 'uploadImageQuality', '75'
+    ) s WHERE NOT EXISTS (SELECT 1 FROM settings x WHERE x.\`key\` = s.k)`,
 
-  // Seed: default language (English)
-  `INSERT IGNORE INTO translations (language_name, language_code, is_default, is_active, translation_data, created_at, updated_at) VALUES
-    ('English', 'en', 1, 1, '{"orderPaymentWalletComment":"Payment for order ","orderPartialPaymentWalletComment":"Partial payment for order ","orderRefundWalletComment":"Refund for order ","orderPartialRefundWalletComment":"Partial refund for order "}', NOW(), NOW())`,
+  `INSERT INTO translations (language_name, language_code, is_default, is_active, translation_data, created_at, updated_at)
+    SELECT 'English', 'en', 1, 1, '{"orderPaymentWalletComment":"Payment for order ","orderPartialPaymentWalletComment":"Partial payment for order ","orderRefundWalletComment":"Refund for order ","orderPartialRefundWalletComment":"Partial refund for order "}', NOW(), NOW() FROM DUAL
+    WHERE NOT EXISTS (SELECT 1 FROM translations WHERE language_code = 'en' OR is_default = 1)`,
 
   // Seed: Mercado Pago inactivo hasta que el admin guarde sus credenciales
   `INSERT INTO payment_gateways (name, title, is_active, created_at, updated_at)
     SELECT 'MERCADOPAGO', 'Mercado Pago', 0, NOW(), NOW() FROM DUAL
     WHERE NOT EXISTS (SELECT 1 FROM payment_gateways WHERE UPPER(TRIM(name)) = 'MERCADOPAGO')`,
+
+  `INSERT INTO payment_gateways (name, is_active, created_at, updated_at)
+    SELECT 'COD', 1, NOW(), NOW() FROM DUAL
+    WHERE NOT EXISTS (SELECT 1 FROM payment_gateways WHERE UPPER(TRIM(name)) = 'COD')`,
 ];
 
 const columns = [
+  { table: 'users', column: 'pin_code', ddl: 'ALTER TABLE users ADD COLUMN pin_code VARCHAR(50) NULL' },
   { table: 'restaurants', column: 'business_type_id', ddl: 'ALTER TABLE restaurants ADD COLUMN business_type_id INT UNSIGNED NULL' },
+  { table: 'restaurants', column: 'is_pureveg', ddl: 'ALTER TABLE restaurants ADD COLUMN is_pureveg TINYINT(1) DEFAULT 0' },
+  { table: 'restaurants', column: 'is_sms_notifiable', ddl: 'ALTER TABLE restaurants ADD COLUMN is_sms_notifiable TINYINT(1) DEFAULT 0' },
+  { table: 'restaurants', column: 'custom_featured_name', ddl: 'ALTER TABLE restaurants ADD COLUMN custom_featured_name VARCHAR(255) NULL' },
+  { table: 'restaurants', column: 'custom_message_on_list', ddl: 'ALTER TABLE restaurants ADD COLUMN custom_message_on_list TEXT NULL' },
+  // belongsToMany por string: Sequelize selecciona los timestamps de la tabla puente
+  { table: 'restaurant_category_restaurant', column: 'created_at', ddl: 'ALTER TABLE restaurant_category_restaurant ADD COLUMN created_at TIMESTAMP NULL' },
+  { table: 'restaurant_category_restaurant', column: 'updated_at', ddl: 'ALTER TABLE restaurant_category_restaurant ADD COLUMN updated_at TIMESTAMP NULL' },
+  { table: 'popular_geo_places', column: 'is_default', ddl: 'ALTER TABLE popular_geo_places ADD COLUMN is_default TINYINT(1) DEFAULT 0' },
+  { table: 'popular_geo_places', column: 'is_active', ddl: 'ALTER TABLE popular_geo_places ADD COLUMN is_active TINYINT(1) DEFAULT 1' },
+  { table: 'addon_categories', column: 'type', ddl: "ALTER TABLE addon_categories ADD COLUMN type ENUM('SINGLE','MULTIPLE') DEFAULT 'SINGLE'" },
+  { table: 'delivery_guy_details', column: 'commission_type', ddl: "ALTER TABLE delivery_guy_details ADD COLUMN commission_type ENUM('fixed','percentage','dynamic') DEFAULT 'fixed'" },
+  { table: 'delivery_guy_details', column: 'percentage_base', ddl: "ALTER TABLE delivery_guy_details ADD COLUMN percentage_base ENUM('total','delivery_charge') DEFAULT 'total'" },
+  { table: 'delivery_guy_details', column: 'dynamic_base_distance', ddl: 'ALTER TABLE delivery_guy_details ADD COLUMN dynamic_base_distance DECIMAL(8,2) DEFAULT 0' },
+  { table: 'delivery_guy_details', column: 'dynamic_base_price', ddl: 'ALTER TABLE delivery_guy_details ADD COLUMN dynamic_base_price DECIMAL(10,2) DEFAULT 0' },
+  { table: 'delivery_guy_details', column: 'dynamic_price_per_km', ddl: 'ALTER TABLE delivery_guy_details ADD COLUMN dynamic_price_per_km DECIMAL(10,2) DEFAULT 0' },
+  { table: 'delivery_guy_details', column: 'fixed_commission', ddl: 'ALTER TABLE delivery_guy_details ADD COLUMN fixed_commission DECIMAL(10,2) DEFAULT 0' },
   { table: 'restaurants', column: 'prep_minutes', ddl: 'ALTER TABLE restaurants ADD COLUMN prep_minutes INT NULL DEFAULT 20' },
   { table: 'ratings', column: 'reply', ddl: 'ALTER TABLE ratings ADD COLUMN reply TEXT NULL' },
   { table: 'payment_gateways', column: 'account_number', ddl: 'ALTER TABLE payment_gateways ADD COLUMN account_number VARCHAR(255) NULL' },
@@ -781,6 +826,17 @@ const uniques = [
   { table: 'ratings', index: 'ratings_order_id_unique' },
   { table: 'accept_deliveries', index: 'accept_deliveries_order_id_unique' },
   { table: 'delivery_earnings', index: 'delivery_earnings_order_id_unique' },
+];
+
+const indexes = [
+  { table: 'orders', index: 'idx_orders_restaurant', cols: 'restaurant_id' },
+  { table: 'orders', index: 'idx_orders_user', cols: 'user_id' },
+  { table: 'orders', index: 'idx_orders_status', cols: 'orderstatus_id' },
+  { table: 'orders', index: 'idx_orders_created', cols: 'created_at' },
+  { table: 'orderitems', index: 'idx_orderitems_order', cols: 'order_id' },
+  { table: 'accept_deliveries', index: 'idx_accept_deliveries_order', cols: 'order_id' },
+  { table: 'model_has_roles', index: 'idx_model_has_roles_model', cols: 'model_id' },
+  { table: 'delivery_earnings', index: 'idx_delivery_earnings_user', cols: 'user_id' },
 ];
 
 async function columnExists(table, column) {
@@ -899,17 +955,36 @@ async function run() {
     }
   }
 
+  for (const ix of indexes) {
+    try {
+      if (await indexExists(ix.table, ix.index)) {
+        skipped++;
+        continue;
+      }
+      await sequelize.query(`ALTER TABLE \`${ix.table}\` ADD INDEX \`${ix.index}\` (${ix.cols})`);
+      console.log(`APLICADO: INDEX ${ix.index} en ${ix.table}(${ix.cols})`);
+      ok++;
+    } catch (err) {
+      console.error(`Error INDEX ${ix.index}:`, err.message);
+      fail++;
+    }
+  }
+
   console.log(`\nMigración completada: ${ok} aplicadas | ${skipped} omitidas | ${fail} errores`);
   return fail;
 }
 
-run()
-  .then(async (fail) => {
-    await sequelize.close();
-    process.exitCode = fail > 0 ? 1 : 0;
-  })
-  .catch(async (err) => {
-    console.error('Migración abortada:', err.message);
-    try { await sequelize.close(); } catch (e) {}
-    process.exitCode = 1;
-  });
+module.exports = { run };
+
+if (require.main === module) {
+  run()
+    .then(async (fail) => {
+      await sequelize.close();
+      process.exitCode = fail > 0 ? 1 : 0;
+    })
+    .catch(async (err) => {
+      console.error('Migración abortada:', err.message);
+      try { await sequelize.close(); } catch (e) {}
+      process.exitCode = 1;
+    });
+}

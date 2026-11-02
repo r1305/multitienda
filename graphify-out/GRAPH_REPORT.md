@@ -1,17 +1,17 @@
-# Graph Report - multitienda-node  (2026-10-27)
+# Graph Report - multitienda-node  (2026-11-01)
 
 ## Corpus Check
-- 1526 files · ~1,475,459 words
+- 1529 files · ~1,480,345 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 179 file(s) not represented in the graph (top: .css 80, .scss 48, .ttf 11)
 
 ## Summary
-- 6544 nodes · 13772 edges · 1478 communities (189 shown, 1289 thin omitted)
-- Extraction: 82% EXTRACTED · 18% INFERRED · 0% AMBIGUOUS · INFERRED: 2482 edges (avg confidence: 0.85)
+- 6563 nodes · 13804 edges · 1478 communities (189 shown, 1289 thin omitted)
+- Extraction: 82% EXTRACTED · 18% INFERRED · 0% AMBIGUOUS · INFERRED: 2485 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `19645a23`
+- Built from commit: `0719637c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -28,7 +28,7 @@
 - z
 - moment.min.js
 - .invoke
-- src/app.js
+- package.json
 - z
 - summernote.js
 - worker-javascript.js
@@ -75,7 +75,7 @@
 - o
 - scripts
 - i
-- restaurantController.js
+- index.js
 - mode-jsoniq.js
 - select.js
 - t
@@ -85,11 +85,11 @@
 - dependencies
 - Switchery
 - p
-- ref_path
+- worker-lua.js
 - uniform.min.js
 - perfect_scrollbar.min.js
 - interaction/main.min.js
-- restaurantController.js
+- restaurantQueries.js
 - pages.js
 - duallistbox.min.js
 - duallistbox_rtl.min.js
@@ -143,7 +143,7 @@
 - widgets.min.js
 - Events
 - b
-- orderRules.js
+- sortable.min.js
 - promise.min.js
 - Te
 - ext-emmet.js
@@ -152,7 +152,7 @@
 - mercadoPago.test.js
 - moment/main.min.js
 - tanda4.test.js
-- session.js
+- orderRules.js
 - dropzone.min.js
 - cookie.js
 - a
@@ -175,7 +175,7 @@
 - pie.js
 - treemap.js
 - printThis.js
-- cPanel — Multitienda (5 apps en la misma cuenta)
+- otp.js
 - c
 - mode-handlebars.js
 - mode-livescript.js
@@ -232,29 +232,29 @@
 - storeOwnerController.test.js
 - miscControllers.test.js
 - ref_node_assert
-- orderStates.js
+- gpsValidation.test.js
 - paymentSecrets.js
 - orderStates.test.js
-- package.json
+- settlementsController.js
 - spectrum
 - mercadoPago.js
-- notifications.js
+- mode-xquery.js
 - businessTypes.test.js
 - initialize
 - settlements.js
 - settlementsPart1.test.js
-- mercadoPagoAdmin.test.js
+- orderStates.js
 - mailer.js
-- src/app.js
+- ref_node_assert
 - S
 - move
 - c3.min.js
 - mercadoPagoController.js
-- restaurantQueries.js
+- settlementsPart2.test.js
 - settlementsDeliver.test.js
 - routeAuthorization.test.js
-- settlementsController.js
 - migrate.js
+- secretBox.js
 
 ## God Nodes (most connected - your core abstractions)
 1. `kl()` - 258 edges
@@ -286,24 +286,24 @@
 ## Communities (1478 total, 1289 thin omitted)
 
 ### Community 0 - "plupload.full.min.js"
-Cohesion: 0.06
-Nodes (71): e(), n(), r(), t(), a(), d(), e(), f() (+63 more)
+Cohesion: 0.09
+Nodes (57): a(), a(), c(), d(), l(), m(), i(), u() (+49 more)
 
 ### Community 1 - "ckeditor.js"
 Cohesion: 0.10
-Nodes (71): J(), a(), p(), r(), aa(), b(), d(), g() (+63 more)
+Nodes (72): B(), J(), a(), p(), r(), aa(), b(), d() (+64 more)
 
 ### Community 2 - "miscControllers.js"
 Cohesion: 0.04
-Nodes (33): axios, addressToCoordinates(), bcrypt, changeUserPassword(), cleanReview(), coordinatesToAddress(), deliverPhoneOtp(), DELIVERY_ITEM_ATTRS (+25 more)
+Nodes (47): axios, sendNotification(), acceptToDeliver(), addressToCoordinates(), bcrypt, changeUserPassword(), cleanReview(), coordinatesToAddress() (+39 more)
 
 ### Community 3 - "adminController.js"
 Cohesion: 0.02
-Nodes (27): addMoneyToWallet(), ajustarBilletera(), assignDelivery(), assignOrderToDeliveryGuy(), businessTypes, { cancelOrderWithRefund }, crypto, dashboard() (+19 more)
+Nodes (26): acceptOrder(), addMoneyToWallet(), ajustarBilletera(), assignDelivery(), assignOrderToDeliveryGuy(), businessTypes, { cancelOrderWithRefund }, crypto (+18 more)
 
 ### Community 4 - "worker-lua.js"
-Cohesion: 0.06
-Nodes (120): a(), B(), c(), e(), f(), C(), k(), L() (+112 more)
+Cohesion: 0.19
+Nodes (48): a(), at(), b(), bt(), c(), ct(), d(), dt() (+40 more)
 
 ### Community 5 - "steps.min.js"
 Cohesion: 0.06
@@ -333,9 +333,9 @@ Nodes (64): he(), a(), Ae(), at(), b(), be(), e(), c() (+56 more)
 Cohesion: 0.06
 Nodes (16): attachEvents(), Buttons(), Context(), detachEvents(), fail(), find(), HelpDialog(), html() (+8 more)
 
-### Community 12 - "src/app.js"
-Cohesion: 0.13
-Nodes (21): { createApp }, ready, { sequelize }, express, attachAppBaseMiddleware(), escapeRegex(), fs, getAppBasePath() (+13 more)
+### Community 12 - "package.json"
+Cohesion: 0.04
+Nodes (88): description, devDependencies, nodemon, engines, node, main, name, optionalDependencies (+80 more)
 
 ### Community 13 - "z"
 Cohesion: 0.08
@@ -347,7 +347,7 @@ Nodes (37): addCellInfoToVirtual(), adjustStartPoint(), and(), AutoSync(), Clipb
 
 ### Community 15 - "worker-javascript.js"
 Cohesion: 0.11
-Nodes (55): a(), at(), B(), bt(), c(), ct(), n(), r() (+47 more)
+Nodes (54): a(), at(), bt(), c(), ct(), n(), r(), dt() (+46 more)
 
 ### Community 16 - "u"
 Cohesion: 0.10
@@ -379,7 +379,7 @@ Nodes (54): ai(), al(), as(), b(), bi(), cl(), d(), di() (+46 more)
 
 ### Community 23 - "tanda3.test.js"
 Cohesion: 0.05
-Nodes (29): adminController, ALLOWED_IMG_EXTS, authController, { authRateLimit }, { createImageFileFilter }, crypto, escapeHtml, express (+21 more)
+Nodes (30): multer, adminController, ALLOWED_IMG_EXTS, authController, { authRateLimit }, { createImageFileFilter }, crypto, escapeHtml (+22 more)
 
 ### Community 24 - "ql"
 Cohesion: 0.16
@@ -394,8 +394,8 @@ Cohesion: 0.06
 Nodes (48): br(), c(), ce(), ct(), e(), cu(), e(), d() (+40 more)
 
 ### Community 27 - "storeOwnerController.js"
-Cohesion: 0.06
-Nodes (70): acceptOrder(), cancelOrder(), cancelOrder(), acceptOrder(), bcrypt, businessTypes, cancelOrder(), { cancelOrderWithRefund } (+62 more)
+Cohesion: 0.05
+Nodes (77): cancelOrder(), cancelOrder(), acceptOrder(), bcrypt, businessTypes, cancelOrder(), { cancelOrderWithRefund }, confirmScheduledOrder() (+69 more)
 
 ### Community 28 - "worker-css.js"
 Cohesion: 0.06
@@ -418,8 +418,8 @@ Cohesion: 0.14
 Nodes (38): a(), b(), c(), d(), e(), c(), d(), c() (+30 more)
 
 ### Community 33 - "notifications.impl.js"
-Cohesion: 0.14
-Nodes (26): notifications(), appPathPrefix(), broadcastToRole(), CUSTOMER_ORDER_EVENTS, getAppBaseUrl(), getDeliveryPushStatus(), getFirebaseApp(), getUserIdsByRoleTag() (+18 more)
+Cohesion: 0.08
+Nodes (34): content, file, fs, path, fs, p, path, s (+26 more)
 
 ### Community 34 - "jl"
 Cohesion: 0.12
@@ -439,7 +439,7 @@ Nodes (22): hasChildren(), isCharPoint(), isEdgePoint(), isEmpty$1(), isLeftEdge
 
 ### Community 38 - "gps.js"
 Cohesion: 0.05
-Nodes (45): deliveryGuysLocations(), saveSettings(), uploadFavicon(), uploadListingImage(), uploadLogo(), getRedis(), getSettings(), setDeliveryGuyGpsLocation() (+37 more)
+Nodes (45): deliveryGuysLocations(), saveSettings(), uploadFavicon(), uploadListingImage(), uploadLogo(), injectSettings(), getRedis(), getSettings() (+37 more)
 
 ### Community 39 - "o"
 Cohesion: 0.08
@@ -466,8 +466,8 @@ Cohesion: 0.10
 Nodes (23): allowThouSep(), alphanum_allowChar(), countDigits(), getBlacklistSet(), getCombinedSettingsAlphaNum(), isCaseless(), isControlKey(), isGreaterThanMax() (+15 more)
 
 ### Community 45 - "userController.js"
-Cohesion: 0.07
-Nodes (29): getUserRoles(), jwt, jwtAuth, jwtAuthPermitirInactivo, optionalAuth(), { QueryTypes }, requireRole(), { User, sequelize } (+21 more)
+Cohesion: 0.05
+Nodes (48): jsonwebtoken, deliveryLogin(), login(), axios, bcrypt, buildUserResponse(), { generateToken }, getDefaultAddress() (+40 more)
 
 ### Community 46 - "bootstrap.bundle.min.js"
 Cohesion: 0.13
@@ -521,13 +521,13 @@ Nodes (9): scripts, dev, install:cpanel, install:full, start, start:cpanel, star
 Cohesion: 0.09
 Nodes (20): r(), iu(), r(), jt(), i(), rt(), a(), f() (+12 more)
 
-### Community 59 - "restaurantController.js"
-Cohesion: 0.05
-Nodes (51): bcryptjs, createUser(), updateUser(), bcrypt, { sequelize }, injectSettings(), deliveryLogin(), getPaymentGateways() (+43 more)
+### Community 59 - "index.js"
+Cohesion: 0.04
+Nodes (57): sequelize, poolMax, poolMin, { Sequelize }, applyCoupon(), getPaymentGateways(), popularGeoLocations(), applyBusinessTypeFilter() (+49 more)
 
 ### Community 60 - "mode-jsoniq.js"
-Cohesion: 0.17
-Nodes (22): a(), c(), d(), f(), h(), l(), o(), r() (+14 more)
+Cohesion: 0.39
+Nodes (10): a(), c(), d(), f(), h(), l(), o(), r() (+2 more)
 
 ### Community 61 - "select.js"
 Cohesion: 0.13
@@ -543,7 +543,7 @@ Nodes (25): a(), c(), cr(), dr(), f(), gn(), h(), hn() (+17 more)
 
 ### Community 64 - "orderController.js"
 Cohesion: 0.08
-Nodes (30): { attachEta }, { buildReorder }, catalog, computeDeliveryCharge(), { getDistance, randomString }, getOrderHistory(), getOrders(), getSettings() (+22 more)
+Nodes (31): getDeliveryOrders(), { attachEta }, { buildReorder }, catalog, computeDeliveryCharge(), { getDistance, randomString }, getOrderHistory(), getOrders() (+23 more)
 
 ### Community 65 - "cropper.min.js"
 Cohesion: 0.16
@@ -557,9 +557,9 @@ Nodes (24): dependencies, axios, bcryptjs, bull, compression, connect-flash, con
 Cohesion: 0.32
 Nodes (19): c(), ct(), d(), f(), g(), h(), g(), k() (+11 more)
 
-### Community 69 - "ref_path"
+### Community 69 - "worker-lua.js"
 Cohesion: 0.08
-Nodes (14): content, file, fs, path, fs, p, path, s (+6 more)
+Nodes (74): a(), B(), c(), e(), f(), C(), k(), L() (+66 more)
 
 ### Community 70 - "uniform.min.js"
 Cohesion: 0.17
@@ -573,9 +573,9 @@ Nodes (18): a(), b(), c(), d(), e(), f(), g(), i() (+10 more)
 Cohesion: 0.20
 Nodes (15): a(), c(), d(), E(), f(), g(), h(), i() (+7 more)
 
-### Community 73 - "restaurantController.js"
-Cohesion: 0.06
-Nodes (26): applyCoupon(), applyBusinessTypeFilter(), businessTypes, checkCartItemsAvailability(), { escapeLike }, getDeliveryRestaurants(), getRestaurantInfo(), getRestaurantInfoWithFavourite() (+18 more)
+### Community 73 - "restaurantQueries.js"
+Cohesion: 0.14
+Nodes (16): filterStoresByBusinessType(), parseBusinessTypeId(), resolveActiveBusinessTypeId(), cache, checkOperation(), { DEFAULT_BUSINESS_TYPE_LABEL }, formatAvgRating(), getAvgRatingForRestaurant() (+8 more)
 
 ### Community 74 - "pages.js"
 Cohesion: 0.11
@@ -773,9 +773,9 @@ Nodes (4): bind(), Events(), parse(), unbind()
 Cohesion: 0.28
 Nodes (9): b(), et(), gn(), k(), it(), nt(), qe(), tt() (+1 more)
 
-### Community 129 - "orderRules.js"
-Cohesion: 0.17
-Nodes (19): Despliegue con cambios de base de datos, Despliegue con cambios de base de datos, deliverOrder(), assertMethodAllowed(), computeDeliveryEarning(), computeDeliveryPayout(), computeTotal(), evaluateCoupon() (+11 more)
+### Community 129 - "sortable.min.js"
+Cohesion: 0.11
+Nodes (14): e(), n(), r(), t(), a(), d(), e(), f() (+6 more)
 
 ### Community 131 - "promise.min.js"
 Cohesion: 0.56
@@ -798,12 +798,12 @@ Cohesion: 0.43
 Nodes (6): d(), i(), l(), o(), r(), u()
 
 ### Community 138 - "tanda4.test.js"
-Cohesion: 0.07
-Nodes (14): assert, { buildReorder }, eta, favorites, mailer, misc, path, restaurant (+6 more)
+Cohesion: 0.06
+Nodes (20): addFavoriteStore(), findEnabledStore(), { QueryTypes }, rules, { sequelize, UserFavoriteStore }, UserFavoriteStore, assert, { buildReorder } (+12 more)
 
-### Community 139 - "session.js"
-Cohesion: 0.21
-Nodes (15): bull, closeRedis(), createRedisClient(), initRedis(), isRedisAvailable(), attachProcessor(), closeQueue(), getQueue() (+7 more)
+### Community 139 - "orderRules.js"
+Cohesion: 0.13
+Nodes (19): cPanel — Multitienda (5 apps en la misma cuenta), Despliegue con cambios de base de datos, Multitienda, PM2 en VPS (no cPanel), Reglas, Despliegue con cambios de base de datos, deliverOrder(), assertMethodAllowed() (+11 more)
 
 ### Community 140 - "dropzone.min.js"
 Cohesion: 0.39
@@ -881,9 +881,9 @@ Nodes (4): a(), i(), o(), t()
 Cohesion: 0.53
 Nodes (4): a(), i(), n(), t()
 
-### Community 162 - "cPanel — Multitienda (5 apps en la misma cuenta)"
-Cohesion: 0.40
-Nodes (4): cPanel — Multitienda (5 apps en la misma cuenta), Multitienda, PM2 en VPS (no cPanel), Reglas
+### Community 162 - "otp.js"
+Cohesion: 0.17
+Nodes (10): createLimiter(), { createLimiter }, crypto, evaluateOtp(), generateCode(), idLimiter, ipLimiter, issueOtp() (+2 more)
 
 ### Community 163 - "c"
 Cohesion: 0.80
@@ -946,36 +946,36 @@ Cohesion: 0.13
 Nodes (6): assert, controller, path, sequelize, state, test
 
 ### Community 1453 - "ref_node_assert"
-Cohesion: 0.07
-Nodes (18): assert, base, settlements, test, addons, assert, catalog, escapeHtml (+10 more)
+Cohesion: 0.17
+Nodes (9): MAP, addons, assert, catalog, escapeHtml, items, links, rules (+1 more)
 
-### Community 1454 - "orderStates.js"
-Cohesion: 0.07
-Nodes (28): sequelize, poolMax, poolMin, { Sequelize }, addFavoriteStore(), findEnabledStore(), { QueryTypes }, rules (+20 more)
+### Community 1454 - "gpsValidation.test.js"
+Cohesion: 0.15
+Nodes (5): assert, controller, path, state, test
 
 ### Community 1455 - "paymentSecrets.js"
 Cohesion: 0.13
 Nodes (18): deletePaymentMethod(), togglePaymentMethod(), updatePaymentMethod(), canActivate(), describeSecrets(), ensureGateway(), findGateway(), hint() (+10 more)
 
 ### Community 1456 - "orderStates.test.js"
-Cohesion: 0.06
-Nodes (31): createLimiter(), { createLimiter }, crypto, evaluateOtp(), generateCode(), idLimiter, ipLimiter, issueOtp() (+23 more)
+Cohesion: 0.09
+Nodes (15): assert, { cancelOrderWithRefund }, { createLimiter }, { emitOrderEvent }, fakeTx(), otp, path, pushed (+7 more)
 
-### Community 1457 - "package.json"
-Cohesion: 0.07
-Nodes (29): description, devDependencies, nodemon, engines, node, main, name, optionalDependencies (+21 more)
+### Community 1457 - "settlementsController.js"
+Cohesion: 0.22
+Nodes (10): adminId(), closeCash(), deliveryAccount(), findDeliveryGuy(), flashError(), payDeliveryEarnings(), { QueryTypes }, { sequelize } (+2 more)
 
 ### Community 1458 - "spectrum"
 Cohesion: 0.20
 Nodes (21): getOffset(), inputTypeColorSupport(), paletteTemplate(), spectrum(), applyOptions(), destroy(), dragStart(), dragStop() (+13 more)
 
 ### Community 1459 - "mercadoPago.js"
-Cohesion: 0.18
-Nodes (20): applyApprovedPayment(), assertReady(), buildManifest(), buildPreference(), createPreference(), crypto, formatTransaction(), getConfig() (+12 more)
+Cohesion: 0.17
+Nodes (21): applyApprovedPayment(), assertReady(), buildManifest(), buildPreference(), createPreference(), crypto, formatTransaction(), getConfig() (+13 more)
 
-### Community 1460 - "notifications.js"
-Cohesion: 0.18
-Nodes (15): sendNotification(), acceptToDeliver(), deliveryRegister(), pickedupOrder(), saveFCMToken(), enqueue(), broadcastToRole(), { enqueue } (+7 more)
+### Community 1460 - "mode-xquery.js"
+Cohesion: 0.39
+Nodes (10): a(), c(), d(), f(), h(), l(), o(), r() (+2 more)
 
 ### Community 1461 - "businessTypes.test.js"
 Cohesion: 0.13
@@ -987,23 +987,23 @@ Nodes (14): hideAll(), addColorToSelectionPalette(), clickout(), disable(), hide
 
 ### Community 1463 - "settlements.js"
 Cohesion: 0.14
-Nodes (28): rejectPayout(), updatePayout(), getDeliveryBalance(), pickDeliveryAddress(), toPositiveId(), cleanText(), closeCashCollection(), computeStoreSettlement() (+20 more)
+Nodes (32): rejectPayout(), updatePayout(), getDeliveryBalance(), computeTotal(), evaluateCoupon(), pickDeliveryAddress(), refundableAmount(), toMoney() (+24 more)
 
 ### Community 1464 - "settlementsPart1.test.js"
-Cohesion: 0.08
-Nodes (17): ejs, MAP, assert, ejs, fs, path, rules, settlements (+9 more)
+Cohesion: 0.17
+Nodes (7): assert, ejs, fs, path, rules, settlements, test
 
-### Community 1465 - "mercadoPagoAdmin.test.js"
-Cohesion: 0.20
-Nodes (8): admin, assert, crypto, db, path, runQuery(), sequelize, test
+### Community 1465 - "orderStates.js"
+Cohesion: 0.23
+Nodes (10): ACTOR_RULES, allowedFrom(), canTransition(), OrderStateError, { QueryTypes }, SCOPE_COLUMNS, { sequelize }, STATUS (+2 more)
 
 ### Community 1466 - "mailer.js"
 Cohesion: 0.29
 Nodes (9): nodemailer, escapeHtml, getTransporter(), isValidEmail(), nodemailer, otpMessage(), sendMail(), sendOtpMail() (+1 more)
 
-### Community 1467 - "src/app.js"
-Cohesion: 0.12
-Nodes (20): compression, connect-flash, cookie-parser, cors, helmet, { createApp, shutdown }, gracefulStop(), { sequelize } (+12 more)
+### Community 1467 - "ref_node_assert"
+Cohesion: 0.07
+Nodes (18): assert, base, settlements, test, admin, assert, crypto, db (+10 more)
 
 ### Community 1468 - "S"
 Cohesion: 0.28
@@ -1021,9 +1021,9 @@ Nodes (4): b(), e(), n(), r()
 Cohesion: 0.60
 Nodes (4): handleWebhook(), mp, notificationData(), webhook()
 
-### Community 1472 - "restaurantQueries.js"
-Cohesion: 0.14
-Nodes (16): filterStoresByBusinessType(), parseBusinessTypeId(), resolveActiveBusinessTypeId(), cache, checkOperation(), { DEFAULT_BUSINESS_TYPE_LABEL }, formatAvgRating(), getAvgRatingForRestaurant() (+8 more)
+### Community 1472 - "settlementsPart2.test.js"
+Cohesion: 0.20
+Nodes (9): ejs, assert, ejs, fs, order(), path, seed(), settlements (+1 more)
 
 ### Community 1473 - "settlementsDeliver.test.js"
 Cohesion: 0.13
@@ -1033,33 +1033,33 @@ Nodes (6): assert, controller, path, sequelize, state, test
 Cohesion: 0.15
 Nodes (9): adminRouter, apiRouter, assert, calls, dispatch(), fakeRes(), path, realMisc (+1 more)
 
-### Community 1475 - "settlementsController.js"
-Cohesion: 0.22
-Nodes (10): adminId(), closeCash(), deliveryAccount(), findDeliveryGuy(), flashError(), payDeliveryEarnings(), { QueryTypes }, { sequelize } (+2 more)
+### Community 1475 - "migrate.js"
+Cohesion: 0.07
+Nodes (26): columnExists(), columns, indexes, indexExists(), run(), { sequelize }, tables, uniques (+18 more)
 
-### Community 1476 - "migrate.js"
-Cohesion: 0.32
-Nodes (7): columnExists(), columns, indexExists(), run(), { sequelize }, tables, uniques
+### Community 1478 - "secretBox.js"
+Cohesion: 0.46
+Nodes (6): crypto, decrypt(), encrypt(), getKey(), isConfigured(), SecretBoxError
 
 ## Knowledge Gaps
 - **7 isolated node(s):** `connect-session-sequelize`, `csurf`, `dotenv`, `mysql2`, `firebase-admin` (+2 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2734 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2749 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **1289 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Q()` connect `r` to `cropper.min.js`, `ckeditor.js`, `worker-lua.js`, `steps.min.js`, `m`, `pdfmake.min.js`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
+  _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **Are the 37 inferred relationships involving `t()` (e.g. with `d3.min.js` and `ar()`) actually correct?**
   _`t()` has 37 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `connect-session-sequelize`, `csurf`, `dotenv` to the rest of the system?**
   _7 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `plupload.full.min.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.056767676767676765 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09033691225472047 - nodes in this community are weakly interconnected._
 - **Why does `Z()` connect `S` to `ckeditor.js`, `worker-lua.js`, `steps.min.js`, `l`, `m`, `datatables.min.js`?**
-  _High betweenness centrality (0.019) - this node is a cross-community bridge._
+  _High betweenness centrality (0.020) - this node is a cross-community bridge._
 - **Should `ckeditor.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.10020590253946465 - nodes in this community are weakly interconnected._
-- **Why does `Xe()` connect `z` to `be`, `moment.min.js`, `bootstrap.bundle.min.js`, `la`, `mode-jsoniq.js`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
+  _Cohesion score 0.09832026875699888 - nodes in this community are weakly interconnected._
+- **Why does `Xe()` connect `z` to `be`, `worker-lua.js`, `moment.min.js`, `bootstrap.bundle.min.js`, `la`?**
+  _High betweenness centrality (0.014) - this node is a cross-community bridge._
