@@ -820,7 +820,7 @@ exports.deliveryGuys = async (req, res) => {
 
   const settings = Object.assign({}, res.locals.settings);
   try {
-    const [mapRows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('googleApiKey','googleMapId')");
+    const [mapRows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` = 'googleApiKey'");
     mapRows.forEach((r) => { settings[r.key] = r.value; });
   } catch (mapErr) {
     console.warn('deliveryGuys map settings:', mapErr.message);
@@ -1555,7 +1555,7 @@ exports.saveSettings = async (req, res) => {
     const fields = req.body;
     const ALLOWED_KEYS = [
       'storeName', 'currencySymbol', 'currencyId', 'currencyFormat',
-      'googleApiKey', 'googleMapId', 'walletName', 'uploadImageQuality', 'primaryColor',
+      'googleApiKey', 'walletName', 'uploadImageQuality', 'primaryColor',
       'enableDeliveryPin', 'deliveryRadius',
       'firebaseApiKey', 'firebaseAuthDomain', 'firebaseProjectId', 'firebaseStorageBucket',
       'firebaseMessagingSenderId', 'firebaseAppId', 'firebaseMeasurementId', 'firebaseVapidKey',

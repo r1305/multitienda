@@ -35,11 +35,19 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + '-' + crypto.randomBytes(8).toString('hex') + ext);
   }
 });
-const upload = multer({
+const multerUpload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: safeImageFileFilter,
 });
+const upload = {
+  single: (field) => (req, res, next) => multerUpload.single(field)(req, res, (err) => {
+    if (!err) return next();
+    if (!(err instanceof multer.MulterError) && err.code !== 'INVALID_IMAGE') return next(err);
+    req.flash('error', err.code === 'LIMIT_FILE_SIZE' ? 'La imagen supera el máximo de 5 MB' : err.message);
+    res.redirect(req.get('Referrer') || '/admin');
+  }),
+};
 
 // Auth middleware
 const auth = (req, res, next) => {
@@ -62,7 +70,7 @@ const injectSettings = async (req, res, next) => {
     let settings = await cache.get(cacheKey);
     if (!settings) {
       const { sequelize } = require('../../models');
-      const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('currencySymbol','currencyFormat','logoUrl','listingImageUrl','faviconUrl','primaryColor','googleApiKey','googleMapId')");
+      const [rows] = await sequelize.query("SELECT `key`, `value` FROM settings WHERE `key` IN ('currencySymbol','currencyFormat','logoUrl','listingImageUrl','faviconUrl','primaryColor','googleApiKey')");
       settings = {};
       rows.forEach((r) => { settings[r.key] = r.value; });
       await cache.set(cacheKey, settings, parseInt(process.env.CACHE_ADMIN_SETTINGS_TTL || '300', 10));
