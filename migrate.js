@@ -764,6 +764,7 @@ const tables = [
       UNION ALL SELECT 'deliveryRadius', '10'
       UNION ALL SELECT 'enableDeliveryPin', 'false'
       UNION ALL SELECT 'uploadImageQuality', '75'
+      UNION ALL SELECT 'googleApiKey', ''
     ) s WHERE NOT EXISTS (SELECT 1 FROM settings x WHERE x.\`key\` = s.k)`,
 
   `INSERT INTO translations (language_name, language_code, is_default, is_active, translation_data, created_at, updated_at)
