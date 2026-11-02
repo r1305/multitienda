@@ -55,7 +55,7 @@ async function createApp() {
           styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com", "https://cdn.datatables.net", "https://unpkg.com"],
           fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://www.gstatic.com", "https://maps.googleapis.com", "https://*.googleapis.com", "https://maps.gstatic.com"],
+          connectSrc: ["'self'", "https://www.gstatic.com", "https://maps.googleapis.com", "https://*.googleapis.com", "https://maps.gstatic.com", "https://cdn.jsdelivr.net"],
           upgradeInsecureRequests: null,
         },
       },
