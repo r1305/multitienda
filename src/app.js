@@ -55,7 +55,7 @@ async function createApp() {
           styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com", "https://cdn.datatables.net", "https://unpkg.com"],
           fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://www.gstatic.com", "https://maps.googleapis.com", "https://*.googleapis.com", "https://maps.gstatic.com"],
+          connectSrc: ["'self'", "https://www.gstatic.com", "https://maps.googleapis.com", "https://*.googleapis.com", "https://maps.gstatic.com", "https://cdn.jsdelivr.net"],
           upgradeInsecureRequests: null,
         },
       },
@@ -123,14 +123,20 @@ async function createApp() {
       let rows = await cache.get('settings:all');
       if (!rows) {
         const { Setting } = require('./models');
-        rows = await Setting.findAll({ where: { key: ['faviconUrl', 'logoUrl'] }, attributes: ['key', 'value'], raw: true });
+        rows = await Setting.findAll({ where: { key: ['faviconUrl', 'logoUrl', 'storeName'] }, attributes: ['key', 'value'], raw: true });
       }
       const val = (k) => { const s = rows.find(r => r.key === k); return s && s.value && !/["<>]/.test(s.value) ? s.value : ''; };
       const appBase = getAppBasePath() || '';
       const fav = val('faviconUrl');
       const touch = val('logoUrl') || fav;
-      if (fav) html = html.replace(/rel="icon"[^>]*href="[^"]*"/, `rel="icon" type="image/png" href="${appBase}${fav}"`);
-      if (touch) html = html.replace(/rel="apple-touch-icon"[^>]*href="[^"]*"/, `rel="apple-touch-icon" href="${appBase}${touch}"`);
+      if (fav) html = html.replace(/rel="icon"[^>]*href="[^"]*"/, () => `rel="icon" type="image/png" href="${appBase}${fav}"`);
+      if (touch) html = html.replace(/rel="apple-touch-icon"[^>]*href="[^"]*"/, () => `rel="apple-touch-icon" href="${appBase}${touch}"`);
+      const name = val('storeName') || 'Multitienda';
+      html = html.replace(/<title>[^<]*<\/title>/, () => `<title>${name}</title>`);
+      const titleMeta = `<meta name="apple-mobile-web-app-title" content="${name}">`;
+      html = /<meta name="apple-mobile-web-app-title"[^>]*>/.test(html)
+        ? html.replace(/<meta name="apple-mobile-web-app-title"[^>]*>/, () => titleMeta)
+        : html.replace('</head>', () => `${titleMeta}\n</head>`);
     } catch (_) { /* use default favicon */ }
     res.type('html').send(html);
   });

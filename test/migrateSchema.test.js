@@ -57,3 +57,16 @@ test('migrate: no repite ALTER ni índices existentes y los seeds no duplican fi
   }
   assert.ok(!state.sql.some((s) => /DROP |TRUNCATE |DELETE FROM/i.test(s)));
 });
+
+test('migrate: siembra Español (es) por defecto con JSON válido y sin _csrf, antes que English', async () => {
+  state.sql = [];
+  await run();
+  const i = state.sql.findIndex((s) => /SELECT 'Español', 'es', 1, 1, '/.test(s));
+  assert.ok(i >= 0 && /WHERE NOT EXISTS \(SELECT 1 FROM translations WHERE language_code = 'es'\)/.test(state.sql[i]));
+  assert.ok(i < state.sql.findIndex((s) => /SELECT 'English', 'en'/.test(s)));
+  const data = JSON.parse(state.sql[i].match(/'es', 1, 1, '(.*)', NOW\(\)/s)[1].replace(/''/g, "'"));
+  assert.strictEqual(data.footerCart, 'Carrito');
+  assert.ok(!('_csrf' in data));
+  const fixSql = require('fs').readFileSync(path.join(__dirname, '..', 'db/fix-schema.sql'), 'utf8').replace(/\r\n/g, '\n');
+  assert.ok(fixSql.includes(state.sql[i] + ';'), 'db/fix-schema.sql desalineado con migrate.js');
+});
