@@ -120,14 +120,17 @@ async function createApp() {
     let html = getSpaIndexHtml();
     try {
       const cache = require('./helpers/cache');
-      const cached = await cache.get('settings:all');
-      if (cached) {
-        const fav = cached.find(s => s.key === 'faviconUrl');
-        if (fav && fav.value) {
-          const appBase = getAppBasePath() || '';
-          html = html.replace(/rel="icon"[^>]*href="[^"]*"/, `rel="icon" type="image/png" href="${appBase}${fav.value}"`);
-        }
+      let rows = await cache.get('settings:all');
+      if (!rows) {
+        const { Setting } = require('./models');
+        rows = await Setting.findAll({ where: { key: ['faviconUrl', 'logoUrl'] }, attributes: ['key', 'value'], raw: true });
       }
+      const val = (k) => { const s = rows.find(r => r.key === k); return s && s.value && !/["<>]/.test(s.value) ? s.value : ''; };
+      const appBase = getAppBasePath() || '';
+      const fav = val('faviconUrl');
+      const touch = val('logoUrl') || fav;
+      if (fav) html = html.replace(/rel="icon"[^>]*href="[^"]*"/, `rel="icon" type="image/png" href="${appBase}${fav}"`);
+      if (touch) html = html.replace(/rel="apple-touch-icon"[^>]*href="[^"]*"/, `rel="apple-touch-icon" href="${appBase}${touch}"`);
     } catch (_) { /* use default favicon */ }
     res.type('html').send(html);
   });
