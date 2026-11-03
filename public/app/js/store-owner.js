@@ -155,7 +155,7 @@ const StoreOwnerDashboardPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -191,7 +191,7 @@ const StoreOwnerDashboardPage = {
             <div class="so-card-header">Accesos rapidos</div>
             <div class="so-card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
               <router-link to="/store-owner/orders" class="so-btn so-btn-primary" style="justify-content:center"><i class="fas fa-receipt"></i> Pedidos</router-link>
-              <router-link to="/store-owner/menu" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-utensils"></i> Productos</router-link>
+              <router-link to="/store-owner/menu" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-box"></i> Productos</router-link>
               <router-link to="/store-owner/categories" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-list"></i> Categorias</router-link>
               <router-link to="/store-owner/addons" class="so-btn so-btn-outline" style="justify-content:center"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -240,7 +240,7 @@ const StoreOwnerOrdersPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders" class="active"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -306,7 +306,7 @@ const StoreOwnerOrderDetailPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders" class="active"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -378,7 +378,7 @@ const StoreOwnerHistoryPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -430,7 +430,7 @@ const StoreOwnerEarningsPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -559,7 +559,7 @@ const StoreOwnerMenuPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu" class="active"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu" class="active"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -583,7 +583,7 @@ const StoreOwnerMenuPage = {
         <div style="margin-bottom:12px"><input v-model="search" placeholder="Buscar producto..." style="width:100%;padding:10px 14px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px"></div>
         <div v-if="loading" class="loading"><div class="spinner"></div></div>
         <template v-else>
-          <div v-if="!filteredItems.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-utensils" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin productos</p></div>
+          <div v-if="!filteredItems.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-box" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin productos</p></div>
           <div class="so-card" v-for="item in filteredItems" :key="item.id">
             <div class="so-card-body" style="display:flex;gap:12px;align-items:center">
               <img v-if="item.image" :src="item.image" style="width:50px;height:50px;border-radius:8px;object-fit:cover">
@@ -684,7 +684,7 @@ const StoreOwnerCategoriesPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories" class="active"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -765,7 +765,7 @@ const StoreOwnerAddonsPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons" class="active"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -890,7 +890,7 @@ const StoreOwnerSettingsPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
@@ -1029,7 +1029,7 @@ const StoreOwnerCouponsPage = {
         <div class="so-sidebar-brand"><i class="fas fa-store"></i> Mi Tienda</div>
         <router-link to="/store-owner/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</router-link>
         <router-link to="/store-owner/orders"><i class="fas fa-receipt"></i> Pedidos</router-link>
-        <router-link to="/store-owner/menu"><i class="fas fa-utensils"></i> Productos</router-link>
+        <router-link to="/store-owner/menu"><i class="fas fa-box"></i> Productos</router-link>
         <router-link to="/store-owner/categories"><i class="fas fa-list"></i> Categorias</router-link>
         <router-link to="/store-owner/addons"><i class="fas fa-puzzle-piece"></i> Addons</router-link>
         <router-link to="/store-owner/coupons" class="active"><i class="fas fa-ticket-alt"></i> Cupones</router-link>
