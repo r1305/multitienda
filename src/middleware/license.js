@@ -30,8 +30,9 @@ async function licenseMiddleware(req, res, next) {
   let state;
   try {
     state = await getLicenseState(req.hostname);
-  } catch (_) {
-    return next();
+  } catch (e) {
+    console.error('[license] no se pudo evaluar la licencia, modo solo lectura:', e && e.message);
+    state = { mode: 'readonly', reason: 'state_error', payload: null };
   }
   res.locals.licenseState = state;
   if (state.mode === 'grace') res.set('X-License-Status', 'grace');

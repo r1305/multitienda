@@ -258,6 +258,25 @@ test('middleware: login, logout y webhook siguen abiertos en readonly', async ()
   }
 });
 
+test('middleware: si getLicenseState lanza, falla cerrado (bloquea escritura, deja leer)', async () => {
+  const badHost = { toString() { throw new Error('boom'); } };
+  const realErr = console.error;
+  const logs = [];
+  console.error = (...a) => logs.push(a);
+  try {
+    const w = await run('POST', '/api/orders', sign(payload()), { hostname: badHost });
+    assert.strictEqual(w.nexted, false);
+    assert.strictEqual(w.res.statusCode, 402);
+    assert.strictEqual(w.res.body.code, 'LICENSE_READONLY');
+    assert.strictEqual(w.res.locals.licenseState.reason, 'state_error');
+    const r = await run('GET', '/api/orders', sign(payload()), { hostname: badHost });
+    assert.strictEqual(r.nexted, true);
+    const l = await run('POST', '/api/login', sign(payload()), { hostname: badHost });
+    assert.strictEqual(l.nexted, true);
+    assert.ok(logs.length >= 1);
+  } finally { console.error = realErr; }
+});
+
 test('middleware: grace y ok no bloquean; grace anade cabecera', async () => {
   const realNow = Date.now;
   Date.now = () => NOW;
