@@ -78,6 +78,10 @@
         </div>
 
         <main class="content-wrap">
+            <% const licSuspended = (typeof licenseState !== 'undefined' && licenseState && licenseState.mode === 'readonly' && licenseState.reason === 'suspended'); %>
+            <% if (licSuspended) { %>
+                <div class="alert alert-danger" role="alert" id="licenseSuspendedAlert"><i class="fas fa-lock" aria-hidden="true"></i> Licencia suspendida. El sistema está en modo solo lectura: no se pueden agregar ni editar registros. Regulariza el pago para volver a habilitar los cambios. <a href="<%= bp %>/admin/license" class="alert-link">Cargar una licencia nueva</a></div>
+            <% } %>
             <% if (typeof success !== 'undefined' && success) { %>
                 <div class="alert alert-success alert-dismissible fade show"><%= success %><button type="button" class="close" data-dismiss="alert">&times;</button></div>
             <% } %>
@@ -234,6 +238,35 @@
         });
       })();
     </script>
+    <% if (licSuspended) { %>
+    <script>
+      // Bloqueo visual en modo solo lectura; la barrera real es el 402 del backend.
+      (function() {
+        var MSG = 'Licencia suspendida: modo solo lectura.';
+        var ADD_EDIT = '[data-target^="#new"],[data-target^="#edit"],a[href*="/edit/"],a[href*="/create"]';
+        function skip(form) { return /\/auth\/logout$|\/admin\/license$/.test(form.getAttribute('action') || ''); }
+        function lock(el) { el.classList.add('disabled'); el.setAttribute('aria-disabled', 'true'); el.setAttribute('title', MSG); if ('disabled' in el) el.disabled = true; }
+        function lockAll() {
+          document.querySelectorAll('main form').forEach(function(f) {
+            if ((f.method || '').toUpperCase() !== 'POST' || skip(f)) return;
+            f.querySelectorAll('button[type="submit"],button:not([type]),input[type="submit"]').forEach(lock);
+          });
+          document.querySelectorAll('main ' + ADD_EDIT.split(',').join(',main ')).forEach(lock);
+        }
+        lockAll();
+        document.addEventListener('DOMContentLoaded', lockAll);
+        if (window.MutationObserver) new MutationObserver(lockAll).observe(document.querySelector('main'), { childList: true, subtree: true });
+        document.addEventListener('click', function(e) {
+          var el = e.target.closest && e.target.closest(ADD_EDIT);
+          if (el && el.closest('main')) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
+        document.addEventListener('submit', function(e) {
+          var f = e.target;
+          if (f.closest && f.closest('main') && (f.method || '').toUpperCase() === 'POST' && !skip(f)) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
+      })();
+    </script>
+    <% } %>
     <% if (typeof scripts !== 'undefined') { %><%- scripts %><% } %>
 </body>
 </html>
