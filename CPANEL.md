@@ -48,3 +48,15 @@ Nunca reinicies con el código nuevo antes de migrar: `deliverOrder` y los cierr
 npm run start:pm2          # cluster + worker
 pm2 start ecosystem.cpanel.config.js   # solo si insistes en PM2 con 1 instancia
 ```
+
+## Licencia
+
+La app valida una licencia firmada (Ed25519) y, vencida o suspendida más allá de la gracia, pasa a solo lectura (no borra datos). Variables: `LICENSE_KEY`, `LICENSE_SERVER_URL`, `LICENSE_PUBLIC_KEY`, `LICENSE_ENFORCE`, `LICENSE_GRACE_DAYS`, `LICENSE_CHECK_TTL_MS`, `LICENSE_TIMEOUT_MS` (y opcional `LICENSE_DOMAIN`; si falta se usa el host de `APP_URL`).
+
+El servidor de emisión (fuera de este repo, con la clave privada fuera del repo) debe:
+
+- Recibir `POST` JSON `{ license_key, domain, app_version }` y responder `{ "token": "..." }`.
+- Emitir `token = base64url(payload JSON) + "." + base64url(firma)`, con la firma Ed25519 sobre los bytes ASCII del primer segmento.
+- Payload: `{ "domain": "host sin puerto", "status": "active" | "suspended", "exp": ISO-8601 o epoch en segundos, "iss": "...", "suspended_at": opcional }`. `suspended_at` solo da gracia si se informa; sin él, suspendido es solo lectura de inmediato.
+
+Modos: `ok`; `grace` (expirado o suspendido hace menos de `LICENSE_GRACE_DAYS`, por defecto 7: sin bloqueo y con cabecera `X-License-Status: grace`); `readonly` (POST/PUT/PATCH/DELETE responden 402; siguen abiertos GET, login/logout y el webhook de Mercado Pago). Sin `LICENSE_PUBLIC_KEY` la app corre sin licencia, salvo con `LICENSE_ENFORCE=true` (solo lectura). Si el servidor de licencias no responde, rige el último token válido hasta su `exp`.
