@@ -1,0 +1,48 @@
+<% var active = 'license'; var pageTitle = 'Licencia'; %>
+<% var scripts = ''; %>
+<%
+var lic = (typeof license !== 'undefined' && license) ? license : null;
+var modeLabels = { ok: ['Activa', 'success'], grace: ['En período de gracia', 'warning'], readonly: ['Solo lectura', 'danger'] };
+var reasonLabels = {
+  unenforced: 'Sin clave pública configurada: la licencia no se exige.',
+  no_public_key: 'Falta LICENSE_PUBLIC_KEY en el servidor.',
+  no_token: 'No hay licencia cargada.',
+  expired: 'La licencia está vencida.',
+  suspended: 'La licencia está suspendida.',
+  bad_format: 'El token guardado tiene un formato inválido.',
+  bad_signature: 'La firma del token guardado no es válida.',
+  domain_mismatch: 'El token guardado pertenece a otro dominio.'
+};
+var m = lic ? (modeLabels[lic.mode] || [lic.mode, 'secondary']) : ['Desconocido', 'secondary'];
+var detail = !lic ? 'No se pudo leer el estado.' : (lic.reason ? (reasonLabels[lic.reason] || lic.reason) : 'Licencia vigente.');
+var expText = lic && lic.exp ? new Date(lic.exp).toLocaleString('es-PE', { timeZone: 'America/Lima' }) : '-';
+var body = `
+<div class="card mb-3">
+    <div class="card-header">Estado de la licencia</div>
+    <div class="card-body">
+        <table class="table table-sm mb-0">
+            <tbody>
+                <tr><th>Modo</th><td><span class="badge badge-${esc(m[1])}">${esc(m[0])}</span></td></tr>
+                <tr><th>Detalle</th><td>${esc(detail)}</td></tr>
+                <tr><th>Dominio</th><td>${esc(lic && lic.domain ? lic.domain : '-')}</td></tr>
+                <tr><th>Vence</th><td>${esc(expText)}</td></tr>
+                <tr><th>Token guardado</th><td>${esc(lic && lic.hasToken ? 'Sí (termina en ...' + lic.tokenTail + ')' : 'No')}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header">Cargar licencia</div>
+    <div class="card-body">
+        <form method="POST" action="/admin/license" autocomplete="off">
+            <div class="form-group">
+                <label for="licenseToken">Token de licencia *</label>
+                <textarea id="licenseToken" name="token" class="form-control" rows="5" maxlength="8192" spellcheck="false" required placeholder="Pega aquí el token emitido por el servidor de licencias"></textarea>
+                <small class="form-text text-muted">Se valida la firma y el dominio antes de guardarlo. Un token inválido no reemplaza al actual.</small>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Guardar licencia</button>
+        </form>
+    </div>
+</div>`;
+%>
+<%- include('./layouts/master', { body, active, pageTitle, user: typeof user !== 'undefined' ? user : null, success: typeof success !== 'undefined' ? success : null, error: typeof error !== 'undefined' ? error : null, message: typeof message !== 'undefined' ? message : null, scripts }) %>

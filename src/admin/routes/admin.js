@@ -3,6 +3,7 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const adminController = require('../controllers/adminController');
 const settlementsController = require('../controllers/settlementsController');
+const licenseController = require('../controllers/licenseController');
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
@@ -363,6 +364,10 @@ router.post('/admin/settings', adminController.saveSettings);
 router.post('/admin/settings/upload-favicon', upload.single('favicon'), adminController.uploadFavicon);
 router.post('/admin/settings/upload-logo', upload.single('logo'), adminController.uploadLogo);
 router.post('/admin/settings/upload-listing-image', upload.single('listingImage'), adminController.uploadListingImage);
+
+// Licencia
+router.get('/admin/license', licenseController.page);
+router.post('/admin/license', licenseController.save);
 
 // Payment Methods
 router.get('/admin/payment-methods', adminController.paymentMethods);

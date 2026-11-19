@@ -58,6 +58,7 @@
         <a href="<%= bp %>/admin/store-payouts" class="<%= typeof active !== 'undefined' && active === 'payouts' ? 'active' : '' %>"><i class="fas fa-money-bill"></i> Pagos</a>
         <a href="<%= bp %>/admin/payment-methods" class="<%= typeof active !== 'undefined' && active === 'paymentmethods' ? 'active' : '' %>"><i class="fas fa-credit-card"></i> Metodos de Pago</a>
         <a href="<%= bp %>/admin/settings" class="<%= typeof active !== 'undefined' && active === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> Settings</a>
+        <a href="<%= bp %>/admin/license" class="<%= typeof active !== 'undefined' && active === 'license' ? 'active' : '' %>"><i class="fas fa-key"></i> Licencia</a>
         <hr>
         <form method="POST" action="<%= bp %>/auth/logout" class="logout-form"><button type="submit"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button></form>
     </nav>

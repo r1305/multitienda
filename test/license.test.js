@@ -290,3 +290,110 @@ test('middleware: grace y ok no bloquean; grace anade cabecera', async () => {
     assert.strictEqual(ok.res.headers['X-License-Status'], undefined);
   } finally { Date.now = realNow; }
 });
+
+// ---- Pantalla de admin (submitToken, describeLicense, licenseController) ----
+
+function adminSetup() {
+  resetEnv();
+  process.env.LICENSE_PUBLIC_KEY = PEM;
+  process.env.LICENSE_DOMAIN = DOMAIN;
+}
+
+async function atNow(fn) {
+  const realNow = Date.now;
+  Date.now = () => NOW;
+  try { return await fn(); } finally { Date.now = realNow; }
+}
+
+test('admin: token invalido se rechaza sin guardar', () => atNow(async () => {
+  adminSetup();
+  const bad = [
+    ['no es un token', 'bad_format'],
+    [sign(payload(), otherKey.privateKey), 'bad_signature'],
+    [sign(payload({ domain: 'otro.example.com' })), 'domain_mismatch'],
+  ];
+  for (const [tok, reason] of bad) {
+    const r = await license.submitToken(tok, DOMAIN);
+    assert.deepStrictEqual(r, { saved: false, reason });
+  }
+  assert.strictEqual(store.rows.length, 0);
+}));
+
+test('admin: sin clave publica no guarda nada', async () => {
+  resetEnv();
+  const r = await license.submitToken(sign(payload()), DOMAIN);
+  assert.deepStrictEqual(r, { saved: false, reason: 'no_public_key' });
+  assert.strictEqual(store.rows.length, 0);
+});
+
+test('admin: token valido se guarda (ignora espacios) y el estado pasa a ok', () => atNow(async () => {
+  adminSetup();
+  const tok = sign(payload());
+  const r = await license.submitToken(`  ${tok.slice(0, 20)}\n${tok.slice(20)} `, DOMAIN);
+  assert.deepStrictEqual(r, { saved: true, reason: null });
+  assert.strictEqual(store.rows.find((x) => x.key === license.TOKEN_KEY).value, tok);
+  assert.strictEqual((await license.getLicenseState()).mode, 'ok');
+}));
+
+test('admin: expirado y suspendido se guardan para mostrar el estado', () => atNow(async () => {
+  adminSetup();
+  const exp = sign(payload({ exp: new Date(NOW - DAY).toISOString() }));
+  assert.deepStrictEqual(await license.submitToken(exp, DOMAIN), { saved: true, reason: 'expired' });
+  assert.strictEqual((await license.getLicenseState()).mode, 'grace');
+  const sus = sign(payload({ status: 'suspended' }));
+  assert.deepStrictEqual(await license.submitToken(sus, DOMAIN), { saved: true, reason: 'suspended' });
+  assert.strictEqual(store.rows.find((x) => x.key === license.TOKEN_KEY).value, sus);
+}));
+
+test('admin: describeLicense no expone token ni clave publica', () => atNow(async () => {
+  adminSetup();
+  const tok = sign(payload());
+  await license.submitToken(tok, DOMAIN);
+  const d = await license.describeLicense();
+  assert.strictEqual(d.mode, 'ok');
+  assert.strictEqual(d.domain, DOMAIN);
+  assert.strictEqual(d.hasToken, true);
+  assert.strictEqual(d.tokenTail, tok.slice(-8));
+  const dump = JSON.stringify(d);
+  assert.ok(!dump.includes(tok) && !dump.includes('BEGIN PUBLIC KEY'));
+}));
+
+test('admin: controlador guarda, avisa y redirige; rechazo no guarda', () => atNow(async () => {
+  adminSetup();
+  const { save, page } = require('../src/admin/controllers/licenseController');
+  const flashes = [];
+  const mk = (token) => ({
+    body: { token }, hostname: DOMAIN, session: { user: { name: 'A' } },
+    flash: (...a) => (a.length === 2 ? flashes.push(a) : []),
+  });
+  const bad = fakeRes();
+  await save(mk('xxx'), bad);
+  assert.strictEqual(bad.redirected, '/admin/license');
+  assert.strictEqual(flashes[0][0], 'error');
+  assert.strictEqual(store.rows.length, 0);
+  const good = fakeRes();
+  await save(mk(sign(payload())), good);
+  assert.strictEqual(flashes[1][0], 'success');
+  assert.strictEqual(store.rows.length, 1);
+
+  let rendered;
+  await page({ hostname: DOMAIN, session: { user: { name: 'A' } }, flash: () => [] }, { render: (v, d) => { rendered = { v, d }; } });
+  assert.strictEqual(rendered.v, 'admin/license');
+  assert.strictEqual(rendered.d.license.mode, 'ok');
+}));
+
+test('admin: en readonly el POST /admin/license sigue abierto; otros POST admin no', async () => {
+  assert.strictEqual((await run('POST', '/admin/license', expired())).nexted, true);
+  assert.strictEqual((await run('POST', '/admin/settings', expired())).nexted, false);
+});
+
+test('admin: la vista renderiza el estado sin el token completo', async () => {
+  const ejs = require('ejs');
+  const tok = sign(payload());
+  const html = await ejs.renderFile(path.join(__dirname, '..', 'views/admin/license.ejs'), {
+    esc: require('../src/helpers/escapeHtml'), bp: '', settings: {}, user: { name: 'A' },
+    license: { mode: 'ok', reason: null, domain: DOMAIN, exp: '2026-12-01T00:00:00.000Z', hasToken: true, tokenTail: tok.slice(-8) },
+  });
+  assert.ok(html.includes('Activa') && html.includes(DOMAIN) && html.includes(tok.slice(-8)));
+  assert.ok(!html.includes(tok) && html.includes('action="/admin/license"'));
+});
