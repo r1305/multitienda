@@ -186,9 +186,36 @@ async function getLicenseState(hostHint) {
   return { mode: computeMode(v, now), reason: v.reason, payload: v.payload };
 }
 
+// Estado para la pantalla de admin: nunca expone el token completo ni la clave pública.
+async function describeLicense(hostHint) {
+  const state = await getLicenseState(hostHint);
+  const exp = state.payload ? toMs(state.payload.exp) : NaN;
+  return {
+    mode: state.mode,
+    reason: state.reason,
+    domain: (state.payload && state.payload.domain) || getDomain(),
+    exp: Number.isFinite(exp) ? new Date(exp).toISOString() : null,
+    hasToken: !!token,
+    tokenTail: token ? token.slice(-8) : null,
+    enforced: !!publicKey(),
+  };
+}
+
+// Valida un token pegado a mano. Guarda solo si es válido o expired/suspended (para mostrar el estado).
+// saveToken ya deja el token en memoria, así que getLicenseState lo usa en la siguiente petición.
+async function submitToken(tok, hostHint) {
+  const pem = publicKey();
+  if (!pem) return { saved: false, reason: 'no_public_key' };
+  const clean = typeof tok === 'string' ? tok.replace(/\s+/g, '') : '';
+  const v = clean.length > 8192 ? fail('bad_format') : verifyToken(clean, pem, Date.now(), getDomain() || normHost(hostHint));
+  if (!v.ok && v.reason !== 'expired' && v.reason !== 'suspended') return { saved: false, reason: v.reason };
+  await saveToken(clean);
+  return { saved: true, reason: v.reason };
+}
+
 function _reset() {
   token = null; loaded = false; loading = null; nextRefreshAt = 0; inflight = null;
   seenHost = null; warnedNoKey = false; keyCache = { pem: null, key: null };
 }
 
-module.exports = { verifyToken, getLicenseState, refreshLicense, TOKEN_KEY, _reset };
+module.exports = { verifyToken, getLicenseState, refreshLicense, describeLicense, submitToken, TOKEN_KEY, _reset };

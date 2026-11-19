@@ -3,11 +3,13 @@ const { getAppBasePath } = require('../helpers/appBasePath');
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-// Login/logout siguen abiertos para entrar a ver y exportar datos; el webhook de pagos es entrada de un
+// Login/logout siguen abiertos para entrar a ver y exportar datos; /admin/license (ya tras auth admin) permite pegar
+// una licencia nueva estando en solo lectura; el webhook de pagos es entrada de un
 // tercero y debe seguir registrando pagos ya cobrados.
 const ALWAYS_OPEN = new Set([
   '/auth/login',
   '/auth/logout',
+  '/admin/license',
   '/api/login',
   '/api/login-with-otp',
   '/api/generate-otp-for-login',
