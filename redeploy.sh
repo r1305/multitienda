@@ -3,25 +3,38 @@
 #
 # Uso (en el servidor):
 #   bash redeploy.sh
+#   APP=... CPANEL_USER=... NODE_VERSION=... bash redeploy.sh
 #   RAMA=otra-rama bash redeploy.sh
-#   NODE_BIN=/ruta/a/nodevenv/bin bash redeploy.sh   (opcional)
 #
 # Variables opcionales:
-#   RAMA       rama a desplegar (default: shipness)
-#   NODE_BIN   carpeta bin del Node de la app; si se define se antepone a PATH,
-#              si no se usa el node del PATH del servidor
+#   RAMA          rama a desplegar (default: shipness)
+#   APP           nombre de la app en cPanel (default: carpeta del repo)
+#   CPANEL_USER   usuario de cPanel (default: basename de $HOME)
+#   NODE_VERSION  version de Node del nodevenv (default: 22)
+#
+# Activa /home/$CPANEL_USER/nodevenv/$APP/$NODE_VERSION/bin/activate y entra al repo.
 
 set -euo pipefail
 
 RAMA="${RAMA:-shipness}"
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
-RAIZ="$(pwd)"
+RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP="${APP:-$(basename "$RAIZ")}"
+CPANEL_USER="${CPANEL_USER:-$(basename "$HOME")}"
+NODE_VERSION="${NODE_VERSION:-22}"
+ACTIVATE="/home/$CPANEL_USER/nodevenv/$APP/$NODE_VERSION/bin/activate"
 
 fallo() {
   echo "ERROR: $1" >&2
   exit 1
 }
+
+[ -f "$ACTIVATE" ] || fallo "no existe $ACTIVATE; revisa APP, CPANEL_USER o NODE_VERSION"
+set +u
+source "$ACTIVATE" || fallo "source $ACTIVATE falló."
+set -u
+cd "$RAIZ"
+[ "$RAIZ" = "/home/$CPANEL_USER/$APP" ] || echo "WARN: el repo ($RAIZ) no coincide con /home/$CPANEL_USER/$APP; se usa el repo real." >&2
 
 echo "========================================"
 echo "  Redeploy multitienda-node"
@@ -37,11 +50,7 @@ git pull --ff-only origin "$RAMA" || fallo "git pull --ff-only falló (historia 
 
 echo ""
 echo "==> [2/4] Instalando dependencias con Node de la app..."
-if [ -n "${NODE_BIN:-}" ]; then
-  [ -x "$NODE_BIN/node" ] || fallo "no existe $NODE_BIN/node (revisa NODE_BIN)."
-  export PATH="$NODE_BIN:$PATH"
-fi
-command -v node >/dev/null || fallo "node no está en el PATH (define NODE_BIN)."
+command -v node >/dev/null || fallo "node no está en el PATH tras activar $ACTIVATE."
 echo "    node $(node -v) / npm $(npm -v)"
 npm install --omit=dev
 
