@@ -96,6 +96,8 @@ async function createApp() {
     app.use('/app', express.static(path.join(__dirname, '../public/app'), isProd ? { maxAge: '1h', etag: true } : {}));
   }
 
+  app.use(require('./middleware/license').licenseMiddleware);
+
   app.use('/', require('./routes/install'));
 
   const apiRoutes = require('./routes/api');
