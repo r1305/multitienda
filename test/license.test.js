@@ -119,10 +119,10 @@ test('estado: LICENSE_GRACE_DAYS configurable', async () => {
   try { assert.strictEqual((await license.getLicenseState()).mode, 'readonly'); } finally { Date.now = realNow; }
 });
 
-test('estado: suspendido sin suspended_at -> readonly; con suspended_at reciente -> grace', async () => {
+test('estado: suspendido -> readonly inmediato, sin gracia (con o sin suspended_at)', async () => {
   assert.strictEqual((await stateWith(sign(payload({ status: 'suspended' })))).mode, 'readonly');
-  const recent = sign(payload({ status: 'suspended', suspended_at: new Date(NOW - DAY).toISOString() }));
-  assert.strictEqual((await stateWith(recent)).mode, 'grace');
+  const recent = sign(payload({ status: 'suspended', suspended_at: new Date(NOW - 1000).toISOString() }));
+  assert.strictEqual((await stateWith(recent)).mode, 'readonly');
   assert.strictEqual((await stateWith(recent, 30)).mode, 'readonly');
 });
 
