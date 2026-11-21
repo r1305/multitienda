@@ -11,7 +11,7 @@ const HomePage = {
         </div>
         <template v-else>
           <div v-if="sliders.length" class="slider">
-            <div v-for="s in sliders" :key="s.id" class="slider-item"><img :src="s.image" :alt="s.name"></div>
+            <div v-for="(s, i) in sliders" :key="'sl' + i" class="slider-item" :style="{cursor: s.url ? 'pointer' : 'default'}" @click="openSlider(s)"><img :src="Store.imageUrl(s.image)" :alt="s.name || ''"></div>
           </div>
           <div class="delivery-toggle">
             <button :class="{active: mode==='delivery'}" @click="mode='delivery'; loadStores()">Delivery</button>
@@ -67,6 +67,13 @@ const HomePage = {
   methods: {
     async loadSliders() {
       try { const res = await API.getPromoSliders(Store.location.lat, Store.location.lng); this.sliders = Array.isArray(res) ? res.filter(s => s.image) : []; } catch(e) {}
+    },
+    openSlider(s) {
+      const url = String((s && s.url) || '').trim();
+      if (/^https?:\/\//i.test(url)) { window.location.href = url; return; }
+      if (!url.startsWith('/') || url.startsWith('//')) return;
+      const base = (window.__APP_BASE_PATH__ || '').replace(/\/$/, '');
+      this.$router.push(base && url.startsWith(base + '/') ? url.slice(base.length) : url);
     },
     async loadBusinessTypes() {
       try { const res = await API.getBusinessTypes(); this.businessTypes = Array.isArray(res) ? res : []; } catch(e) { this.businessTypes = []; }
@@ -826,6 +833,10 @@ const OrderDetailPage = {
         <div v-if="canRate" style="padding:0 16px 16px"><button class="btn-primary" @click="$router.push('/rate/'+order.id)">Calificar Orden</button></div>
         <div v-if="[3,4].includes(order.orderstatus_id)" style="padding:0 16px 16px">
           <div style="font-size:14px;font-weight:600;margin-bottom:8px"><i class="fas fa-comments" style="color:var(--primary)"></i> Chat con el repartidor</div>
+          <div v-if="pushState === 'default' || pushMsg" style="display:flex;align-items:center;gap:8px;background:#e3f2fd;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#1565c0">
+            <span style="flex:1">{{ pushMsg || 'Activa las notificaciones para enterarte cuando el repartidor te escriba.' }}</span>
+            <button type="button" style="background:#1976d2;color:#fff;padding:6px 12px;border-radius:6px;font-size:12px" @click="enablePush">Activar</button>
+          </div>
           <div style="background:var(--bg);border-radius:8px;padding:12px;max-height:250px;overflow-y:auto;margin-bottom:8px">
             <div v-if="!messages.length" style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Sin mensajes aun</div>
             <div v-for="m in messages" :key="m.id" :style="{marginBottom:'8px',display:'flex',justifyContent:m.sender_id==Store.user.id?'flex-end':'flex-start'}">
@@ -841,7 +852,7 @@ const OrderDetailPage = {
     </div>`,
   components: { AppHeader },
   setup() { return { Store }; },
-  data() { return { order: null, loading: true, refreshInterval: null, map: null, deliveryMarker: null, routeLine: null, googleLoaded: false, messages: [], chatMsg: '', chatInterval: null }; },
+  data() { return { order: null, loading: true, refreshInterval: null, map: null, deliveryMarker: null, routeLine: null, googleLoaded: false, messages: [], chatMsg: '', chatInterval: null, pushState: (window.PushNotifications && PushNotifications.getBrowserPermission()) || 'unsupported', pushMsg: '' }; },
   computed: {
     isRunning() { return this.order && [1,2,3,4,7,8,12].includes(this.order.orderstatus_id); },
     canCancel() { return this.order && [1,10].includes(this.order.orderstatus_id); },
@@ -851,18 +862,30 @@ const OrderDetailPage = {
     await this.loadOrder();
     this.loadGoogleMaps();
     if (Store.isLoggedIn) PushNotifications.register(Store.user.id, Store.user.role || 'customer');
+    this._onPushForeground = (ev) => {
+      const d = (ev.detail && ev.detail.data) || {};
+      if (!this.order || String(d.order_id) !== String(this.order.id)) return;
+      if (d.type === 'chat') this.loadMessages(); else this.loadOrder();
+    };
+    window.addEventListener('app:push-foreground', this._onPushForeground);
     if (this.isRunning) {
       this.refreshInterval = setInterval(() => this.loadOrder(), 20000);
       this.loadMessages();
       this.chatInterval = setInterval(() => this.loadMessages(), 20000);
     }
   },
-  beforeUnmount() { if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); },
+  beforeUnmount() { if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
   methods: {
+    async enablePush() {
+      if (!window.PushNotifications || !Store.user) return;
+      const r = await PushNotifications.enable(Store.user.id, Store.user.role || 'customer');
+      this.pushState = PushNotifications.getBrowserPermission();
+      this.pushMsg = r.ok ? '' : (r.reason === 'denied' ? 'Notificaciones bloqueadas en el navegador.' : 'No se pudieron activar las notificaciones.');
+    },
     async loadOrder() {
       try {
-        const res = await API.updateUserInfo(Store.user.id, Store.user.auth_token);
-        if (res && res.data && res.data.running_order && res.data.running_order.unique_order_id === this.$route.params.id) { this.order = res.data.running_order; }
+        const res = await API.post('/update-user-info', { user_id: Store.user.id, token: Store.user.auth_token, unique_order_id: this.$route.params.id });
+        if (res && res.running_order && res.running_order.unique_order_id === this.$route.params.id) { this.order = res.running_order; }
         else { const orders = await API.getOrders(Store.user.auth_token, Store.user.id); const list = orders.data || orders || []; this.order = list.find(o => o.unique_order_id === this.$route.params.id) || null; }
         if (this.googleLoaded && this.map) this.updateMap();
       } catch(e) {}

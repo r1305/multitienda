@@ -814,6 +814,8 @@ const columns = [
   { table: 'delivery_guy_details', column: 'dynamic_price_per_km', ddl: 'ALTER TABLE delivery_guy_details ADD COLUMN dynamic_price_per_km DECIMAL(10,2) DEFAULT 0' },
   { table: 'delivery_guy_details', column: 'fixed_commission', ddl: 'ALTER TABLE delivery_guy_details ADD COLUMN fixed_commission DECIMAL(10,2) DEFAULT 0' },
   { table: 'restaurants', column: 'prep_minutes', ddl: 'ALTER TABLE restaurants ADD COLUMN prep_minutes INT NULL DEFAULT 20' },
+  { table: 'promo_sliders', column: 'image', ddl: 'ALTER TABLE promo_sliders ADD COLUMN image VARCHAR(255) NULL' },
+  { table: 'promo_sliders', column: 'url', ddl: 'ALTER TABLE promo_sliders ADD COLUMN url VARCHAR(255) NULL' },
   { table: 'ratings', column: 'reply', ddl: 'ALTER TABLE ratings ADD COLUMN reply TEXT NULL' },
   { table: 'payment_gateways', column: 'account_number', ddl: 'ALTER TABLE payment_gateways ADD COLUMN account_number VARCHAR(255) NULL' },
   { table: 'payment_gateways', column: 'phone_number', ddl: 'ALTER TABLE payment_gateways ADD COLUMN phone_number VARCHAR(255) NULL' },

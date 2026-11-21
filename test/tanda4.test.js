@@ -208,14 +208,14 @@ test('markOrderPreparing devuelve 409 si el pedido ya no está en estado 2', asy
 });
 
 // ─── Alerta de pedidos nuevos ────────────────────────────────────────────────
-test('newOrdersCount cuenta solo estado 1 de la tienda del dueño', async () => {
+test('newOrdersCount cuenta solo pedidos por aceptar (1 y 10) de la tienda del dueño', async () => {
   state.queries = [];
-  state.handler = (sql) => (/COUNT\(\*\) AS c FROM orders/.test(sql) ? [[{ c: 3 }]] : undefined);
+  state.handler = (sql) => (/COUNT\(\*\) AS c, MAX\(id\) AS m FROM orders/.test(sql) ? [[{ c: 3, m: 41 }]] : undefined);
   const res = fakeRes();
   await storeOwner.newOrdersCount({ user: { id: 9 } }, res);
-  assert.deepStrictEqual(res.body, { success: true, count: 3 });
-  const q = state.queries.find((x) => /COUNT\(\*\) AS c FROM orders/.test(x.sql));
-  assert.deepStrictEqual(q.opts.replacements, [5, 1]);
+  assert.deepStrictEqual(res.body, { success: true, count: 3, latest_id: 41 });
+  const q = state.queries.find((x) => /FROM orders WHERE restaurant_id = \? AND orderstatus_id IN/.test(x.sql));
+  assert.deepStrictEqual(q.opts.replacements, [5, 1, 10]);
 });
 
 // ─── ETA ─────────────────────────────────────────────────────────────────────

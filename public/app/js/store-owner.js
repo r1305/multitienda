@@ -5,11 +5,29 @@ const StoreOrderAlerts = (() => {
   const POLL_MS = 20000;
   let timer = null;
   let wanted = false;
-  let last = null;
+  let lastId = null;
   let audioCtx = null;
   let bound = false;
+  let prompt = null;
+  let pendingBeep = false;
 
   function token() { try { return localStorage.getItem('storeOwnerToken'); } catch (e) { return null; } }
+
+  function audioReady() { return !!audioCtx && audioCtx.state === 'running'; }
+
+  // El navegador bloquea el audio hasta que el usuario interactúa: se muestra un aviso que al tocarlo lo habilita.
+  function showPrompt(text) {
+    if (!document.body) return;
+    if (!prompt) {
+      prompt = document.createElement('button');
+      prompt.type = 'button';
+      prompt.style.cssText = 'position:fixed;left:16px;right:16px;bottom:16px;z-index:9999;padding:12px;border:none;border-radius:10px;background:#ff5722;color:#fff;font-weight:600;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.25)';
+      document.body.appendChild(prompt);
+    }
+    prompt.textContent = text;
+  }
+
+  function hidePrompt() { if (prompt) { prompt.remove(); prompt = null; } }
 
   function unlockAudio() {
     try {
@@ -18,8 +36,10 @@ const StoreOrderAlerts = (() => {
         if (Ctx) audioCtx = new Ctx();
       }
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      if (audioCtx && pendingBeep) { pendingBeep = false; beep(); }
       if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
     } catch (e) {}
+    hidePrompt();
   }
 
   function beep() {
@@ -42,12 +62,13 @@ const StoreOrderAlerts = (() => {
     } catch (e) {}
   }
 
-  function notify(diff, total) {
-    beep();
+  function notify(total) {
+    if (audioReady()) beep();
+    else { pendingBeep = true; showPrompt('Nuevo pedido por aceptar · toca para activar el sonido'); }
+    const body = total > 1 ? `Tienes ${total} pedidos por aceptar` : 'Tienes un pedido nuevo por aceptar';
     try {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Nuevo pedido', { body: diff > 1 ? `Tienes ${total} pedidos nuevos por aceptar` : 'Tienes un pedido nuevo por aceptar' });
-      }
+      if (window.PushNotifications && PushNotifications.showLocal) PushNotifications.showLocal('Nuevo pedido', { body, tag: 'store-new-order' });
+      else if ('Notification' in window && Notification.permission === 'granted') new Notification('Nuevo pedido', { body });
     } catch (e) {}
     window.dispatchEvent(new CustomEvent('store-owner:new-orders', { detail: { count: total } }));
   }
@@ -59,8 +80,9 @@ const StoreOrderAlerts = (() => {
       const res = await API.request('/store-owner/new-orders-count', { method: 'GET', headers: { Authorization: 'Bearer ' + tk } });
       const n = Number(res && res.count);
       if (!Number.isFinite(n)) return;
-      if (last !== null && n > last) notify(n - last, n);
-      last = n;
+      const id = Number(res && res.latest_id) || 0;
+      if (lastId !== null && id > lastId) notify(n);
+      lastId = Math.max(lastId || 0, id);
     } catch (e) {}
   }
 
@@ -79,16 +101,18 @@ const StoreOrderAlerts = (() => {
     wanted = true;
     if (!bound) {
       document.addEventListener('visibilitychange', onVisibility);
-      document.addEventListener('click', unlockAudio, { once: true });
-      document.addEventListener('keydown', unlockAudio, { once: true });
+      document.addEventListener('click', unlockAudio);
+      document.addEventListener('keydown', unlockAudio);
       bound = true;
     }
+    if (!audioReady()) showPrompt('Toca aquí para activar el sonido de pedidos nuevos');
     arm();
   }
 
   function stop() {
     wanted = false;
-    last = null;
+    lastId = null;
+    hidePrompt();
     clear();
     if (bound) {
       document.removeEventListener('visibilitychange', onVisibility);
@@ -290,8 +314,8 @@ const StoreOwnerOrdersPage = {
       return [...this.orders, ...this.pastOrders];
     }
   },
-  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } PushNotifications.registerForContext(); this.loadOrders(); this.interval = setInterval(() => this.loadOrders(), 20000); },
-  beforeUnmount() { if (this.interval) clearInterval(this.interval); },
+  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } PushNotifications.registerForContext(); this.loadOrders(); this.interval = setInterval(() => this.loadOrders(), 20000); this._onNewOrders = () => this.loadOrders(); window.addEventListener('store-owner:new-orders', this._onNewOrders); },
+  beforeUnmount() { if (this.interval) clearInterval(this.interval); if (this._onNewOrders) window.removeEventListener('store-owner:new-orders', this._onNewOrders); },
   methods: {
     async loadOrders() { try { const token = localStorage.getItem('storeOwnerToken'); const [res, past] = await Promise.all([API.post('/store-owner/get-orders', { token }), API.post('/store-owner/get-past-orders', { token })]); this.orders = Array.isArray(res) ? res : (res.data || []); this.pastOrders = Array.isArray(past) ? past : (past.data || []); } catch(e) {} this.loading = false; },
     statusText(id) { return {1:'Nuevo',2:'Aceptado',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado',12:'En preparacion'}[id] || ''; },

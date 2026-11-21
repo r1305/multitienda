@@ -191,7 +191,6 @@ const DeliveryOrdersPage = {
       if (PushNotifications.hasSavedTokenForUser(this.deliveryUserId, 'delivery')) {
         this.pushSuccess = true;
         this._pushRegistered = true;
-        return;
       }
       this._pushRegistering = true;
       try {
@@ -201,10 +200,15 @@ const DeliveryOrdersPage = {
           this.pushError = '';
           this._pushRegistered = true;
         } else if (!PushNotifications.isVapidConfigured()) {
+          this.pushSuccess = false;
           this.pushError = 'Falta la clave VAPID de Firebase en Admin → Ajustes.';
         } else {
+          this.pushSuccess = false;
           this.pushError = 'Permiso concedido pero el token no se guardó. Pulsa «Sincronizar notificaciones».';
         }
+      } catch (e) {
+        this.pushSuccess = false;
+        this.pushError = 'No se pudo registrar este dispositivo. Pulsa «Sincronizar notificaciones».';
       } finally {
         this._pushRegistering = false;
       }
@@ -358,8 +362,13 @@ const DeliveryOrderDetailPage = {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
     await this.loadOrder();
     if (this.order && [3,4].includes(this.order.orderstatus_id)) { this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); }
+    this._onPushForeground = (ev) => {
+      const d = (ev.detail && ev.detail.data) || {};
+      if (d.type === 'chat' && this.order && String(d.order_id) === String(this.order.id)) this.loadMessages();
+    };
+    window.addEventListener('app:push-foreground', this._onPushForeground);
   },
-  beforeUnmount() { this.stopGpsTracking(); if (this.chatInterval) clearInterval(this.chatInterval); },
+  beforeUnmount() { this.stopGpsTracking(); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
   methods: {
     async loadOrder() { try { const token = localStorage.getItem('deliveryToken'); const res = await API.post('/delivery/get-single-delivery-order', { token, order_id: this.$route.params.id }); this.order = res; } catch(e) {} this.loading = false; },
     async acceptOrder() { this.actionLoading = true; try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/accept-to-deliver', { token, order_id: this.order.id }); this.order.orderstatus_id = 3; this.successMsg = 'Pedido aceptado!'; this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); } catch(e) {} this.actionLoading = false; },

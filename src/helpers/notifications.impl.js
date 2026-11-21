@@ -138,7 +138,7 @@ async function sendViaFCM(title, message, userId, role, data) {
       image: imageUrl || undefined,
       vibrate: [200, 100, 200],
     },
-    fcmOptions: link ? { link } : undefined,
+    fcmOptions: /^https:\/\//i.test(link || '') ? { link } : undefined,
   };
   const android = { priority: 'high', notification: { sound: 'default', channelId: 'orders' } };
   const apns = { payload: { aps: { sound: 'default', badge: 1 } } };

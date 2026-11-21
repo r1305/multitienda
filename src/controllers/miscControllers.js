@@ -88,7 +88,8 @@ exports.popularGeoLocations = async (req, res) => {
 exports.promoSlider = async (req, res) => {
   try {
     const [sliders] = await sequelize.query('SELECT * FROM promo_sliders WHERE image IS NOT NULL ORDER BY id DESC');
-    const [slides] = await sequelize.query('SELECT * FROM slides WHERE image IS NOT NULL ORDER BY sort_position ASC');
+    let slides = [];
+    try { [slides] = await sequelize.query('SELECT * FROM slides WHERE image IS NOT NULL ORDER BY sort_position ASC'); } catch (_) { slides = []; }
     res.json([...sliders, ...slides]);
   } catch (err) {
     res.status(500).json([]);
