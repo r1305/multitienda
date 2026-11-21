@@ -610,7 +610,7 @@ const StoreOwnerMenuPage = {
           <div v-if="!filteredItems.length" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-box" style="font-size:36px;margin-bottom:12px;display:block"></i><p>Sin productos</p></div>
           <div class="so-card" v-for="item in filteredItems" :key="item.id">
             <div class="so-card-body" style="display:flex;gap:12px;align-items:center">
-              <img v-if="item.image" :src="item.image" style="width:50px;height:50px;border-radius:8px;object-fit:cover">
+              <img v-if="item.image" :src="Store.imageUrl(item.image)" style="width:50px;height:50px;border-radius:8px;object-fit:cover">
               <div style="flex:1;min-width:0">
                 <strong style="font-size:14px">{{item.name}}</strong>
                 <div style="font-size:12px;color:var(--muted);margin-top:2px">{{Store.formatPrice(item.price)}} <span v-if="item.old_price>0" style="text-decoration:line-through">{{Store.formatPrice(item.old_price)}}</span></div>
@@ -956,7 +956,7 @@ const StoreOwnerSettingsPage = {
                 <div class="so-form-group"><label>Rango de precios</label><input v-model="form.price_range" placeholder="Ej: $$"></div>
               </div>
               <div class="so-form-group"><label>Imagen</label><input type="file" accept="image/*" @change="onFile" style="font-size:13px"></div>
-              <div v-if="store.image" style="margin-top:8px"><img :src="store.image" style="width:80px;height:80px;border-radius:8px;object-fit:cover"></div>
+              <div v-if="store.image" style="margin-top:8px"><img :src="Store.imageUrl(store.image)" style="width:80px;height:80px;border-radius:8px;object-fit:cover"></div>
             </div>
           </div>
           <div class="so-card">

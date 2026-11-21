@@ -495,7 +495,7 @@ const FavoritesPage = {
         <div v-if="!stores.length" class="empty-state"><i class="fas fa-heart-broken"></i><p>No tienes favoritos aún</p></div>
         <div style="padding:0 16px">
           <div v-for="s in stores" :key="s.id" class="store-card" @click="$router.push('/store/'+s.slug)">
-            <img :src="s.image || '/assets/img/various/store-placeholder.png'" class="store-card-img">
+            <img :src="Store.imageUrl(s.image)" class="store-card-img" alt="">
             <div class="store-card-info"><div class="store-card-name">{{s.name}}</div><div class="store-card-desc">{{s.description}}</div>
               <div class="store-card-meta"><span><i class="fas fa-star" style="color:var(--primary)"></i> {{s.avgRating || s.rating || '-'}}</span><span><i class="fas fa-clock"></i> {{s.delivery_time}} min</span></div>
             </div>
