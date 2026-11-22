@@ -92,6 +92,7 @@ exports.promoSlider = async (req, res) => {
     try { [slides] = await sequelize.query('SELECT * FROM slides WHERE image IS NOT NULL ORDER BY sort_position ASC'); } catch (_) { slides = []; }
     res.json([...sliders, ...slides]);
   } catch (err) {
+    console.error('[promoSlider]', err.message);
     res.status(500).json([]);
   }
 };
