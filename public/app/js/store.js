@@ -57,7 +57,7 @@ const Store = Vue.reactive({
     );
     if (!path || path === 'null' || path === 'undefined') return placeholder;
     let url = String(path).trim();
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (/^(https?:|data:|blob:)/i.test(url)) return url;
     if (url.startsWith('//')) return 'https:' + url;
     if (url.startsWith('storage/')) url = '/uploads/' + url.slice(8);
     else if (url.startsWith('/storage/')) url = '/uploads/' + url.slice(9);

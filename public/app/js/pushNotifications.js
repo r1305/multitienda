@@ -229,15 +229,20 @@ const PushNotifications = {
     try { return localStorage.getItem(`fcm_saved:${userKey}`) === '1'; } catch (_) { return false; }
   },
 
-  async enableDeliveryPush(userId) {
+  async enable(userId, role = 'customer') {
     if (!userId) return { ok: false, reason: 'no_user' };
+    const roleTag = String(role || 'customer').toLowerCase().replace(/\s+/g, '_');
     const ready = await this._ensureReadyAndPermission(true);
     if (!ready.ok) return ready;
 
-    const ok = await this._saveTokenForUser(userId, 'delivery');
+    const ok = await this._saveTokenForUser(userId, roleTag);
     if (!ok) return { ok: false, reason: 'token_save_failed' };
-    this._lastRegisterKey = `delivery:${String(userId)}:`;
+    this._lastRegisterKey = `${roleTag}:${String(userId)}:`;
     return { ok: true, reason: 'granted' };
+  },
+
+  enableDeliveryPush(userId) {
+    return this.enable(userId, 'delivery');
   },
 
   logout() {
@@ -292,21 +297,31 @@ const PushNotifications = {
     const notif = payload?.notification || {};
     const title = notif.title || data.title || 'Notificación';
     const body = notif.body || data.message || '';
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      try {
-        const n = new Notification(title, {
-          body,
-          icon: notif.icon || '/assets/img/favicons/favicon-96x96.png',
-          tag: data.order_id ? `order-${data.order_id}` : 'app-push',
-        });
-        n.onclick = () => {
-          const url = data.url || '/';
-          window.focus();
-          if (url && url !== '/') window.location.href = url;
-        };
-      } catch (_) { /* ignore */ }
-    }
+    this.showLocal(title, {
+      body,
+      icon: notif.icon || `${this._appBase()}/assets/img/favicons/favicon-96x96.png`,
+      tag: data.order_id ? `order-${data.order_id}-${data.type || 'push'}` : 'app-push',
+      data: { link: data.url || '' },
+    });
     window.dispatchEvent(new CustomEvent('app:push-foreground', { detail: { payload, data, title, body } }));
+  },
+
+  // Android Chrome no permite `new Notification()` en páginas: se muestra vía el service worker.
+  showLocal(title, options = {}) {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    const link = options.data && options.data.link;
+    const viaPage = () => {
+      try {
+        const n = new Notification(title, options);
+        n.onclick = () => { window.focus(); if (link) window.location.href = link; };
+      } catch (_) { /* ignore */ }
+    };
+    const reg = this._serviceWorkerReg;
+    if (reg && typeof reg.showNotification === 'function') {
+      reg.showNotification(title, options).catch(viaPage);
+      return;
+    }
+    viaPage();
   },
 };
 

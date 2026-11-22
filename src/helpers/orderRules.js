@@ -202,6 +202,11 @@ function computeDeliveryPayout(dg, order) {
   return { commission, tip, amount: toMoney(commission + tip) };
 }
 
+// Regla: al crear o pagar un pedido se avisa a los repartidores solo si es a domicilio (1) y ya quedó aceptado (2).
+function shouldNotifyDelivery(order) {
+  return !!order && Number(order.delivery_type) === 1 && Number(order.orderstatus_id) === 2;
+}
+
 const COORD_TOLERANCE = 0.000001;
 
 function pickDeliveryAddress(savedAddresses, { addressId, lat, lng, defaultAddressId } = {}) {
@@ -223,6 +228,7 @@ function pickDeliveryAddress(savedAddresses, { addressId, lat, lng, defaultAddre
 }
 
 module.exports = {
+  shouldNotifyDelivery,
   MAX_QUANTITY,
   WALLET_METHOD,
   DEFAULT_CASH_METHOD,

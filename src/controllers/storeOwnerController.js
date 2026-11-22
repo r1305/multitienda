@@ -168,16 +168,17 @@ exports.markOrderPreparing = async (req, res) => {
   }
 };
 
-// Pedidos nuevos (estado 1) de la tienda; lo consulta el sondeo del panel solo con la pestaña visible.
+// Pedidos que esperan la aceptación de la tienda (1 nuevo, 10 programado sin confirmar); con autoaceptación
+// nunca quedan en esos estados. latest_id permite avisar aunque otro pedido se haya aceptado en el mismo intervalo.
 exports.newOrdersCount = async (req, res) => {
   try {
     const restaurant = await getOwnerRestaurant(req.user.id);
     if (!restaurant) return res.status(403).json({ success: false, count: 0 });
     const [[row]] = await sequelize.query(
-      'SELECT COUNT(*) AS c FROM orders WHERE restaurant_id = ? AND orderstatus_id = ?',
-      { replacements: [restaurant.id, states.STATUS.PENDING] }
+      'SELECT COUNT(*) AS c, MAX(id) AS m FROM orders WHERE restaurant_id = ? AND orderstatus_id IN (?, ?)',
+      { replacements: [restaurant.id, states.STATUS.PENDING, states.STATUS.SCHEDULED_PENDING] }
     );
-    res.json({ success: true, count: Number(row && row.c) || 0 });
+    res.json({ success: true, count: Number(row && row.c) || 0, latest_id: Number(row && row.m) || 0 });
   } catch (err) {
     console.error('newOrdersCount error:', err.message);
     res.status(500).json({ success: false, count: 0 });

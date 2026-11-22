@@ -23,13 +23,15 @@
     const messaging = firebase.messaging();
 
     messaging.onBackgroundMessage(function (payload) {
+      // Con payload `notification` el SDK ya muestra la notificación; mostrarla aquí la duplicaba.
+      if (payload && payload.notification) return;
       const data = payload?.data || {};
       const notif = payload?.notification || {};
       const title = notif.title || data.title || 'Notificación';
       const body = notif.body || data.message || '';
       const icon = notif.icon || data.icon || '/assets/img/favicons/favicon-96x96.png';
       const image = notif.image || data.image || undefined;
-      const link = data.url || data.web_url || data.link || '/';
+      const link = data.url || data.web_url || data.link || self.registration.scope || '/';
 
       const options = {
         body,
@@ -44,7 +46,7 @@
     });
 
     self.addEventListener('notificationclick', function (event) {
-      const target = event.notification?.data?.link || '/';
+      const target = event.notification?.data?.link || self.registration.scope || '/';
       event.notification.close();
       event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {

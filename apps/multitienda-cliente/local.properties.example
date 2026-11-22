@@ -1,0 +1,5 @@
+# Copia este archivo como local.properties (no se versiona).
+sdk.dir=C\:\\Users\\<usuario>\\AppData\\Local\\Android\\Sdk
+# URL base de la API, sin barra final. Emulador -> servidor local: 10.0.2.2
+# Produccion: https://<dominio>/<base>/api (ver /get-settings en la web)
+api.baseUrl=http://10.0.2.2:3001/api

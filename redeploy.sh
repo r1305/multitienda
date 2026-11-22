@@ -10,7 +10,7 @@
 #   RAMA          rama a desplegar (default: shipness)
 #   APP           nombre de la app en cPanel (default: carpeta del repo)
 #   CPANEL_USER   usuario de cPanel (default: basename de $HOME)
-#   NODE_VERSION  version de Node del nodevenv (default: 22)
+#   NODE_VERSION  version de Node del nodevenv (default: la mas alta que exista en nodevenv/$APP, ej. 24)
 #
 # Activa /home/$CPANEL_USER/nodevenv/$APP/$NODE_VERSION/bin/activate y entra al repo.
 
@@ -21,7 +21,10 @@ RAMA="${RAMA:-shipness}"
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP="${APP:-$(basename "$RAIZ")}"
 CPANEL_USER="${CPANEL_USER:-$(basename "$HOME")}"
-NODE_VERSION="${NODE_VERSION:-22}"
+if [ -z "${NODE_VERSION:-}" ]; then
+  NODE_VERSION="$(ls -1 "/home/$CPANEL_USER/nodevenv/$APP" 2>/dev/null | grep -E '^[0-9]+$' | sort -n | tail -1 || true)"
+fi
+NODE_VERSION="${NODE_VERSION:-24}"
 ACTIVATE="/home/$CPANEL_USER/nodevenv/$APP/$NODE_VERSION/bin/activate"
 
 fallo() {

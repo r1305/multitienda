@@ -1,3 +1,5 @@
+const { shouldNotifyDelivery } = require('./orderRules');
+
 // Ruta única de notificaciones por evento de pedido.
 // Un fallo al notificar nunca debe romper la transición de estado: se registra y se continúa.
 function slimOrder(order) {
@@ -20,7 +22,7 @@ async function emitOrderEvent(event, order, opts = {}) {
     if (event === 'paid') {
       await notifications.notifyCustomerOrderEvent(o, 'paid');
       await notifications.notifyStoreNewOrder(o, o.restaurant_id);
-      if (Number(o.orderstatus_id) === 2 && Number(o.delivery_type) === 1) await notifications.notifyDeliveryNewOrder(o);
+      if (shouldNotifyDelivery(o)) await notifications.notifyDeliveryNewOrder(o);
       return;
     }
     await notifications.notifyCustomerOrderEvent(o, event);

@@ -175,7 +175,7 @@ exports.placeOrder = async (req, res) => {
     try {
       const impl = require('../helpers/notifications.impl');
       await impl.notifyStoreNewOrder(newOrder, restaurant_id);
-      if (newOrder.orderstatus_id === 2) await impl.notifyDeliveryNewOrder(newOrder);
+      if (rules.shouldNotifyDelivery(newOrder)) await impl.notifyDeliveryNewOrder(newOrder);
     } catch (notifErr) {
       console.error('Order notification error:', notifErr.message);
     }

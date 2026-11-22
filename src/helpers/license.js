@@ -89,10 +89,9 @@ function verifyToken(tok, publicKeyPem, nowMs = Date.now(), domain) {
 
 function computeMode(v, nowMs) {
   if (v.ok) return 'ok';
-  if (v.reason !== 'expired' && v.reason !== 'suspended') return 'readonly';
-  // La gracia corre desde exp; un token suspendido sin suspended_at no tiene gracia.
-  const since = v.reason === 'expired' ? toMs(v.payload.exp) : toMs(v.payload.suspended_at);
-  return Number.isFinite(since) && nowMs <= since + graceMs() ? 'grace' : 'readonly';
+  // Gracia solo para caducadas (desde exp); la suspensión bloquea de inmediato.
+  if (v.reason !== 'expired') return 'readonly';
+  return nowMs <= toMs(v.payload.exp) + graceMs() ? 'grace' : 'readonly';
 }
 
 async function loadToken() {

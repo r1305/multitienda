@@ -1,6 +1,7 @@
 const { sequelize } = require('../../models');
 const { formatOrderElapsed } = require('../../helpers/orderDuration');
 const crypto = require('crypto');
+const fs = require('fs');
 const rules = require('../../helpers/orderRules');
 const states = require('../../helpers/orderStates');
 const { cancelOrderWithRefund } = require('../../helpers/orderCancel');
@@ -1247,17 +1248,37 @@ exports.makeDefaultTranslation = async (req, res) => {
 };
 
 // ==================== 13. SLIDERS ====================
+const { sliderUrlFromForm } = require('../../helpers/sliderLink');
+const { getAppBasePath } = require('../../helpers/appBasePath');
+
+function sliderSaveFailed(req, err, message) {
+  console.error('[slider]', err && err.message);
+  if (req.file) fs.unlink(req.file.path, () => {});
+  const code = err && ((err.original && err.original.code) || (err.parent && err.parent.code) || err.code);
+  const schemaMissing = code === 'ER_BAD_FIELD_ERROR' || code === 'ER_NO_SUCH_TABLE';
+  req.flash('error', schemaMissing ? `${message}: falta ejecutar node migrate.js en el servidor` : message);
+}
+
+async function sliderStores() {
+  const [stores] = await sequelize.query('SELECT id, name, slug FROM restaurants WHERE slug IS NOT NULL AND slug != \'\' ORDER BY name ASC');
+  return stores;
+}
+
 exports.sliders = async (req, res) => {
   try {
     const [sliders] = await sequelize.query('SELECT * FROM promo_sliders ORDER BY id DESC');
     for (let s of sliders) {
-      const [slides] = await sequelize.query('SELECT * FROM slides ORDER BY sort_position ASC');
-      s.slides = slides;
+      // La tabla slides varía entre la base heredada y la creada por migrate.js: si no casa, el listado no debe caerse.
+      try { [s.slides] = await sequelize.query('SELECT * FROM slides ORDER BY sort_position ASC'); } catch (e) {
+        const code = e && ((e.original && e.original.code) || (e.parent && e.parent.code) || e.code);
+        if (code !== 'ER_BAD_FIELD_ERROR' && code !== 'ER_NO_SUCH_TABLE') console.error('[sliders]', e.message);
+        s.slides = [];
+      }
     }
-    res.render('admin/sliders', { user: req.session.user, sliders, count: sliders.length, success: req.flash('success')[0], error: req.flash('error')[0] });
+    res.render('admin/sliders', { user: req.session.user, sliders, stores: await sliderStores(), count: sliders.length, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     console.error(err);
-    res.render('admin/sliders', { user: req.session.user, sliders: [], count: 0, success: null, error: 'Error loading sliders' });
+    res.render('admin/sliders', { user: req.session.user, sliders: [], stores: [], count: 0, success: null, error: 'Error loading sliders' });
   }
 };
 
@@ -1266,7 +1287,7 @@ exports.editSlider = async (req, res) => {
     const [rows] = await sequelize.query('SELECT * FROM promo_sliders WHERE id = ? LIMIT 1', { replacements: [req.params.id] });
     const [sliders] = await sequelize.query('SELECT * FROM promo_sliders ORDER BY id DESC');
     for (let s of sliders) { s.slides = []; }
-    res.render('admin/sliders', { user: req.session.user, sliders, count: sliders.length, editSlider: rows[0] || null, success: req.flash('success')[0], error: req.flash('error')[0] });
+    res.render('admin/sliders', { user: req.session.user, sliders, stores: await sliderStores(), count: sliders.length, editSlider: rows[0] || null, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     req.flash('error', 'Error loading slider');
     res.redirect('/admin/promo-sliders');
@@ -1277,9 +1298,10 @@ exports.createSlider = async (req, res) => {
   try {
     const { name, position_id, size } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : null;
-    await sequelize.query('INSERT INTO promo_sliders (name, position_id, size, image, created_at, updated_at) VALUES (?,?,?,?,NOW(),NOW())', { replacements: [name, position_id||0, size||0, image] });
+    const url = sliderUrlFromForm(req.body, getAppBasePath());
+    await sequelize.query('INSERT INTO promo_sliders (name, position_id, size, image, url, created_at, updated_at) VALUES (?,?,?,?,?,NOW(),NOW())', { replacements: [name, position_id||0, size||0, image, url] });
     req.flash('success', 'Slider created');
-  } catch (err) { console.error(err); req.flash('error', 'Error creating slider'); }
+  } catch (err) { sliderSaveFailed(req, err, 'Error creating slider'); }
   res.redirect('/admin/promo-sliders');
 };
 
@@ -1287,13 +1309,14 @@ exports.updateSlider = async (req, res) => {
   try {
     const { id, name, position_id, size } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : null;
+    const url = sliderUrlFromForm(req.body, getAppBasePath());
     if (image) {
-      await sequelize.query('UPDATE promo_sliders SET name=?, position_id=?, size=?, image=?, updated_at=NOW() WHERE id=?', { replacements: [name, position_id||0, size||0, image, id] });
+      await sequelize.query('UPDATE promo_sliders SET name=?, position_id=?, size=?, image=?, url=?, updated_at=NOW() WHERE id=?', { replacements: [name, position_id||0, size||0, image, url, id] });
     } else {
-      await sequelize.query('UPDATE promo_sliders SET name=?, position_id=?, size=?, updated_at=NOW() WHERE id=?', { replacements: [name, position_id||0, size||0, id] });
+      await sequelize.query('UPDATE promo_sliders SET name=?, position_id=?, size=?, url=?, updated_at=NOW() WHERE id=?', { replacements: [name, position_id||0, size||0, url, id] });
     }
     req.flash('success', 'Slider updated');
-  } catch (err) { console.error(err); req.flash('error', 'Error updating slider'); }
+  } catch (err) { sliderSaveFailed(req, err, 'Error updating slider'); }
   res.redirect('/admin/promo-sliders');
 };
 
