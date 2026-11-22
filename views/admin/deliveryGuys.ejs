@@ -1,6 +1,7 @@
 <% var active = 'delivery'; var pageTitle = 'Delivery Guys'; %>
 <% var mc = typeof mapCenter !== 'undefined' ? mapCenter : { lat: 9.9281, lng: -84.0907 }; %>
 <% var gKey = (typeof settings !== 'undefined' && settings && settings.googleApiKey) ? String(settings.googleApiKey) : ''; %>
+<% var baseJs = JSON.stringify(typeof appBase !== 'undefined' && appBase ? String(appBase) : ''); %>
 <% var gKeyJs = JSON.stringify(gKey).replace(/</g, '\u003c'); %>
 <% var scripts = `
 <script>
@@ -58,7 +59,7 @@ $(function(){
 
   function refreshMap() {
     var statusEl = document.getElementById("deliveryMapStatus");
-    fetch("/admin/api/delivery-guys-locations", { credentials: "same-origin", headers: { Accept: "application/json" } })
+    fetch(${baseJs} + "/admin/api/delivery-guys-locations", { credentials: "same-origin", headers: { Accept: "application/json" } })
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var drivers = data.drivers || [];
