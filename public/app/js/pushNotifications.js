@@ -80,8 +80,10 @@ const PushNotifications = {
     if (!('serviceWorker' in navigator)) return null;
     if (this._serviceWorkerReg) return this._serviceWorkerReg;
     const scope = this._appBase() ? `${this._appBase()}/` : '/';
-    this._serviceWorkerReg = await navigator.serviceWorker.register(this.serviceWorkerUrl(), { scope });
-    return this._serviceWorkerReg;
+    const reg = await navigator.serviceWorker.register(this.serviceWorkerUrl(), { scope });
+    await navigator.serviceWorker.ready;
+    this._serviceWorkerReg = reg;
+    return reg;
   },
 
   async initSDK() {
@@ -149,7 +151,13 @@ const PushNotifications = {
     const authToken = this._currentAuthToken();
     if (!authToken) return false;
 
-    const token = await this._getCurrentToken();
+    let token = null;
+    try {
+      token = await this._getCurrentToken();
+    } catch (e) {
+      console.warn('[FCM] No se pudo obtener el token del dispositivo', e && e.message ? e.message : e);
+      return false;
+    }
     if (!token) return false;
 
     const userKey = `${roleTag}:${String(userId)}`;

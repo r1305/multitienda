@@ -21,6 +21,7 @@
 
     firebase.initializeApp(config);
     const messaging = firebase.messaging();
+    if (messaging._delegate && !messaging._delegate.swRegistration) messaging._delegate.swRegistration = self.registration;
 
     messaging.onBackgroundMessage(function (payload) {
       // Con payload `notification` el SDK ya muestra la notificación; mostrarla aquí la duplicaba.

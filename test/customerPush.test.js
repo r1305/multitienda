@@ -157,3 +157,51 @@ test('initSDK crea la app por defecto aunque ya exista la app orders-rt de Order
   assert.strictEqual(await window.PushNotifications.initSDK(), true);
   assert.deepStrictEqual(apps.map((a) => a.name), ['orders-rt', '[DEFAULT]']);
 });
+
+test('el service worker asigna su registro a messaging para que pushsubscriptionchange no lea pushManager de undefined', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../public/firebase-messaging-sw.js'), 'utf8');
+  const delegate = {};
+  const registration = { scope: 'https://tienda.test/multitienda/', pushManager: {} };
+  const self = { location: { search: '?apiKey=k&projectId=p&messagingSenderId=s&appId=a' }, registration, addEventListener() {} };
+  const ctx = {
+    self,
+    URLSearchParams,
+    importScripts() {},
+    clients: {},
+    firebase: {
+      initializeApp() {},
+      messaging() { return { _delegate: delegate, onBackgroundMessage() {} }; },
+    },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(src, ctx);
+  assert.strictEqual(delegate.swRegistration, registration);
+});
+
+test('enable devuelve error controlado si getToken falla', async () => {
+  const src = fs.readFileSync(path.join(__dirname, '../public/app/js/pushNotifications.js'), 'utf8');
+  const reg = {};
+  const firebase = {
+    apps: [],
+    initializeApp() { this.apps.push({ name: '[DEFAULT]' }); },
+    messaging() {
+      return { onMessage() {}, async getToken() { throw new TypeError("Cannot read properties of undefined (reading 'pushManager')"); } };
+    },
+  };
+  const window = { firebase, dispatchEvent() {}, location: { pathname: '/order/x' } };
+  const ctx = {
+    window,
+    URLSearchParams,
+    console: { warn() {} },
+    CustomEvent: class { constructor(type) { this.type = type; } },
+    Notification: { permission: 'granted' },
+    navigator: { serviceWorker: { async register() { return reg; }, ready: Promise.resolve(reg) } },
+    localStorage: { getItem: () => 'tok', setItem() {} },
+    Store: { settings: { firebaseApiKey: 'k', firebaseProjectId: 'p', firebaseMessagingSenderId: 's', firebaseAppId: 'a', firebaseVapidKey: 'v' } },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(src, ctx);
+  const r = await window.PushNotifications.enable(5, 'customer');
+  assert.deepStrictEqual({ ...r }, { ok: false, reason: 'token_save_failed' });
+  assert.strictEqual(window.PushNotifications._serviceWorkerReg, reg);
+});
