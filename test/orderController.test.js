@@ -8,7 +8,7 @@ function stub(relPath, exports) {
   require.cache[file] = { id: file, filename: file, loaded: true, exports };
 }
 
-const state = { orders: {}, addresses: [], created: null, itemsQuery: null };
+const state = { orders: {}, addresses: [], created: null, itemsQuery: null, autoAccept: false, notified: [] };
 
 const fakeTx = () => ({ finished: false, LOCK: { UPDATE: 'UPDATE' }, async commit() { this.finished = 'commit'; }, async rollback() { this.finished = 'rollback'; } });
 
@@ -25,7 +25,7 @@ stub('src/models', {
   OrderItemAddon: { async bulkCreate() {} },
   Restaurant: {
     async findByPk() {
-      return { id: 5, latitude: '-12.0', longitude: '-77.0', delivery_charge_type: 'DYNAMIC', base_delivery_distance: 1, extra_delivery_distance: 1, extra_delivery_charge: 2, base_delivery_charge: '5.00', free_delivery_subtotal: 0, restaurant_charges: 0, auto_acceptable: false, zone_id: null };
+      return { id: 5, latitude: '-12.0', longitude: '-77.0', delivery_charge_type: 'DYNAMIC', base_delivery_distance: 1, extra_delivery_distance: 1, extra_delivery_charge: 2, base_delivery_charge: '5.00', free_delivery_subtotal: 0, restaurant_charges: 0, auto_acceptable: state.autoAccept, zone_id: null };
     },
   },
   Address: { async findAll(q) { return state.addresses.filter((a) => a.user_id === q.where.user_id); } },
@@ -35,7 +35,10 @@ stub('src/models', {
   sequelize: { async transaction() { return fakeTx(); } },
 });
 stub('src/helpers/cache', { async get() { return {}; }, async set() {} });
-stub('src/helpers/notifications.impl', { async notifyStoreNewOrder() {}, async notifyDeliveryNewOrder() {} });
+stub('src/helpers/notifications.impl', {
+  async notifyStoreNewOrder() { state.notified.push('store'); },
+  async notifyDeliveryNewOrder(o) { state.notified.push(['delivery', o.orderstatus_id]); },
+});
 stub('src/helpers/orderCatalog', {
   async getAllowedPaymentMethods() { return ['COD']; },
   async loadCatalog() {
@@ -109,6 +112,19 @@ test('placeOrder rechaza dirección de otro usuario', async () => {
   await controller.placeOrder({ user: { id: 1, default_address_id: 9 }, body: baseBody({ address_id: 9 }) }, res);
   assert.strictEqual(res.body.success, false);
   assert.strictEqual(state.created, null);
+});
+
+test('placeOrder con autoaceptación avisa a tienda y repartidores; sin ella solo a la tienda', async () => {
+  state.addresses = [farAddress];
+  for (const [autoAccept, expected] of [[true, ['store', ['delivery', 2]]], [false, ['store']]]) {
+    state.autoAccept = autoAccept;
+    state.notified = [];
+    const res = fakeRes();
+    await controller.placeOrder({ user: { id: 1, default_address_id: 9 }, body: baseBody({ address_id: 9 }) }, res);
+    assert.strictEqual(res.body.success, true, res.body.message);
+    assert.deepStrictEqual(state.notified, expected);
+  }
+  state.autoAccept = false;
 });
 
 test('pickDeliveryAddress: coincide por coordenadas exactas o usa la predeterminada sin datos', () => {

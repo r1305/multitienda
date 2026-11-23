@@ -735,6 +735,7 @@ const CheckoutPage = {
     async pay(method) {
       if (!this.selectedAddress && this.addresses.length) { this.error = 'Selecciona una dirección de entrega'; return; }
       this.processing = true; this.error = '';
+      if (window.PushNotifications && Store.user) PushNotifications.enable(Store.user.id, Store.user.role || 'customer').catch(() => {});
       try {
         const addr = this.selectedAddress || Store.location || {};
         const loc = { lat: parseFloat(addr.latitude || addr.lat || 0), lng: parseFloat(addr.longitude || addr.lng || 0), address: addr.address || '', address_id: addr.id || null };
@@ -831,12 +832,14 @@ const OrderDetailPage = {
         </div>
         <div v-if="canCancel" style="padding:16px"><button style="width:100%;padding:12px;border-radius:8px;background:#ffebee;color:#c62828;font-weight:600;font-size:14px" @click="cancelOrder">Cancelar Orden</button></div>
         <div v-if="canRate" style="padding:0 16px 16px"><button class="btn-primary" @click="$router.push('/rate/'+order.id)">Calificar Orden</button></div>
-        <div v-if="[3,4].includes(order.orderstatus_id)" style="padding:0 16px 16px">
-          <div style="font-size:14px;font-weight:600;margin-bottom:8px"><i class="fas fa-comments" style="color:var(--primary)"></i> Chat con el repartidor</div>
-          <div v-if="pushState === 'default' || pushMsg" style="display:flex;align-items:center;gap:8px;background:#e3f2fd;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#1565c0">
-            <span style="flex:1">{{ pushMsg || 'Activa las notificaciones para enterarte cuando el repartidor te escriba.' }}</span>
+        <div v-if="isRunning && (pushState === 'default' || pushMsg)" style="padding:0 16px 16px">
+          <div style="display:flex;align-items:center;gap:8px;background:#e3f2fd;border-radius:8px;padding:8px 12px;font-size:12px;color:#1565c0">
+            <span style="flex:1">{{ pushMsg || 'Activa las notificaciones para enterarte cuando un repartidor tome tu pedido y cuando te escriba.' }}</span>
             <button type="button" style="background:#1976d2;color:#fff;padding:6px 12px;border-radius:6px;font-size:12px" @click="enablePush">Activar</button>
           </div>
+        </div>
+        <div v-if="[3,4].includes(order.orderstatus_id)" style="padding:0 16px 16px">
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px"><i class="fas fa-comments" style="color:var(--primary)"></i> Chat con el repartidor</div>
           <div style="background:var(--bg);border-radius:8px;padding:12px;max-height:250px;overflow-y:auto;margin-bottom:8px">
             <div v-if="!messages.length" style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Sin mensajes aun</div>
             <div v-for="m in messages" :key="m.id" :style="{marginBottom:'8px',display:'flex',justifyContent:m.sender_id==Store.user.id?'flex-end':'flex-start'}">
