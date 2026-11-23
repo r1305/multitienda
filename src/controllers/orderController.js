@@ -9,6 +9,7 @@ const { lockWallet, walletWithdraw } = require('../helpers/orderWallet');
 const { attachEta } = require('../helpers/orderEta');
 const { buildReorder } = require('../helpers/orderReorder');
 const mp = require('../helpers/mercadoPago');
+const { publishOrderState } = require('../helpers/orderRealtime');
 
 async function getSettings() {
   const cache = require('../helpers/cache');
@@ -167,6 +168,7 @@ exports.placeOrder = async (req, res) => {
     }
 
     await t.commit();
+    publishOrderState(newOrder, orderstatus_id);
 
     if (preference) {
       return res.json({ success: true, data: newOrder, init_point: preference.init_point });

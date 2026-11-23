@@ -172,6 +172,7 @@ const DeliveryOrdersPage = {
     this.interval = setInterval(() => { if (this.gpsReady) this.refresh(); }, 45000);
   },
   beforeUnmount() {
+    if (this._stopRealtime) this._stopRealtime();
     if (this.interval) clearInterval(this.interval);
     if (this._onPushReady) {
       window.removeEventListener('app:push-ready', this._onPushReady);
@@ -264,7 +265,17 @@ const DeliveryOrdersPage = {
         const activeRes = await API.post('/delivery/get-active-orders', { token });
         this.myOrders = [...(Array.isArray(activeRes) ? activeRes : []), ...(Array.isArray(res2) ? res2 : [])];
       } catch(e) {}
+      this.syncRealtime();
       this.loading = false;
+    },
+    syncRealtime() {
+      if (!window.OrderRealtime) return;
+      const ids = [...this.allOrders, ...this.myOrders.filter(o => [3, 4].includes(o.orderstatus_id))].map(o => o.unique_order_id).filter(Boolean).sort();
+      const key = ids.join(',');
+      if (key === this._rtKey) return;
+      this._rtKey = key;
+      if (this._stopRealtime) this._stopRealtime();
+      this._stopRealtime = OrderRealtime.watch(ids, () => this.refresh());
     },
     async ignoreOrder(orderId) { try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/ignore-order', { token, order_id: orderId }); this.allOrders = this.allOrders.filter(o => o.id !== orderId); } catch(e) {} },
     tabCount(tab) { if (tab === 'available') return this.allOrders.length; if (tab === 'active') return this.myOrders.filter(o => [3,4].includes(o.orderstatus_id)).length; return this.myOrders.filter(o => [5,6].includes(o.orderstatus_id)).length; },
@@ -361,6 +372,7 @@ const DeliveryOrderDetailPage = {
   async mounted() {
     if (!localStorage.getItem('deliveryToken')) { this.$router.push('/delivery'); return; }
     await this.loadOrder();
+    if (window.OrderRealtime && this.order && this.order.unique_order_id) this._stopRealtime = OrderRealtime.watch([this.order.unique_order_id], () => this.loadOrder());
     if (this.order && [3,4].includes(this.order.orderstatus_id)) { this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); }
     this._onPushForeground = (ev) => {
       const d = (ev.detail && ev.detail.data) || {};
@@ -368,7 +380,7 @@ const DeliveryOrderDetailPage = {
     };
     window.addEventListener('app:push-foreground', this._onPushForeground);
   },
-  beforeUnmount() { this.stopGpsTracking(); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
+  beforeUnmount() { if (this._stopRealtime) this._stopRealtime(); this.stopGpsTracking(); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
   methods: {
     async loadOrder() { try { const token = localStorage.getItem('deliveryToken'); const res = await API.post('/delivery/get-single-delivery-order', { token, order_id: this.$route.params.id }); this.order = res; } catch(e) {} this.loading = false; },
     async acceptOrder() { this.actionLoading = true; try { const token = localStorage.getItem('deliveryToken'); await API.post('/delivery/accept-to-deliver', { token, order_id: this.order.id }); this.order.orderstatus_id = 3; this.successMsg = 'Pedido aceptado!'; this.startGpsTracking(); this.loadMessages(); this.chatInterval = setInterval(() => this.loadMessages(), 20000); } catch(e) {} this.actionLoading = false; },

@@ -315,9 +315,10 @@ const StoreOwnerOrdersPage = {
     }
   },
   mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } PushNotifications.registerForContext(); this.loadOrders(); this.interval = setInterval(() => this.loadOrders(), 20000); this._onNewOrders = () => this.loadOrders(); window.addEventListener('store-owner:new-orders', this._onNewOrders); },
-  beforeUnmount() { if (this.interval) clearInterval(this.interval); if (this._onNewOrders) window.removeEventListener('store-owner:new-orders', this._onNewOrders); },
+  beforeUnmount() { if (this._stopRealtime) this._stopRealtime(); if (this.interval) clearInterval(this.interval); if (this._onNewOrders) window.removeEventListener('store-owner:new-orders', this._onNewOrders); },
   methods: {
-    async loadOrders() { try { const token = localStorage.getItem('storeOwnerToken'); const [res, past] = await Promise.all([API.post('/store-owner/get-orders', { token }), API.post('/store-owner/get-past-orders', { token })]); this.orders = Array.isArray(res) ? res : (res.data || []); this.pastOrders = Array.isArray(past) ? past : (past.data || []); } catch(e) {} this.loading = false; },
+    async loadOrders() { try { const token = localStorage.getItem('storeOwnerToken'); const [res, past] = await Promise.all([API.post('/store-owner/get-orders', { token }), API.post('/store-owner/get-past-orders', { token })]); this.orders = Array.isArray(res) ? res : (res.data || []); this.pastOrders = Array.isArray(past) ? past : (past.data || []); } catch(e) {} this.syncRealtime(); this.loading = false; },
+    syncRealtime() { if (!window.OrderRealtime) return; const ids = (this.orders || []).map(o => o.unique_order_id).filter(Boolean).sort(); const key = ids.join(','); if (key === this._rtKey) return; this._rtKey = key; if (this._stopRealtime) this._stopRealtime(); this._stopRealtime = OrderRealtime.watch(ids, () => this.loadOrders()); },
     statusText(id) { return {1:'Nuevo',2:'Aceptado',3:'En delivery',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',10:'Programado',11:'Confirmado',12:'En preparacion'}[id] || ''; },
     statusClass(id) { return [5].includes(id)?'so-badge-success':[6].includes(id)?'so-badge-danger':'so-badge-info'; }
   }
@@ -383,7 +384,8 @@ const StoreOwnerOrderDetailPage = {
     </div>`,
   setup() { return { Store }; },
   data() { return { order: null, loading: true, actionLoading: false, successMsg: '' }; },
-  mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } this.loadOrder(); },
+  async mounted() { if (!localStorage.getItem('storeOwnerToken')) { this.$router.push('/store-owner'); return; } await this.loadOrder(); if (window.OrderRealtime && this.order && this.order.unique_order_id) this._stopRealtime = OrderRealtime.watch([this.order.unique_order_id], () => this.loadOrder()); },
+  beforeUnmount() { if (this._stopRealtime) this._stopRealtime(); },
   methods: {
     async loadOrder() { try { const token = localStorage.getItem('storeOwnerToken'); this.order = await API.post('/store-owner/get-single-order', { token, order_id: this.$route.params.id }); } catch(e) {} this.loading = false; },
     async acceptOrder() { this.actionLoading = true; try { const token = localStorage.getItem('storeOwnerToken'); await API.post('/store-owner/accept-order', { token, order_id: this.order.id }); this.order.orderstatus_id = 2; this.successMsg = 'Pedido aceptado!'; } catch(e) {} this.actionLoading = false; },

@@ -1,0 +1,12 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "orders": {
+      "$orderId": {
+        ".read": true,
+        ".write": false
+      }
+    }
+  }
+}

@@ -31,6 +31,8 @@ exports.getSettings = async (req, res) => {
         return { id: j.id, key: j.key, value: j.value };
       })
       .filter((s) => PUBLIC_SETTINGS_KEYS.includes(s.key));
+    const rtdbUrl = (process.env.FIREBASE_DATABASE_URL || '').trim();
+    if (rtdbUrl) settings.push({ id: 0, key: 'firebaseDatabaseURL', value: rtdbUrl });
     await cache.set('settings:all', settings, parseInt(process.env.CACHE_SETTINGS_TTL || '300', 10));
     res.json(settings);
   } catch (err) {

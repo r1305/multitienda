@@ -469,6 +469,7 @@ async function notifyCustomerOrderEvent(order, event) {
 }
 
 module.exports = {
+  getFirebaseApp,
   sendPushNotification,
   saveNotification,
   saveFCMToken,

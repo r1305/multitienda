@@ -1,5 +1,6 @@
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../models');
+const { publishOrderState } = require('./orderRealtime');
 
 // Estados de pedido (tabla orderstatus). 12 = en preparación (entre aceptado y listo/asignado)
 const STATUS = {
@@ -89,6 +90,7 @@ async function transition(order, from, to, actor, t, opts = {}) {
   if (affected !== 1) {
     throw new OrderStateError('El pedido ya cambió de estado o no se puede modificar');
   }
+  publishOrderState({ id: orderId, unique_order_id: order && order.unique_order_id }, target, t);
   return { id: orderId, from: effective, to: target };
 }
 

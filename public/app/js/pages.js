@@ -871,13 +871,14 @@ const OrderDetailPage = {
       if (d.type === 'chat') this.loadMessages(); else this.loadOrder();
     };
     window.addEventListener('app:push-foreground', this._onPushForeground);
+    if (window.OrderRealtime) this._stopRealtime = OrderRealtime.watch([this.$route.params.id], () => this.loadOrder());
     if (this.isRunning) {
       this.refreshInterval = setInterval(() => this.loadOrder(), 20000);
       this.loadMessages();
       this.chatInterval = setInterval(() => this.loadMessages(), 20000);
     }
   },
-  beforeUnmount() { if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
+  beforeUnmount() { if (this._stopRealtime) this._stopRealtime(); if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
   methods: {
     async enablePush() {
       if (!window.PushNotifications || !Store.user) return;
