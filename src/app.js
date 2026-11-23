@@ -51,7 +51,7 @@ async function createApp() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://code.jquery.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com", "https://unpkg.com", "https://cdn.datatables.net", "https://maps.googleapis.com", "https://maps.gstatic.com"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://code.jquery.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com", "https://unpkg.com", "https://cdn.datatables.net", "https://maps.googleapis.com", "https://maps.gstatic.com", "https://*.firebaseio.com", "https://*.firebasedatabase.app"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com", "https://cdn.datatables.net", "https://unpkg.com"],
           fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
