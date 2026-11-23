@@ -1,4 +1,5 @@
 <% var active = 'stores'; var pageTitle = 'Ganancias - ' + (typeof store !== 'undefined' ? store.name : ''); %>
+<% var baseJs = JSON.stringify(typeof appBase !== 'undefined' && appBase ? String(appBase) : ''); %>
 <%
 var today = new Date().toISOString().split('T')[0];
 var scripts = `
@@ -18,7 +19,7 @@ function loadChart(filter) {
     document.getElementById('customRange').style.display = 'none';
   }
 
-  let url = '/admin/api/store-earnings-chart?store_id=' + storeId + '&filter=' + filter;
+  let url = ${baseJs} + '/admin/api/store-earnings-chart?store_id=' + storeId + '&filter=' + filter;
   if (filter === 'custom') {
     const from = document.getElementById('dateFrom').value;
     const to = document.getElementById('dateTo').value;

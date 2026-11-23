@@ -29,7 +29,7 @@
       const notif = payload?.notification || {};
       const title = notif.title || data.title || 'Notificación';
       const body = notif.body || data.message || '';
-      const icon = notif.icon || data.icon || '/assets/img/favicons/favicon-96x96.png';
+      const icon = notif.icon || data.icon || self.registration.scope + 'assets/img/favicons/favicon-96x96.png';
       const image = notif.image || data.image || undefined;
       const link = data.url || data.web_url || data.link || self.registration.scope || '/';
 

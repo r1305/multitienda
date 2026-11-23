@@ -1,4 +1,5 @@
 <% var active = 'delivery'; var pageTitle = 'Ganancias - ' + (typeof deliveryGuy !== 'undefined' ? deliveryGuy.name : ''); %>
+<% var baseJs = JSON.stringify(typeof appBase !== 'undefined' && appBase ? String(appBase) : ''); %>
 <%
 var today = new Date().toISOString().split('T')[0];
 var scripts = `
@@ -20,7 +21,7 @@ function loadChart(filter) {
     document.getElementById('customRange').style.display = 'none';
   }
 
-  let url = '/admin/api/delivery-earnings-chart?user_id=' + userId + '&filter=' + filter;
+  let url = ${baseJs} + '/admin/api/delivery-earnings-chart?user_id=' + userId + '&filter=' + filter;
   if (filter === 'custom') {
     const from = document.getElementById('dateFrom').value;
     const to = document.getElementById('dateTo').value;

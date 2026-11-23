@@ -1,4 +1,5 @@
 <% var active = 'dashboard'; var pageTitle = 'Dashboard'; %>
+<% var baseJs = JSON.stringify(typeof appBase !== 'undefined' && appBase ? String(appBase) : ''); %>
 <%
 var currency = typeof settings !== 'undefined' && settings && settings.currencySymbol ? settings.currencySymbol : '$';
 var elapsedFn = typeof formatOrderElapsed === 'function' ? formatOrderElapsed : function() { return '-'; };
@@ -18,7 +19,7 @@ function loadChart(filter) {
     if (!document.getElementById('dateTo').value) document.getElementById('dateTo').value = new Date().toISOString().split('T')[0];
   } else { customEl.style.display = 'none'; }
 
-  let url = '/admin/api/earnings-chart?filter=' + filter;
+  let url = ${baseJs} + '/admin/api/earnings-chart?filter=' + filter;
   if (filter === 'custom') {
     const from = document.getElementById('dateFrom').value;
     const to = document.getElementById('dateTo').value;
