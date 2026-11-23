@@ -78,7 +78,7 @@ $(function(){
           } else {
             var m = new google.maps.marker.AdvancedMarkerElement({ position: pos, map: map, title: d.name || "", content: window.motoIcon(color, d.name) });
             var entry = { marker: m, popup: popup };
-            m.addListener("gmp-click", function() { infoWindow.setContent(entry.popup); infoWindow.open({ map: map, anchor: m }); });
+            m.addEventListener("gmp-click",function() { infoWindow.setContent(entry.popup); infoWindow.open({ map: map, anchor: m }); });
             markers[d.id] = entry;
           }
         });
