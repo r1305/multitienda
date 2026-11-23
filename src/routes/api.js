@@ -125,6 +125,7 @@ router.post('/delivery/get-earnings', auth, deliveryOnly, misc.getDeliveryEarnin
 router.post('/delivery/get-balance', auth, deliveryOnly, misc.getDeliveryBalance);
 router.post('/conversation/chat', auth, misc.deliveryCustomerChat);
 router.post('/conversation/send', auth, misc.sendChatMessage);
+router.post('/conversation/realtime-token', auth, misc.chatRealtimeToken);
 router.post('/change-avatar', auth, user.changeAvatar);
 router.post('/check-ban', jwtAuthPermitirInactivo, user.checkBan);
 router.post('/toggle-favorite', auth, user.toggleFavorite);

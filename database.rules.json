@@ -7,6 +7,18 @@
         ".read": true,
         ".write": false
       }
+    },
+    "chatAccess": {
+      ".read": false,
+      ".write": false
+    },
+    "chats": {
+      "$orderKey": {
+        "messages": {
+          ".read": "auth != null && root.child('chatAccess/' + $orderKey + '/' + auth.uid).val() === true",
+          ".write": false
+        }
+      }
     }
   }
 }

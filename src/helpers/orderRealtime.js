@@ -58,4 +58,4 @@ function publishOrderState(order, status, t) {
 
 function _setDb(value) { db = value; }
 
-module.exports = { publishOrderState, _setDb };
+module.exports = { publishOrderState, getDb, _setDb };

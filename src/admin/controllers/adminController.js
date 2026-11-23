@@ -9,6 +9,7 @@ const { emitOrderEvent } = require('../../helpers/orderEvents');
 const { releaseDueScheduledOrders } = require('../../helpers/scheduledOrders');
 const { walletDeposit, walletWithdraw } = require('../../helpers/orderWallet');
 const businessTypes = require('../../helpers/businessTypes');
+const chatRealtime = require('../../helpers/chatRealtime');
 
 async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
   const id = rules.toPositiveId(orderId);
@@ -30,8 +31,10 @@ async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
     if (Number(found.orderstatus_id) !== states.STATUS.ASSIGNED) {
       await states.transition(found, [states.STATUS.PENDING, states.STATUS.ACCEPTED, states.STATUS.PREPARING], states.STATUS.ASSIGNED, 'admin', t);
     }
+    const [prev] = await sequelize.query('SELECT user_id FROM accept_deliveries WHERE order_id = ? ORDER BY id DESC LIMIT 1', { replacements: [id], transaction: t });
     await sequelize.query('DELETE FROM accept_deliveries WHERE order_id = ?', { replacements: [id], transaction: t });
     await sequelize.query('INSERT INTO accept_deliveries (order_id, user_id) VALUES (?, ?)', { replacements: [id, uid], transaction: t });
+    chatRealtime.assignDeliveryAccess(found, uid, prev && prev[0] ? prev[0].user_id : null, t);
     return found;
   });
 

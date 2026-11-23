@@ -10,6 +10,7 @@ const { attachEta } = require('../helpers/orderEta');
 const { buildReorder } = require('../helpers/orderReorder');
 const mp = require('../helpers/mercadoPago');
 const { publishOrderState } = require('../helpers/orderRealtime');
+const chatRealtime = require('../helpers/chatRealtime');
 
 async function getSettings() {
   const cache = require('../helpers/cache');
@@ -169,6 +170,7 @@ exports.placeOrder = async (req, res) => {
 
     await t.commit();
     publishOrderState(newOrder, orderstatus_id);
+    chatRealtime.grantCustomerAccess(newOrder, user.id);
 
     if (preference) {
       return res.json({ success: true, data: newOrder, init_point: preference.init_point });

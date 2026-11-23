@@ -6,6 +6,7 @@ const mailer = require('../helpers/mailer');
 const states = require('../helpers/orderStates');
 const { emitOrderEvent } = require('../helpers/orderEvents');
 const { releaseDueScheduledOrders } = require('../helpers/scheduledOrders');
+const chatRealtime = require('../helpers/chatRealtime');
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 const PUBLIC_SETTINGS_KEYS = [
@@ -713,6 +714,7 @@ exports.acceptToDeliver = async (req, res) => {
 
     const order = await Order.findByPk(orderId);
     if (order) {
+      chatRealtime.assignDeliveryAccess(order, req.user.id, null);
       try {
         const { notifyCustomerDeliveryAccepted } = require('../helpers/notifications');
         await notifyCustomerDeliveryAccepted(order);
@@ -919,7 +921,8 @@ exports.sendChatMessage = async (req, res) => {
       return res.status(403).json({ success: false, message: 'No participas en este pedido' });
     }
 
-    await sequelize.query('INSERT INTO chats (order_id, sender_id, message, created_at) VALUES (?, ?, ?, NOW())', { replacements: [orderId, senderId, message] });
+    const inserted = await sequelize.query('INSERT INTO chats (order_id, sender_id, message, created_at) VALUES (?, ?, ?, NOW())', { replacements: [orderId, senderId, message] });
+    chatRealtime.publishChatMessage(p.order.unique_order_id, Array.isArray(inserted) ? inserted[0] : null);
 
     let recipientId = null;
     let title = null;
@@ -934,20 +937,46 @@ exports.sendChatMessage = async (req, res) => {
       title = 'Mensaje del repartidor';
     }
 
-    if (recipientId && title) {
-      const impl = require('../helpers/notifications.impl');
-      const chatData = {
-        order_id: orderId,
-        unique_order_id: p.order.unique_order_id,
-        type: 'chat',
-        recipient_role: recipientRole,
-      };
-      await impl.saveNotification(recipientId, title, message, chatData);
-      await impl.sendPushNotification(title, message, recipientId, null, chatData);
+    // Push por cada mensaje, siempre al otro participante (nunca al emisor), aunque tenga el chat abierto.
+    // Un fallo de push no debe convertir en error un mensaje ya guardado.
+    if (recipientId && title && recipientId !== senderId) {
+      try {
+        const impl = require('../helpers/notifications.impl');
+        const chatData = {
+          order_id: orderId,
+          unique_order_id: p.order.unique_order_id,
+          type: 'chat',
+          recipient_role: recipientRole,
+        };
+        await impl.saveNotification(recipientId, title, message, chatData);
+        const push = await impl.sendPushNotification(title, message, recipientId, null, chatData);
+        if (push && push.ok === false) console.warn('[chat] push no enviado user_id=', recipientId, 'motivo=', push.reason);
+      } catch (pErr) {
+        console.error('sendChatMessage push error:', pErr.message);
+      }
     }
 
     res.json({ success: true });
   } catch (err) {
+    res.status(500).json({ success: false });
+  }
+};
+
+// Custom token de Firebase para el chat en tiempo real. role='delivery' exige rol Delivery Guy.
+exports.chatRealtimeToken = async (req, res) => {
+  try {
+    const asDelivery = String(req.body && req.body.role) === 'delivery';
+    if (asDelivery) {
+      const { getUserRoles } = require('../middleware/auth');
+      if (!(await getUserRoles(req.user.id)).includes('Delivery Guy')) {
+        return res.status(403).json({ success: false, message: 'No tienes permiso para esta acción' });
+      }
+    }
+    const issued = await chatRealtime.issueToken(asDelivery ? 'delivery' : 'customer', req.user.id);
+    if (!issued) return res.status(503).json({ success: false, message: 'Chat en tiempo real no disponible' });
+    res.json({ success: true, token: issued.token, uid: issued.uid });
+  } catch (err) {
+    console.error('chatRealtimeToken error:', err.message);
     res.status(500).json({ success: false });
   }
 };

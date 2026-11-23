@@ -876,9 +876,10 @@ const OrderDetailPage = {
       this.refreshInterval = setInterval(() => this.loadOrder(), 20000);
       this.loadMessages();
       this.chatInterval = setInterval(() => this.loadMessages(), 20000);
+      if (window.ChatRealtime && Store.isLoggedIn && this.order) this._stopChatRt = ChatRealtime.watch({ orderKey: this.order.unique_order_id || this.$route.params.id, role: 'customer', userId: Store.user.id, token: Store.user.auth_token, onMessage: (m) => this.addMessage(m) });
     }
   },
-  beforeUnmount() { if (this._stopRealtime) this._stopRealtime(); if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
+  beforeUnmount() { if (this._stopChatRt) this._stopChatRt(); if (this._stopRealtime) this._stopRealtime(); if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
   methods: {
     async enablePush() {
       if (!window.PushNotifications || !Store.user) return;
@@ -972,6 +973,7 @@ const OrderDetailPage = {
     statusText(id) { return {1:'Recibida',2:'Aceptado',3:'En camino',4:'En camino',5:'Entregado',6:'Cancelado',7:'Listo',8:'Pago pendiente',9:'Pago fallido',10:'Programado',11:'Confirmado',12:'En preparacion'}[id] || ''; },
     statusColor(id) { return {1:'#2196f3',2:'#ff9800',3:'#ff9800',4:'#ff9800',5:'#4caf50',6:'#f44336',7:'#4caf50',8:'#9e9e9e',9:'#f44336',10:'#9c27b0',11:'#2196f3',12:'#ff9800'}[id] || '#9e9e9e'; },
     async cancelOrder() { if (!confirm('Cancelar esta orden?')) return; try { await API.cancelOrder(Store.user.auth_token, Store.user.id, this.order.id); this.order.orderstatus_id = 6; } catch(e) {} },
+    addMessage(m) { if (!m || this.messages.some((x) => String(x.id) === String(m.id))) return; this.messages = [...this.messages, m].sort((a, b) => Number(a.id) - Number(b.id)); },
     async loadMessages() { try { const res = await API.post('/conversation/chat', { token: Store.user.auth_token, order_id: this.order.id }); this.messages = Array.isArray(res) ? res : []; } catch(e) {} },
     async sendMessage() { if (!this.chatMsg.trim()) return; try { await API.post('/conversation/send', { token: Store.user.auth_token, order_id: this.order.id, message: this.chatMsg.trim() }); this.chatMsg = ''; await this.loadMessages(); } catch(e) {} },
     formatTime(d) { if (!d) return ''; return new Date(d).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }); }
