@@ -3,24 +3,37 @@
 // Nodo: orders/{unique_order_id} = { estado, updatedAt }. Sin datos personales.
 const KEY_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
-let db; // undefined: sin inicializar · null: desactivado (sin URL o sin credencial)
+let injected; // solo tests: undefined = usar la config real · null = desactivado · objeto = db falsa
+let memo = null; // { fingerprint, db }
+let lastLogged = null;
 
-function getDb() {
-  if (db !== undefined) return db;
-  db = null;
-  const url = (process.env.FIREBASE_DATABASE_URL || '').trim();
-  if (!url) {
-    console.log('[orderRealtime] FIREBASE_DATABASE_URL vacío: espejo en RTDB desactivado');
-    return db;
-  }
+// Config desde BD (firebaseConfig) con respaldo en entorno. Nunca memoiza "desactivado":
+// si la config cambia (o se invalida al guardar ajustes) se reintenta sin reiniciar el servidor.
+async function getDb() {
+  if (injected !== undefined) return injected;
+  let fp = null;
   try {
-    const app = require('./notifications.impl').getFirebaseApp();
-    if (!app) console.log('[orderRealtime] sin credencial de Firebase: espejo en RTDB desactivado');
-    else db = require('firebase-admin/database').getDatabaseWithUrl(url, app);
+    const cfg = await require('./firebaseConfig').getConfig();
+    fp = cfg.fingerprint;
+    if (!cfg.databaseURL) {
+      if (lastLogged !== fp) console.log('[orderRealtime] URL de Realtime Database vacía: espejo en RTDB desactivado');
+      lastLogged = fp;
+      return null;
+    }
+    if (memo && memo.fingerprint === fp) return memo.db;
+    const app = await require('./notifications.impl').getFirebaseApp();
+    if (!app) {
+      if (lastLogged !== fp) console.log('[orderRealtime] sin credencial de Firebase: espejo en RTDB desactivado');
+      lastLogged = fp;
+      return null;
+    }
+    memo = { fingerprint: fp, db: require('firebase-admin/database').getDatabaseWithUrl(cfg.databaseURL, app) };
+    return memo.db;
   } catch (err) {
-    console.error('[orderRealtime] init:', err.message);
+    if (lastLogged !== fp) console.error('[orderRealtime] init:', err.message);
+    lastLogged = fp;
+    return null;
   }
-  return db;
 }
 
 async function resolveKey(order) {
@@ -35,9 +48,11 @@ async function resolveKey(order) {
 
 async function write(order, status) {
   try {
+    const db = await getDb();
+    if (!db) return;
     const key = await resolveKey(order);
     if (!key || !KEY_RE.test(key)) return;
-    await getDb().ref(`orders/${key}`).update({ estado: Number(status), updatedAt: Date.now() });
+    await db.ref(`orders/${key}`).update({ estado: Number(status), updatedAt: Date.now() });
   } catch (err) {
     console.error('[orderRealtime] pedido', order && order.id, err.message);
   }
@@ -47,7 +62,6 @@ async function write(order, status) {
 // No devuelve promesa: el llamador no espera ni puede fallar por RTDB.
 function publishOrderState(order, status, t) {
   try {
-    if (!getDb()) return;
     const run = () => { write(order, status); };
     if (t && typeof t.afterCommit === 'function') t.afterCommit(run);
     else run();
@@ -56,6 +70,6 @@ function publishOrderState(order, status, t) {
   }
 }
 
-function _setDb(value) { db = value; }
+function _setDb(value) { injected = value; }
 
 module.exports = { publishOrderState, getDb, _setDb };

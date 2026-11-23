@@ -2,6 +2,7 @@
 <% var scripts = ''; %>
 <%
 var s = typeof settings !== 'undefined' ? settings : {};
+var fsa = s.firebaseServiceAccountInfo || {};
 function esc(val) { return String(val || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 %>
 <%
@@ -68,6 +69,7 @@ var body = `
                             <div class="form-group"><label>Firebase API Key</label><input type="text" name="firebaseApiKey" class="form-control" value="${esc(s.firebaseApiKey)}"></div>
                             <div class="form-group"><label>Firebase Auth Domain</label><input type="text" name="firebaseAuthDomain" class="form-control" value="${esc(s.firebaseAuthDomain)}"></div>
                             <div class="form-group"><label>Firebase Project ID</label><input type="text" name="firebaseProjectId" class="form-control" value="${esc(s.firebaseProjectId)}"></div>
+                            <div class="form-group"><label>Firebase Realtime Database URL</label><input type="text" name="firebaseDatabaseURL" class="form-control" placeholder="https://tu-proyecto-default-rtdb.firebaseio.com" value="${esc(s.firebaseDatabaseURL)}"></div>
                             <div class="form-group"><label>Firebase Storage Bucket</label><input type="text" name="firebaseStorageBucket" class="form-control" value="${esc(s.firebaseStorageBucket)}"></div>
                         </div>
                         <div class="col-md-6">
@@ -77,6 +79,18 @@ var body = `
                             <div class="form-group"><label>Firebase VAPID Key (Web Push Certificate)</label><input type="text" name="firebaseVapidKey" class="form-control" value="${esc(s.firebaseVapidKey)}"></div>
                             <div class="form-group"><label>Enable Push Notifications</label><select name="enablePushNotificationOrders" class="form-control"><option value="true" ${esc(s.enablePushNotificationOrders === 'true' ? 'selected' : '')}>Yes</option><option value="false" ${esc(s.enablePushNotificationOrders !== 'true' ? 'selected' : '')}>No</option></select></div>
                         </div>
+                    </div>
+                    <hr>
+                    <div class="form-group">
+                        <label>Credencial de servicio de Firebase (JSON)</label>
+                        <p class="text-muted" style="font-size:12px">${fsa.configured
+                            ? (fsa.readable
+                                ? 'Configurada: proyecto ' + esc(fsa.projectId) + ' / ' + esc(fsa.clientEmail) + (fsa.hint ? ' / clave ' + esc(fsa.hint) : '') + (fsa.encrypted ? ' (cifrada)' : ' (sin cifrar: define MP_ENCRYPTION_KEY)')
+                                : 'Configurada, pero no se puede leer (revisa MP_ENCRYPTION_KEY o vuelve a pegarla).')
+                            : 'No configurada. Pega el JSON de la cuenta de servicio (Firebase Console > Configuracion > Cuentas de servicio). Debe incluir project_id, client_email y private_key.'}
+                            La clave privada no se vuelve a mostrar. Deja vacio para conservar la actual.</p>
+                        <textarea name="firebaseServiceAccount" class="form-control" rows="5" autocomplete="off" spellcheck="false" placeholder='{"type":"service_account","project_id":"...","client_email":"...","private_key":"..."}'></textarea>
+                        ${fsa.configured ? '<div class="form-check mt-2"><input type="checkbox" class="form-check-input" id="fsaClear" name="firebaseServiceAccountClear" value="1"><label class="form-check-label" for="fsaClear">Eliminar la credencial guardada</label></div>' : ''}
                     </div>
                 </div>
                 <div class="tab-pane fade" id="seo">

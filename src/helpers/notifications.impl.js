@@ -1,27 +1,32 @@
 const { sequelize } = require('../models');
-const path = require('path');
 
 let firebaseApp = null;
+let appFingerprint = null;
+let lastFailedFingerprint = null;
 
-function getFirebaseApp() {
-  if (firebaseApp) return firebaseApp;
+// Config desde BD (firebaseConfig) con respaldo en entorno. Se reinicializa si la config cambia; un fallo no se memoiza.
+async function getFirebaseApp() {
+  let admin;
   try {
-    let admin;
-    try {
-      admin = require('firebase-admin');
-    } catch (reqErr) {
-      if (reqErr.code === 'MODULE_NOT_FOUND') return null;
-      throw reqErr;
-    }
-    const credPath = process.env.FIREBASE_CREDENTIALS || path.join(__dirname, '../../firebase-credentials.json');
-    const fs = require('fs');
-    if (!fs.existsSync(credPath)) return null;
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(require(credPath)),
-    });
+    admin = require('firebase-admin');
+  } catch (reqErr) {
+    if (reqErr.code === 'MODULE_NOT_FOUND') return null;
+    throw reqErr;
+  }
+  let fp = null;
+  try {
+    const cfg = await require('./firebaseConfig').getConfig();
+    fp = cfg.fingerprint;
+    if (!cfg.credential) return null;
+    if (firebaseApp && appFingerprint === cfg.fingerprint) return firebaseApp;
+    const previous = firebaseApp;
+    firebaseApp = admin.initializeApp({ credential: admin.credential.cert(cfg.credential) }, `mt-${cfg.fingerprint}`);
+    appFingerprint = cfg.fingerprint;
+    if (previous && typeof previous.delete === 'function') previous.delete().catch(() => {});
     return firebaseApp;
   } catch (e) {
-    console.error('Firebase init error:', e.message);
+    if (lastFailedFingerprint !== fp) console.error('Firebase init error:', e.message);
+    lastFailedFingerprint = fp;
     return null;
   }
 }
@@ -103,9 +108,9 @@ function inferNotificationUrl(data, baseUrl) {
 }
 
 async function sendViaFCM(title, message, userId, role, data) {
-  const app = getFirebaseApp();
+  const app = await getFirebaseApp();
   if (!app) {
-    console.warn('[FCM] Firebase Admin no disponible (instala firebase-admin y FIREBASE_CREDENTIALS)');
+    console.warn('[FCM] Firebase Admin no disponible (instala firebase-admin y configura la credencial en Ajustes del admin)');
     return { ok: false, reason: 'firebase_not_configured' };
   }
 
@@ -269,7 +274,7 @@ async function saveFCMToken(userId, token, platform = 'android') {
       );
     }
 
-    const app = getFirebaseApp();
+    const app = await getFirebaseApp();
     if (app) {
       let admin;
       try {

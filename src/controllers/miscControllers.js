@@ -7,6 +7,7 @@ const states = require('../helpers/orderStates');
 const { emitOrderEvent } = require('../helpers/orderEvents');
 const { releaseDueScheduledOrders } = require('../helpers/scheduledOrders');
 const chatRealtime = require('../helpers/chatRealtime');
+const firebaseConfig = require('../helpers/firebaseConfig');
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 const PUBLIC_SETTINGS_KEYS = [
@@ -32,7 +33,8 @@ exports.getSettings = async (req, res) => {
         return { id: j.id, key: j.key, value: j.value };
       })
       .filter((s) => PUBLIC_SETTINGS_KEYS.includes(s.key));
-    const rtdbUrl = (process.env.FIREBASE_DATABASE_URL || '').trim();
+    // URL pública de RTDB: BD primero, entorno como respaldo. La credencial de servicio nunca sale por aquí.
+    const rtdbUrl = (await firebaseConfig.getConfig()).databaseURL;
     if (rtdbUrl) settings.push({ id: 0, key: 'firebaseDatabaseURL', value: rtdbUrl });
     settings.push({ id: 0, key: 'googleMapId', value: (process.env.GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID').trim() });
     await cache.set('settings:all', settings, parseInt(process.env.CACHE_SETTINGS_TTL || '300', 10));

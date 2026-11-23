@@ -11,6 +11,7 @@ const { buildReorder } = require('../helpers/orderReorder');
 const mp = require('../helpers/mercadoPago');
 const { publishOrderState } = require('../helpers/orderRealtime');
 const chatRealtime = require('../helpers/chatRealtime');
+const firebaseConfig = require('../helpers/firebaseConfig');
 
 async function getSettings() {
   const cache = require('../helpers/cache');
@@ -19,7 +20,7 @@ async function getSettings() {
   const { Setting } = require('../models');
   const settings = await Setting.findAll();
   const map = {};
-  settings.forEach((s) => { map[s.key] = s.value; });
+  settings.forEach((s) => { if (s.key !== firebaseConfig.KEY_CRED) map[s.key] = s.value; });
   await cache.set('settings:map', map, parseInt(process.env.CACHE_SETTINGS_TTL || '300', 10));
   return map;
 }

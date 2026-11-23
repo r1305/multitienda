@@ -22,6 +22,7 @@ stub('src/models', {
 
 const states = require('../src/helpers/orderStates');
 const realtime = require('../src/helpers/orderRealtime');
+const firebaseConfig = require('../src/helpers/firebaseConfig');
 
 const tick = () => new Promise((r) => setImmediate(r));
 
@@ -123,12 +124,14 @@ test('claves no seguras para RTDB no se publican', async () => {
 
 test('sin URL es no-op: no publica ni consulta SQL', async () => {
   reset();
+  firebaseConfig.invalidate();
   const prev = process.env.FIREBASE_DATABASE_URL;
   process.env.FIREBASE_DATABASE_URL = '';
   try {
     await states.transition(7, [A.PENDING], A.ACCEPTED, 'store');
     await tick();
-    assert.strictEqual(state.sql.filter((s) => /^SELECT/.test(s)).length, 0);
+    assert.strictEqual(state.sql.filter((s) => /^SELECT/.test(s) && !/FROM settings/.test(s)).length, 0);
+    assert.ok(state.sql.filter((s) => /FROM settings/.test(s)).length <= 1);
   } finally {
     if (prev === undefined) delete process.env.FIREBASE_DATABASE_URL; else process.env.FIREBASE_DATABASE_URL = prev;
   }
@@ -136,6 +139,7 @@ test('sin URL es no-op: no publica ni consulta SQL', async () => {
 
 test('con URL pero sin credencial es no-op', async () => {
   reset();
+  firebaseConfig.invalidate();
   const prevUrl = process.env.FIREBASE_DATABASE_URL;
   const prevCred = process.env.FIREBASE_CREDENTIALS;
   process.env.FIREBASE_DATABASE_URL = 'https://ejemplo-default-rtdb.firebaseio.com';
@@ -144,7 +148,8 @@ test('con URL pero sin credencial es no-op', async () => {
     const r = await states.transition(7, [A.PENDING], A.ACCEPTED, 'store');
     await tick();
     assert.strictEqual(r.to, A.ACCEPTED);
-    assert.strictEqual(state.sql.filter((s) => /^SELECT/.test(s)).length, 0);
+    assert.strictEqual(state.sql.filter((s) => /^SELECT/.test(s) && !/FROM settings/.test(s)).length, 0);
+    assert.ok(state.sql.filter((s) => /FROM settings/.test(s)).length <= 1);
   } finally {
     if (prevUrl === undefined) delete process.env.FIREBASE_DATABASE_URL; else process.env.FIREBASE_DATABASE_URL = prevUrl;
     if (prevCred === undefined) delete process.env.FIREBASE_CREDENTIALS; else process.env.FIREBASE_CREDENTIALS = prevCred;

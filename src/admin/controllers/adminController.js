@@ -10,6 +10,7 @@ const { releaseDueScheduledOrders } = require('../../helpers/scheduledOrders');
 const { walletDeposit, walletWithdraw } = require('../../helpers/orderWallet');
 const businessTypes = require('../../helpers/businessTypes');
 const chatRealtime = require('../../helpers/chatRealtime');
+const firebaseConfig = require('../../helpers/firebaseConfig');
 
 async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
   const id = rules.toPositiveId(orderId);
@@ -1522,6 +1523,8 @@ exports.settings = async (req, res) => {
     settings.faviconUrl = settings.faviconUrl || '';
     settings.logoUrl = settings.logoUrl || '';
     settings.listingImageUrl = settings.listingImageUrl || '';
+    settings.firebaseServiceAccountInfo = firebaseConfig.describeStored(settings[firebaseConfig.KEY_CRED]);
+    delete settings[firebaseConfig.KEY_CRED];
     res.render('admin/settings', { user: req.session.user, settings, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     console.error(err);
@@ -1587,31 +1590,38 @@ exports.uploadListingImage = async (req, res) => {
 
 exports.saveSettings = async (req, res) => {
   try {
-    const fields = req.body;
+    const fb = firebaseConfig.checkInput(req.body);
+    if (fb.error) { req.flash('error', fb.error); return res.redirect('/admin/settings'); }
+    const fields = { ...req.body };
+    delete fields[firebaseConfig.KEY_CRED];
+    if (fb.url !== undefined) fields[firebaseConfig.KEY_URL] = fb.url;
+    if (fb.credential) fields[firebaseConfig.KEY_CRED] = firebaseConfig.encodeCredential(fb.credential);
+    else if (fb.clear) fields[firebaseConfig.KEY_CRED] = '';
     const ALLOWED_KEYS = [
       'storeName', 'currencySymbol', 'currencyId', 'currencyFormat',
       'googleApiKey', 'walletName', 'uploadImageQuality', 'primaryColor',
       'enableDeliveryPin', 'deliveryRadius',
       'firebaseApiKey', 'firebaseAuthDomain', 'firebaseProjectId', 'firebaseStorageBucket',
       'firebaseMessagingSenderId', 'firebaseAppId', 'firebaseMeasurementId', 'firebaseVapidKey',
+      'firebaseDatabaseURL', 'firebaseServiceAccount',
       'enablePushNotificationOrders',
       'seoMetaTitle', 'seoMetaDescription', 'googleAnalyticsCode',
     ];
-    for (const [key, value] of Object.entries(fields)) {
-      if (!ALLOWED_KEYS.includes(key)) continue;
-      const [existing] = await sequelize.query('SELECT id FROM settings WHERE `key` = ? LIMIT 1', { replacements: [key] });
-      if (existing.length) {
-        await sequelize.query('UPDATE settings SET `value` = ? WHERE `key` = ?', { replacements: [value, key] });
-      } else {
-        await sequelize.query('INSERT INTO settings (`key`, `value`) VALUES (?,?)', { replacements: [key, value] });
+    await sequelize.transaction(async (t) => {
+      const upsert = async (key, value) => {
+        const [existing] = await sequelize.query('SELECT id FROM settings WHERE `key` = ? LIMIT 1', { replacements: [key], transaction: t });
+        if (existing.length) {
+          await sequelize.query('UPDATE settings SET `value` = ? WHERE `key` = ?', { replacements: [value, key], transaction: t });
+        } else {
+          await sequelize.query('INSERT INTO settings (`key`, `value`) VALUES (?,?)', { replacements: [key, value], transaction: t });
+        }
+      };
+      for (const [key, value] of Object.entries(fields)) {
+        if (ALLOWED_KEYS.includes(key)) await upsert(key, value);
       }
-    }
-    // Sync currencyFormat with currencySymbol
-    if (fields.currencySymbol) {
-      const [ex] = await sequelize.query("SELECT id FROM settings WHERE `key` = 'currencyFormat' LIMIT 1");
-      if (ex.length) await sequelize.query("UPDATE settings SET `value` = ? WHERE `key` = 'currencyFormat'", { replacements: [fields.currencySymbol] });
-      else await sequelize.query("INSERT INTO settings (`key`, `value`) VALUES ('currencyFormat', ?)", { replacements: [fields.currencySymbol] });
-    }
+      // Sync currencyFormat with currencySymbol
+      if (fields.currencySymbol) await upsert('currencyFormat', fields.currencySymbol);
+    });
     const cache = require('../../helpers/cache');
     await cache.del('settings:all');
     await cache.del('settings:map');
@@ -1619,8 +1629,11 @@ exports.saveSettings = async (req, res) => {
     await cache.del('settings:appBaseUrl');
     await cache.del('settings:deliveryRadius');
     await cache.invalidate('restaurants:');
-    req.flash('success', 'Settings saved');
-  } catch (err) { console.error(err); req.flash('error', 'Error saving settings'); }
+    firebaseConfig.invalidate();
+    req.flash('success', fb.credential && !require('../../helpers/secretBox').isConfigured()
+      ? 'Settings saved. Aviso: la credencial de Firebase se guardó sin cifrar (falta MP_ENCRYPTION_KEY)'
+      : 'Settings saved');
+  } catch (err) { console.error('saveSettings:', err.message); req.flash('error', 'Error saving settings'); }
   res.redirect('/admin/settings');
 };
 
