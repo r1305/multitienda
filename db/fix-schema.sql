@@ -761,6 +761,8 @@ SET @s = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE promo_sliders ADD COLUMN image VA
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 SET @s = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE promo_sliders ADD COLUMN url VARCHAR(255) NULL', 'SELECT 1') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'promo_sliders' AND COLUMN_NAME = 'url');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE slides ADD COLUMN promo_slider_id INT UNSIGNED NULL, ADD INDEX slides_promo_slider_idx (promo_slider_id), ADD CONSTRAINT slides_promo_slider_fk FOREIGN KEY (promo_slider_id) REFERENCES promo_sliders (id) ON DELETE CASCADE', 'SELECT 1') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'slides' AND COLUMN_NAME = 'promo_slider_id');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 SET @s = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE ratings ADD COLUMN reply TEXT NULL', 'SELECT 1') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ratings' AND COLUMN_NAME = 'reply');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 SET @s = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE payment_gateways ADD COLUMN account_number VARCHAR(255) NULL', 'SELECT 1') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payment_gateways' AND COLUMN_NAME = 'account_number');

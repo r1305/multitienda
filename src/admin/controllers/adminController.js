@@ -2,6 +2,7 @@ const { sequelize } = require('../../models');
 const { formatOrderElapsed } = require('../../helpers/orderDuration');
 const crypto = require('crypto');
 const fs = require('fs');
+const path = require('path');
 const rules = require('../../helpers/orderRules');
 const states = require('../../helpers/orderStates');
 const { cancelOrderWithRefund } = require('../../helpers/orderCancel');
@@ -1277,17 +1278,29 @@ async function sliderStores() {
   return stores;
 }
 
+const UPLOADS_DIR = path.join(__dirname, '../../../public/uploads');
+
+function removeUploadedFile(image) {
+  if (typeof image !== 'string' || !image.startsWith('/uploads/')) return;
+  fs.unlink(path.join(UPLOADS_DIR, path.basename(image)), () => {});
+}
+
+// La tabla slides varía entre la base heredada y la creada por migrate.js: si no casa, el listado no debe caerse.
+async function slidesOf(sliderId) {
+  try {
+    const [rows] = await sequelize.query('SELECT * FROM slides WHERE promo_slider_id = ? ORDER BY sort_position ASC, id ASC', { replacements: [sliderId] });
+    return rows;
+  } catch (e) {
+    const code = e && ((e.original && e.original.code) || (e.parent && e.parent.code) || e.code);
+    if (code !== 'ER_BAD_FIELD_ERROR' && code !== 'ER_NO_SUCH_TABLE') console.error('[sliders]', e.message);
+    return [];
+  }
+}
+
 exports.sliders = async (req, res) => {
   try {
     const [sliders] = await sequelize.query('SELECT * FROM promo_sliders ORDER BY id DESC');
-    for (let s of sliders) {
-      // La tabla slides varía entre la base heredada y la creada por migrate.js: si no casa, el listado no debe caerse.
-      try { [s.slides] = await sequelize.query('SELECT * FROM slides ORDER BY sort_position ASC'); } catch (e) {
-        const code = e && ((e.original && e.original.code) || (e.parent && e.parent.code) || e.code);
-        if (code !== 'ER_BAD_FIELD_ERROR' && code !== 'ER_NO_SUCH_TABLE') console.error('[sliders]', e.message);
-        s.slides = [];
-      }
-    }
+    for (const s of sliders) s.slides = await slidesOf(s.id);
     res.render('admin/sliders', { user: req.session.user, sliders, stores: await sliderStores(), count: sliders.length, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     console.error(err);
@@ -1299,7 +1312,7 @@ exports.editSlider = async (req, res) => {
   try {
     const [rows] = await sequelize.query('SELECT * FROM promo_sliders WHERE id = ? LIMIT 1', { replacements: [req.params.id] });
     const [sliders] = await sequelize.query('SELECT * FROM promo_sliders ORDER BY id DESC');
-    for (let s of sliders) { s.slides = []; }
+    for (const s of sliders) s.slides = await slidesOf(s.id);
     res.render('admin/sliders', { user: req.session.user, sliders, stores: await sliderStores(), count: sliders.length, editSlider: rows[0] || null, success: req.flash('success')[0], error: req.flash('error')[0] });
   } catch (err) {
     req.flash('error', 'Error loading slider');
@@ -1343,10 +1356,53 @@ exports.disableSlider = async (req, res) => {
 
 exports.deleteSlider = async (req, res) => {
   try {
-    await sequelize.query('DELETE FROM slides WHERE promo_slider_id = ?', { replacements: [req.params.id] });
-    await sequelize.query('DELETE FROM promo_sliders WHERE id = ?', { replacements: [req.params.id] });
-    req.flash('success', 'Slider deleted');
-  } catch (err) { req.flash('error', 'Error deleting slider'); }
+    const id = rules.toPositiveId(req.params.id);
+    const [rows] = id ? await sequelize.query('SELECT image FROM promo_sliders WHERE id = ? LIMIT 1', { replacements: [id] }) : [[]];
+    if (!rows.length) {
+      req.flash('error', 'Slider not found');
+    } else {
+      const slides = await slidesOf(id);
+      await sequelize.query('DELETE FROM promo_sliders WHERE id = ?', { replacements: [id] });
+      if (slides.length) await sequelize.query('DELETE FROM slides WHERE promo_slider_id = ?', { replacements: [id] });
+      [rows[0].image, ...slides.map((sl) => sl.image)].forEach(removeUploadedFile);
+      req.flash('success', 'Slider deleted');
+    }
+  } catch (err) { console.error('[slider]', err && err.message); req.flash('error', 'Error deleting slider'); }
+  res.redirect('/admin/promo-sliders');
+};
+
+exports.createSlide = async (req, res) => {
+  const sliderId = rules.toPositiveId(req.params.id);
+  try {
+    const [rows] = sliderId ? await sequelize.query('SELECT id FROM promo_sliders WHERE id = ? LIMIT 1', { replacements: [sliderId] }) : [[]];
+    if (!rows.length || !req.file) {
+      if (req.file) fs.unlink(req.file.path, () => {});
+      req.flash('error', rows.length ? 'Slide requires an image' : 'Slider not found');
+    } else {
+      const name = String(req.body.name || '').trim().slice(0, 255) || null;
+      const image = '/uploads/' + req.file.filename;
+      const url = sliderUrlFromForm(req.body, getAppBasePath());
+      const sortPosition = parseInt(req.body.sort_position, 10) || 0;
+      await sequelize.query('INSERT INTO slides (name, image, url, sort_position, promo_slider_id, created_at, updated_at) VALUES (?,?,?,?,?,NOW(),NOW())', { replacements: [name, image, url, sortPosition, sliderId] });
+      req.flash('success', 'Slide created');
+    }
+  } catch (err) { sliderSaveFailed(req, err, 'Error creating slide'); }
+  res.redirect('/admin/promo-sliders');
+};
+
+exports.deleteSlide = async (req, res) => {
+  try {
+    const sliderId = rules.toPositiveId(req.params.id);
+    const slideId = rules.toPositiveId(req.params.slideId);
+    const [rows] = sliderId && slideId ? await sequelize.query('SELECT image FROM slides WHERE id = ? AND promo_slider_id = ? LIMIT 1', { replacements: [slideId, sliderId] }) : [[]];
+    if (!rows.length) {
+      req.flash('error', 'Slide not found');
+    } else {
+      await sequelize.query('DELETE FROM slides WHERE id = ? AND promo_slider_id = ?', { replacements: [slideId, sliderId] });
+      removeUploadedFile(rows[0].image);
+      req.flash('success', 'Slide deleted');
+    }
+  } catch (err) { console.error('[slider]', err && err.message); req.flash('error', 'Error deleting slide'); }
   res.redirect('/admin/promo-sliders');
 };
 

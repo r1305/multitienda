@@ -816,6 +816,8 @@ const columns = [
   { table: 'restaurants', column: 'prep_minutes', ddl: 'ALTER TABLE restaurants ADD COLUMN prep_minutes INT NULL DEFAULT 20' },
   { table: 'promo_sliders', column: 'image', ddl: 'ALTER TABLE promo_sliders ADD COLUMN image VARCHAR(255) NULL' },
   { table: 'promo_sliders', column: 'url', ddl: 'ALTER TABLE promo_sliders ADD COLUMN url VARCHAR(255) NULL' },
+  // INT UNSIGNED como promo_sliders.id (la FK exige el mismo tipo); un solo ALTER, de modo que columna, índice y FK se aplican juntos o ninguno
+  { table: 'slides', column: 'promo_slider_id', ddl: 'ALTER TABLE slides ADD COLUMN promo_slider_id INT UNSIGNED NULL, ADD INDEX slides_promo_slider_idx (promo_slider_id), ADD CONSTRAINT slides_promo_slider_fk FOREIGN KEY (promo_slider_id) REFERENCES promo_sliders (id) ON DELETE CASCADE' },
   { table: 'ratings', column: 'reply', ddl: 'ALTER TABLE ratings ADD COLUMN reply TEXT NULL' },
   { table: 'payment_gateways', column: 'account_number', ddl: 'ALTER TABLE payment_gateways ADD COLUMN account_number VARCHAR(255) NULL' },
   { table: 'payment_gateways', column: 'phone_number', ddl: 'ALTER TABLE payment_gateways ADD COLUMN phone_number VARCHAR(255) NULL' },

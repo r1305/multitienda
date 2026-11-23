@@ -7,6 +7,8 @@ const state = { sql: [], existing: new Set(), indexes: new Set() };
 const sequelize = {
   async query(sql, opts = {}) {
     state.sql.push(sql);
+    const added = /^ALTER TABLE (\w+) ADD COLUMN (\w+) /.exec(sql);
+    if (added) state.existing.add(`${added[1]}.${added[2]}`);
     if (/information_schema\.COLUMNS/.test(sql) && opts.replacements) {
       return [state.existing.has(opts.replacements.join('.')) ? [{ 1: 1 }] : []];
     }
@@ -69,4 +71,18 @@ test('migrate: siembra Español (es) por defecto con JSON válido y sin _csrf, a
   assert.ok(!('_csrf' in data));
   const fixSql = require('fs').readFileSync(path.join(__dirname, '..', 'db/fix-schema.sql'), 'utf8').replace(/\r\n/g, '\n');
   assert.ok(fixSql.includes(state.sql[i] + ';'), 'db/fix-schema.sql desalineado con migrate.js');
+});
+
+test('migrate: slides.promo_slider_id (INT UNSIGNED, indice, FK CASCADE) es idempotente al correr dos veces', async () => {
+  const alter = (s) => /^ALTER TABLE slides ADD COLUMN promo_slider_id /.test(s);
+  state.sql = []; state.existing = new Set(); state.indexes = new Set();
+  assert.strictEqual(await run(), 0);
+  const ddl = state.sql.filter(alter);
+  assert.strictEqual(ddl.length, 1);
+  assert.match(ddl[0], /promo_slider_id INT UNSIGNED NULL/);
+  assert.match(ddl[0], /ADD INDEX slides_promo_slider_idx \(promo_slider_id\)/);
+  assert.match(ddl[0], /FOREIGN KEY \(promo_slider_id\) REFERENCES promo_sliders \(id\) ON DELETE CASCADE/);
+  state.sql = [];
+  assert.strictEqual(await run(), 0);
+  assert.strictEqual(state.sql.filter(alter).length, 0);
 });

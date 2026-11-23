@@ -341,6 +341,8 @@ router.get('/admin/slider/edit/:id', adminController.editSlider);
 router.post('/admin/slider/edit/save', upload.single('image'), adminController.updateSlider);
 router.post('/admin/slider/disable/:id', adminController.disableSlider);
 router.post('/admin/slider/delete/:id', adminController.deleteSlider);
+router.post('/admin/slider/:id/slide/create', upload.single('image'), adminController.createSlide);
+router.post('/admin/slider/:id/slide/delete/:slideId', adminController.deleteSlide);
 
 // Notifications
 router.get('/admin/notifications', adminController.notifications);
