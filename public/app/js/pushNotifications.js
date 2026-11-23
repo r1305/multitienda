@@ -99,7 +99,7 @@ const PushNotifications = {
       if (!swReg) return false;
 
       const cfg = this._firebaseConfig();
-      if (!window.firebase.apps.length) {
+      if (!window.firebase.apps.some((a) => a.name === '[DEFAULT]')) {
         window.firebase.initializeApp(cfg);
       }
 

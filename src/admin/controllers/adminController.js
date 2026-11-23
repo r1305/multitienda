@@ -16,6 +16,7 @@ async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
   const uid = rules.toPositiveId(deliveryUserId);
   if (!id || !uid) throw new Error('Datos de asignación inválidos');
 
+  let newlyAssigned = false;
   const order = await sequelize.transaction(async (t) => {
     const [guys] = await sequelize.query(
       "SELECT u.id FROM users u INNER JOIN model_has_roles mr ON mr.model_id = u.id INNER JOIN roles r ON r.id = mr.role_id WHERE u.id = ? AND u.is_active = 1 AND r.name = 'Delivery Guy' LIMIT 1",
@@ -30,6 +31,7 @@ async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
     // Reasignar (ya en estado 3) no cambia el estado; asignar desde 1 o 2 pasa a 3 con la máquina de estados
     if (Number(found.orderstatus_id) !== states.STATUS.ASSIGNED) {
       await states.transition(found, [states.STATUS.PENDING, states.STATUS.ACCEPTED, states.STATUS.PREPARING], states.STATUS.ASSIGNED, 'admin', t);
+      newlyAssigned = true;
     }
     const [prev] = await sequelize.query('SELECT user_id FROM accept_deliveries WHERE order_id = ? ORDER BY id DESC LIMIT 1', { replacements: [id], transaction: t });
     await sequelize.query('DELETE FROM accept_deliveries WHERE order_id = ?', { replacements: [id], transaction: t });
@@ -38,8 +40,15 @@ async function assignOrderToDeliveryGuy(orderId, deliveryUserId) {
     return found;
   });
 
-  const { notifyDeliveryOrderAssigned } = require('../../helpers/notifications');
+  const { notifyDeliveryOrderAssigned, notifyCustomerDeliveryAccepted } = require('../../helpers/notifications');
   const pushResult = await notifyDeliveryOrderAssigned(order, uid);
+  if (newlyAssigned) {
+    try {
+      await notifyCustomerDeliveryAccepted(order);
+    } catch (nErr) {
+      console.error('assignDelivery notify customer error:', nErr.message);
+    }
+  }
   return { order, pushResult };
 }
 

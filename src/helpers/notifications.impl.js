@@ -61,7 +61,11 @@ function toAbsoluteAssetUrl(pathOrUrl, baseUrl) {
   if (!s || s === 'null' || s === 'undefined') return null;
   if (/^https?:\/\//i.test(s)) return s;
   try {
-    return new URL(s.startsWith('/') ? s : `/${s}`, `${baseUrl}/`).href;
+    const base = new URL(`${baseUrl}/`);
+    if (s.startsWith('//')) return new URL(s, base).href;
+    const prefix = base.pathname.replace(/\/$/, '');
+    const rel = s.startsWith('/') ? s : `/${s}`;
+    return new URL(prefix && rel !== prefix && !rel.startsWith(`${prefix}/`) ? `${prefix}${rel}` : rel, base.origin).href;
   } catch (_) {
     return null;
   }
@@ -437,15 +441,17 @@ async function notifyAdminNewDelivery(name, phone) {
 async function notifyCustomerDeliveryAccepted(order) {
   const title = 'Repartidor asignado!';
   const message = `Un repartidor aceptó tu pedido #${order.unique_order_id}`;
-  await saveNotification(order.user_id, title, message, { order_id: order.id, unique_order_id: order.unique_order_id });
-  await sendPushNotification(title, message, order.user_id, null, { order_id: String(order.id), unique_order_id: order.unique_order_id });
+  const data = { order_id: order.id, unique_order_id: order.unique_order_id, type: 'order_assigned', recipient_role: 'customer' };
+  await saveNotification(order.user_id, title, message, data);
+  await sendPushNotification(title, message, order.user_id, null, { ...data, order_id: String(order.id) });
 }
 
 async function notifyCustomerOrderOnWay(order) {
   const title = 'Tu pedido está en camino!';
   const message = `El repartidor va en camino con tu pedido #${order.unique_order_id}`;
-  await saveNotification(order.user_id, title, message, { order_id: order.id, unique_order_id: order.unique_order_id });
-  await sendPushNotification(title, message, order.user_id, null, { order_id: String(order.id), unique_order_id: order.unique_order_id });
+  const data = { order_id: order.id, unique_order_id: order.unique_order_id, type: 'order_on_way', recipient_role: 'customer' };
+  await saveNotification(order.user_id, title, message, data);
+  await sendPushNotification(title, message, order.user_id, null, { ...data, order_id: String(order.id) });
 }
 
 const CUSTOMER_ORDER_EVENTS = {
