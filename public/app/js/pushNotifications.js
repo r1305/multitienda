@@ -155,7 +155,7 @@ const PushNotifications = {
     });
   },
 
-  async _saveTokenForUser(userId, roleTag) {
+  async _saveTokenForUser(userId, roleTag, previousToken = null) {
     const authToken = this._currentAuthToken();
     if (!authToken) return false;
 
@@ -171,7 +171,9 @@ const PushNotifications = {
     const userKey = `${roleTag}:${String(userId)}`;
     if (this._lastSavedTokenByUser[userKey] === token) return true;
 
-    const body = JSON.stringify({ token, platform: 'web' });
+    const payload = { token, platform: 'web' };
+    if (previousToken && previousToken !== token) payload.previous_token = previousToken;
+    const body = JSON.stringify(payload);
     const headers = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -194,6 +196,7 @@ const PushNotifications = {
           try { localStorage.setItem(`fcm_saved:${userKey}`, '1'); } catch (_) { /* ignore */ }
           return true;
         }
+        if (res.status === 410) break;
       } catch (_) { /* try next base */ }
     }
     console.warn('[FCM] No se pudo guardar el token en el servidor', lastStatus ? `(HTTP ${lastStatus})` : '');
@@ -251,7 +254,19 @@ const PushNotifications = {
     const ready = await this._ensureReadyAndPermission(true);
     if (!ready.ok) return ready;
 
-    const ok = await this._saveTokenForUser(userId, roleTag);
+    let previous = null;
+    try { previous = await this._getCurrentToken(); } catch (_) { /* ignore */ }
+    try {
+      await this._messaging.deleteToken();
+    } catch (_) {
+      try {
+        const sub = await this._serviceWorkerReg?.pushManager?.getSubscription();
+        if (sub) await sub.unsubscribe();
+      } catch (_) { /* ignore */ }
+    }
+    delete this._lastSavedTokenByUser[`${roleTag}:${String(userId)}`];
+
+    const ok = await this._saveTokenForUser(userId, roleTag, previous);
     if (!ok) return { ok: false, reason: 'token_save_failed' };
     this._lastRegisterKey = `${roleTag}:${String(userId)}:`;
     return { ok: true, reason: 'granted' };

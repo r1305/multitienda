@@ -107,6 +107,24 @@ function inferNotificationUrl(data, baseUrl) {
   return null;
 }
 
+function isDeadTokenCode(code) {
+  return /not-registered|invalid-registration-token/.test(String(code || ''));
+}
+
+function tokenPreview(token) {
+  return token ? `${String(token).slice(0, 12)}…` : '?';
+}
+
+async function deleteDeadTokens(tokens) {
+  if (!tokens.length) return;
+  try {
+    await sequelize.query('DELETE FROM push_tokens WHERE token IN (?)', { replacements: [tokens] });
+    console.warn('[FCM] Tokens muertos borrados:', tokens.map(tokenPreview).join(', '));
+  } catch (e) {
+    console.error('[FCM] No se pudieron borrar tokens muertos:', e.message);
+  }
+}
+
 async function sendViaFCM(title, message, userId, role, data) {
   const app = await getFirebaseApp();
   if (!app) {
@@ -171,23 +189,18 @@ async function sendViaFCM(title, message, userId, role, data) {
     };
   }
 
-  function processSendEachResult(result, tokenRows) {
+  async function processSendEachResult(result, tokenRows) {
     const invalid = [];
     if (result.responses) {
       result.responses.forEach((r, i) => {
         if (r.success) return;
         const err = r.error;
         const code = err?.code || 'unknown';
-        const tokenPreview = tokenRows[i]?.token ? `${String(tokenRows[i].token).slice(0, 12)}…` : '?';
-        console.warn('[FCM] Token falló:', code, err?.message || '', tokenPreview);
-        if (err && ['messaging/invalid-registration-token', 'messaging/registration-token-not-registered'].includes(code)) {
-          invalid.push(tokenRows[i].token);
-        }
+        console.warn('[FCM] Token falló:', code, err?.message || '', tokenPreview(tokenRows[i]?.token));
+        if (isDeadTokenCode(code) && tokenRows[i]?.token) invalid.push(tokenRows[i].token);
       });
     }
-    if (invalid.length) {
-      sequelize.query('DELETE FROM push_tokens WHERE token IN (?)', { replacements: [invalid] }).catch(() => {});
-    }
+    await deleteDeadTokens(invalid);
     const successCount = result.successCount || 0;
     const failureCount = result.failureCount || 0;
     if (failureCount && successCount) {
@@ -212,7 +225,7 @@ async function sendViaFCM(title, message, userId, role, data) {
 
       const messages = tokenRows.map((row) => buildMessageForToken(row.token, row.device_type));
       const result = await messaging.sendEach(messages);
-      const { successCount, failureCount } = processSendEachResult(result, tokenRows);
+      const { successCount, failureCount } = await processSendEachResult(result, tokenRows);
 
       if (!successCount) {
         return { ok: false, reason: 'all_failed', userId: uid, tokenCount: tokenRows.length, failureCount };
@@ -260,9 +273,12 @@ async function saveNotification(userId, title, message, extra = {}) {
   }
 }
 
-async function saveFCMToken(userId, token, platform = 'android') {
-  if (!token) return;
+async function saveFCMToken(userId, token, platform = 'android', previousToken = null) {
+  if (!token) return { ok: false, reason: 'no_token' };
   try {
+    if (previousToken && previousToken !== token) {
+      await sequelize.query('DELETE FROM push_tokens WHERE user_id = ? AND token = ?', { replacements: [userId, previousToken] });
+    }
     const [existing] = await sequelize.query(
       'SELECT id FROM push_tokens WHERE user_id = ? AND token = ? LIMIT 1',
       { replacements: [userId, token] }
@@ -280,7 +296,7 @@ async function saveFCMToken(userId, token, platform = 'android') {
       try {
         admin = require('firebase-admin');
       } catch (reqErr) {
-        if (reqErr.code === 'MODULE_NOT_FOUND') return;
+        if (reqErr.code === 'MODULE_NOT_FOUND') return { ok: true };
         throw reqErr;
       }
       const [roles] = await sequelize.query(
@@ -288,11 +304,17 @@ async function saveFCMToken(userId, token, platform = 'android') {
         { replacements: [userId] }
       );
       const roleName = roles.length ? roles[0].name.replace(' ', '_').toLowerCase() : 'customer';
-      await admin.messaging(app).subscribeToTopic([token], roleName).catch(() => {});
+      const sub = await admin.messaging(app).subscribeToTopic([token], roleName).catch(() => null);
+      if (sub?.errors?.some((e) => isDeadTokenCode(e?.error?.code))) {
+        await deleteDeadTokens([token]);
+        return { ok: false, reason: 'token_not_registered' };
+      }
       await admin.messaging(app).subscribeToTopic([token], 'all').catch(() => {});
     }
+    return { ok: true };
   } catch (e) {
     console.error('Save FCM token error:', e.message);
+    return { ok: false, reason: 'error' };
   }
 }
 

@@ -190,7 +190,11 @@ exports.saveFCMToken = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Token required' });
     }
     const { saveFCMToken } = require('../helpers/notifications');
-    await saveFCMToken(req.user.id, token, req.body.platform || 'web');
+    const previous = typeof req.body.previous_token === 'string' ? req.body.previous_token : null;
+    const result = await saveFCMToken(req.user.id, token, req.body.platform || 'web', previous);
+    if (result && result.reason === 'token_not_registered') {
+      return res.status(410).json({ success: false, reason: result.reason });
+    }
     res.json({ success: true, user_id: req.user.id });
   } catch (err) {
     console.error('[saveFCMToken]', err.message);
