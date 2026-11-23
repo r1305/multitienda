@@ -76,7 +76,7 @@ const injectSettings = async (req, res, next) => {
       rows.forEach((r) => { settings[r.key] = r.value; });
       await cache.set(cacheKey, settings, parseInt(process.env.CACHE_ADMIN_SETTINGS_TTL || '300', 10));
     }
-    res.locals.settings = settings;
+    res.locals.settings = Object.assign({}, settings, { googleMapId: (process.env.GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID').trim() });
     res.locals.currency = settings.currencySymbol || settings.currencyFormat || '$';
   } catch (e) {
     res.locals.currency = '$';

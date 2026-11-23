@@ -3,7 +3,9 @@
 <% var gKey = (typeof settings !== 'undefined' && settings && settings.googleApiKey) ? String(settings.googleApiKey) : ''; %>
 <% var baseJs = JSON.stringify(typeof appBase !== 'undefined' && appBase ? String(appBase) : ''); %>
 <% var gKeyJs = JSON.stringify(gKey).replace(/</g, '\u003c'); %>
+<% var gMapIdJs = JSON.stringify(String((typeof settings !== 'undefined' && settings && settings.googleMapId) || 'DEMO_MAP_ID')).replace(/</g, '<'); %>
 <% var scripts = `
+<script src="${esc(typeof appBase !== 'undefined' && appBase ? String(appBase) : '')}/app/js/motoIcon.js"></script>
 <script>
 function commTypeChange(sel){var id=sel.getAttribute('data-dg'),v=sel.value,m={fixedBlock:'fixed',pctBlock:'percentage',pctBaseBlock:'percentage',dynBlock:'dynamic'};Object.keys(m).forEach(function(k){var e=document.getElementById(k+id);if(e)e.style.display=v===m[k]?'block':'none';});}
 $(function(){
@@ -17,14 +19,14 @@ $(function(){
   window.gm_authFailure = function() { if (statusEl0) statusEl0.textContent = "Google Maps rechazo la clave (API no habilitada o referrer no permitido)"; };
   window.__adminGmapsLoaded = initDeliveryMap;
   var gs = document.createElement("script");
-  gs.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(gKey) + "&loading=async&callback=__adminGmapsLoaded";
+  gs.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(gKey) + "&loading=async&libraries=marker&callback=__adminGmapsLoaded";
   gs.async = true;
   gs.onerror = function() { if (statusEl0) statusEl0.textContent = "No se pudo cargar Google Maps"; };
   document.head.appendChild(gs);
 
   function initDeliveryMap() {
   var defaultCenter = { lat: ${esc(mc.lat)}, lng: ${esc(mc.lng)} };
-  var map = new google.maps.Map(mapEl, { center: defaultCenter, zoom: 12, scrollwheel: true, streetViewControl: false, mapTypeControl: false });
+  var map = new google.maps.Map(mapEl, { center: defaultCenter, zoom: 12, mapId: ${gMapIdJs}, scrollwheel: true, streetViewControl: false, mapTypeControl: false });
   var infoWindow = new google.maps.InfoWindow();
 
   var markers = {};
@@ -44,10 +46,6 @@ $(function(){
     if (driver.is_active === 0) return "#6c757d";
     if (driver.updated_at && (Date.now() - driver.updated_at) > staleMs) return "#fd7e14";
     return driver.live ? "#28a745" : "#17a2b8";
-  }
-
-  function markerIcon(color) {
-    return { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: color, fillOpacity: 0.85, strokeColor: color, strokeWeight: 2 };
   }
 
   function formatUpdated(ts) {
@@ -73,19 +71,20 @@ $(function(){
             "<small>" + formatUpdated(d.updated_at) + (d.live ? " (en vivo)" : "") + "</small>";
           var color = markerColor(d);
           if (markers[d.id]) {
-            markers[d.id].marker.setPosition(pos);
-            markers[d.id].marker.setIcon(markerIcon(color));
+            markers[d.id].marker.position = pos;
+            markers[d.id].marker.content = window.motoIcon(color, d.name);
+            markers[d.id].marker.title = d.name || "";
             markers[d.id].popup = popup;
           } else {
-            var m = new google.maps.Marker({ position: pos, map: map, icon: markerIcon(color) });
+            var m = new google.maps.marker.AdvancedMarkerElement({ position: pos, map: map, title: d.name || "", content: window.motoIcon(color, d.name) });
             var entry = { marker: m, popup: popup };
-            m.addListener("click", function() { infoWindow.setContent(entry.popup); infoWindow.open(map, m); });
+            m.addListener("gmp-click", function() { infoWindow.setContent(entry.popup); infoWindow.open({ map: map, anchor: m }); });
             markers[d.id] = entry;
           }
         });
         Object.keys(markers).forEach(function(id) {
           if (!seen[id]) {
-            markers[id].marker.setMap(null);
+            markers[id].marker.map = null;
             delete markers[id];
           }
         });

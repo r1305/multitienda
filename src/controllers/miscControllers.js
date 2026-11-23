@@ -33,6 +33,7 @@ exports.getSettings = async (req, res) => {
       .filter((s) => PUBLIC_SETTINGS_KEYS.includes(s.key));
     const rtdbUrl = (process.env.FIREBASE_DATABASE_URL || '').trim();
     if (rtdbUrl) settings.push({ id: 0, key: 'firebaseDatabaseURL', value: rtdbUrl });
+    settings.push({ id: 0, key: 'googleMapId', value: (process.env.GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID').trim() });
     await cache.set('settings:all', settings, parseInt(process.env.CACHE_SETTINGS_TTL || '300', 10));
     res.json(settings);
   } catch (err) {

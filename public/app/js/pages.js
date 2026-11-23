@@ -898,9 +898,9 @@ const OrderDetailPage = {
     loadGoogleMaps() {
       const apiKey = Store.settings.googleApiKey;
       if (!apiKey) { console.error('[Maps] googleApiKey vacia: no llega desde /settings (revisar PUBLIC_SETTINGS_KEYS o ajustes admin)'); return; }
-      if (window.google && window.google.maps) { this.googleLoaded = true; this.$nextTick(() => this.initMap()); return; }
+      if (window.google && window.google.maps) { google.maps.importLibrary('marker').then(() => { this.googleLoaded = true; this.$nextTick(() => this.initMap()); }); return; }
       const s = document.createElement('script');
-      s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(apiKey) + '&loading=async&callback=__gmapsLoaded';
+      s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(apiKey) + '&loading=async&libraries=marker&callback=__gmapsLoaded';
       s.async = true;
       s.onerror = () => console.error('[Maps] No se pudo cargar maps.googleapis.com (CSP, red o bloqueador)');
       window.gm_authFailure = () => console.error('[Maps] gm_authFailure: clave invalida, API no habilitada o referrer no permitido');
@@ -908,11 +908,10 @@ const OrderDetailPage = {
       document.head.appendChild(s);
     },
     mapDot(position, title, color) {
-      return new google.maps.Marker({
-        position, map: this.map, title,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 16, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
-        label: { text: 'R', color: '#fff', fontWeight: '700', fontSize: '16px' },
-      });
+      const el = document.createElement('div');
+      el.textContent = 'R';
+      el.style.cssText = 'width:32px;height:32px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:' + color + ';color:#fff;font:700 16px/28px sans-serif;text-align:center';
+      return new google.maps.marker.AdvancedMarkerElement({ position, map: this.map, title, content: el });
     },
     initMap() {
       if (!this.order || !window.google) return;
@@ -922,7 +921,7 @@ const OrderDetailPage = {
       let loc = null;
       try { loc = this.order.location ? JSON.parse(this.order.location) : null; } catch(e) {}
       const center = rest ? { lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) } : (loc ? { lat: loc.lat, lng: loc.lng } : { lat: 0, lng: 0 });
-      this.map = new google.maps.Map(mapEl, { zoom: 14, center, disableDefaultUI: true, zoomControl: true });
+      this.map = new google.maps.Map(mapEl, { zoom: 14, center, mapId: Store.settings.googleMapId || 'DEMO_MAP_ID', disableDefaultUI: true, zoomControl: true });
       if (rest) this.mapDot({ lat: parseFloat(rest.latitude), lng: parseFloat(rest.longitude) }, rest.name, '#4caf50');
       if (loc) this.mapDot({ lat: loc.lat, lng: loc.lng }, 'Tu ubicacion', '#2196f3');
       // Fit bounds
@@ -941,8 +940,8 @@ const OrderDetailPage = {
           const gps = await API.post('/delivery/get-delivery-guy-gps-location', { token: Store.user.auth_token, order_id: this.order.id });
           if (gps && gps.delivery_lat && gps.delivery_long) {
             const pos = { lat: parseFloat(gps.delivery_lat), lng: parseFloat(gps.delivery_long) };
-            if (this.deliveryMarker) { this.deliveryMarker.setPosition(pos); }
-            else { this.deliveryMarker = this.mapDot(pos, 'Repartidor', '#ff5722'); }
+            if (this.deliveryMarker) { this.deliveryMarker.position = pos; }
+            else { this.deliveryMarker = new google.maps.marker.AdvancedMarkerElement({ position: pos, map: this.map, title: 'Repartidor', content: window.motoIcon('#ff5722', 'Repartidor') }); }
             // Draw route when picked up (status 4)
             if (this.order.orderstatus_id === 4) {
               let loc = null;

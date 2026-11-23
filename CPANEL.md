@@ -28,6 +28,7 @@ npm run install:cpanel
 - Con el **gateway unificado** (`F:/apps`), solo una app Node; multitienda se monta en `/multitienda`.
 - `deploy/.htaccess.example` → `PassengerStartupFile passenger_app.js`
 - Firebase: `firebase-admin` + `FIREBASE_CREDENTIALS`
+- Marcadores de Google Maps (AdvancedMarkerElement): requieren un Map ID (Google Cloud Console > Google Maps Platform > Map Management). Variable `GOOGLE_MAPS_MAP_ID`; si falta se usa `DEMO_MAP_ID` (solo pruebas).
 - Estados de pedido en tiempo real (opcional): `FIREBASE_DATABASE_URL` (URL de la Realtime Database) y `FIREBASE_CREDENTIALS` apuntando a la credencial de servicio **fuera del repo** (p. ej. `/home/USUARIO/secretos/firebase-credentials.json`). Publica las reglas de `database.rules.json` en Firebase Console > Realtime Database > Reglas. Sin URL o sin credencial el espejo queda desactivado y la web sigue con polling. El servidor solo escribe `orders/{unique_order_id}`; no escucha la base.
 
 ## Despliegue con cambios de base de datos
