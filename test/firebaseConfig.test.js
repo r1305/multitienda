@@ -157,11 +157,13 @@ test('c) /get-settings no incluye la credencial ni la private_key', async () => 
     { key: 'firebaseApiKey', value: 'web-api-key' },
     { key: 'firebaseDatabaseURL', value: DB_URL },
     { key: 'firebaseServiceAccount', value: JSON.stringify(CRED) },
+    { key: 'googleApiKey', value: 'maps-public-key' },
   ];
   const res = fakeRes();
   await misc.getSettings({}, res);
   const text = JSON.stringify(res.body);
   assert.ok(text.includes('web-api-key'));
+  assert.ok(res.body.some((s) => s.key === 'googleApiKey' && s.value === 'maps-public-key'));
   assert.ok(text.includes(DB_URL));
   assert.ok(!text.includes('firebaseServiceAccount'));
   assert.ok(!text.includes('private_key') && !text.includes('FAKE-KEY-FOR-TEST') && !text.includes(CRED.client_email));

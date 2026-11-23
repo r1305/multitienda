@@ -81,7 +81,15 @@ const PushNotifications = {
     if (this._serviceWorkerReg) return this._serviceWorkerReg;
     const scope = this._appBase() ? `${this._appBase()}/` : '/';
     const reg = await navigator.serviceWorker.register(this.serviceWorkerUrl(), { scope });
-    await navigator.serviceWorker.ready;
+    let timer = null;
+    try {
+      await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('sw_ready_timeout')), 8000); }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
     this._serviceWorkerReg = reg;
     return reg;
   },

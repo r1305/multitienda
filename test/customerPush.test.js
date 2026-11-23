@@ -148,6 +148,7 @@ test('initSDK crea la app por defecto aunque ya exista la app orders-rt de Order
     window,
     URLSearchParams,
     CustomEvent: class { constructor(type) { this.type = type; } },
+    setTimeout, clearTimeout,
     navigator: { serviceWorker: { async register() { return {}; } } },
     localStorage: { getItem: () => null, setItem() {} },
     Store: { settings: { firebaseApiKey: 'k', firebaseProjectId: 'p', firebaseMessagingSenderId: 's', firebaseAppId: 'a' } },
@@ -195,6 +196,7 @@ test('enable devuelve error controlado si getToken falla', async () => {
     console: { warn() {} },
     CustomEvent: class { constructor(type) { this.type = type; } },
     Notification: { permission: 'granted' },
+    setTimeout, clearTimeout,
     navigator: { serviceWorker: { async register() { return reg; }, ready: Promise.resolve(reg) } },
     localStorage: { getItem: () => 'tok', setItem() {} },
     Store: { settings: { firebaseApiKey: 'k', firebaseProjectId: 'p', firebaseMessagingSenderId: 's', firebaseAppId: 'a', firebaseVapidKey: 'v' } },
@@ -204,4 +206,32 @@ test('enable devuelve error controlado si getToken falla', async () => {
   const r = await window.PushNotifications.enable(5, 'customer');
   assert.deepStrictEqual({ ...r }, { ok: false, reason: 'token_save_failed' });
   assert.strictEqual(window.PushNotifications._serviceWorkerReg, reg);
+});
+
+test('enable no se cuelga si serviceWorker.ready nunca resuelve y limpia el timer', async () => {
+  const src = fs.readFileSync(path.join(__dirname, '../public/app/js/pushNotifications.js'), 'utf8');
+  const firebase = { apps: [], initializeApp() {}, messaging() { return { onMessage() {} }; } };
+  const window = { firebase, dispatchEvent() {}, location: { pathname: '/delivery' } };
+  const delays = [];
+  const cleared = [];
+  const ctx = {
+    window,
+    URLSearchParams,
+    console: { warn() {} },
+    CustomEvent: class { constructor(type) { this.type = type; } },
+    Notification: { permission: 'granted' },
+    setTimeout(fn, ms) { delays.push(ms); fn(); return 7; },
+    clearTimeout(id) { cleared.push(id); },
+    navigator: { serviceWorker: { async register() { return {}; }, ready: new Promise(() => {}) } },
+    localStorage: { getItem: () => 'tok', setItem() {} },
+    Store: { settings: { firebaseApiKey: 'k', firebaseProjectId: 'p', firebaseMessagingSenderId: 's', firebaseAppId: 'a', firebaseVapidKey: 'v' } },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(src, ctx);
+  const r = await window.PushNotifications.enable(5, 'delivery');
+  assert.deepStrictEqual({ ...r }, { ok: false, reason: 'init_failed' });
+  assert.deepStrictEqual(delays, [8000]);
+  assert.deepStrictEqual(cleared, [7]);
+  assert.strictEqual(window.PushNotifications._initPromise, null);
+  assert.strictEqual(window.PushNotifications._serviceWorkerReg, null);
 });

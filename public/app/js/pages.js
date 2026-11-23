@@ -879,7 +879,7 @@ const OrderDetailPage = {
       if (window.ChatRealtime && Store.isLoggedIn && this.order) this._stopChatRt = ChatRealtime.watch({ orderKey: this.order.unique_order_id || this.$route.params.id, role: 'customer', userId: Store.user.id, token: Store.user.auth_token, onMessage: (m) => this.addMessage(m) });
     }
   },
-  beforeUnmount() { if (this._stopChatRt) this._stopChatRt(); if (this._stopRealtime) this._stopRealtime(); if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
+  beforeUnmount() { if (this._onSettingsReady) window.removeEventListener('app:settings-ready', this._onSettingsReady); if (this._stopChatRt) this._stopChatRt(); if (this._stopRealtime) this._stopRealtime(); if (this.refreshInterval) clearInterval(this.refreshInterval); if (this.chatInterval) clearInterval(this.chatInterval); if (this._onPushForeground) window.removeEventListener('app:push-foreground', this._onPushForeground); },
   methods: {
     async enablePush() {
       if (!window.PushNotifications || !Store.user) return;
@@ -898,6 +898,10 @@ const OrderDetailPage = {
     },
     loadGoogleMaps() {
       const apiKey = Store.settings.googleApiKey;
+      if (!apiKey && !Object.keys(Store.settings).length) {
+        if (!this._onSettingsReady) { this._onSettingsReady = () => { window.removeEventListener('app:settings-ready', this._onSettingsReady); this._onSettingsReady = null; this.loadGoogleMaps(); }; window.addEventListener('app:settings-ready', this._onSettingsReady); }
+        return;
+      }
       if (!apiKey) { console.error('[Maps] googleApiKey vacia: no llega desde /settings (revisar PUBLIC_SETTINGS_KEYS o ajustes admin)'); return; }
       if (window.google && window.google.maps) { google.maps.importLibrary('marker').then(() => { this.googleLoaded = true; this.$nextTick(() => this.initMap()); }); return; }
       const s = document.createElement('script');
