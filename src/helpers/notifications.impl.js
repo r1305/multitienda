@@ -125,6 +125,18 @@ async function deleteDeadTokens(tokens) {
   }
 }
 
+async function confirmDeadToken(messaging, token) {
+  try {
+    await messaging.send({ token, data: { check: '1' } }, true);
+    return false;
+  } catch (e) {
+    const code = e?.code || 'unknown';
+    const hint = /mismatched-credential|sender-id-mismatch/.test(code) ? ' (token de otro proyecto Firebase que la credencial del servidor)' : '';
+    console.warn('[FCM] Verificación dry-run del token:', code, `${e?.message || ''}${hint}`, tokenPreview(token));
+    return isDeadTokenCode(code);
+  }
+}
+
 async function sendViaFCM(title, message, userId, role, data) {
   const app = await getFirebaseApp();
   if (!app) {
@@ -304,12 +316,18 @@ async function saveFCMToken(userId, token, platform = 'android', previousToken =
         { replacements: [userId] }
       );
       const roleName = roles.length ? roles[0].name.replace(' ', '_').toLowerCase() : 'customer';
-      const sub = await admin.messaging(app).subscribeToTopic([token], roleName).catch(() => null);
-      if (sub?.errors?.some((e) => isDeadTokenCode(e?.error?.code))) {
-        await deleteDeadTokens([token]);
-        return { ok: false, reason: 'token_not_registered' };
+      const messaging = admin.messaging(app);
+      const sub = await messaging.subscribeToTopic([token], roleName).catch((e) => ({ errors: [{ error: e }] }));
+      const subCode = sub?.errors?.[0]?.error?.code;
+      if (subCode) {
+        console.warn('[FCM] subscribeToTopic falló:', subCode, sub.errors[0].error?.message || '', tokenPreview(token));
+        // El alta a temas (IID) no es fuente fiable: solo se borra si un envío dry-run por token también lo da por muerto.
+        if (isDeadTokenCode(subCode) && await confirmDeadToken(messaging, token)) {
+          await deleteDeadTokens([token]);
+          return { ok: false, reason: 'token_not_registered' };
+        }
       }
-      await admin.messaging(app).subscribeToTopic([token], 'all').catch(() => {});
+      await messaging.subscribeToTopic([token], 'all').catch(() => {});
     }
     return { ok: true };
   } catch (e) {

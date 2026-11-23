@@ -12,7 +12,7 @@ function stub(relPath, exports) {
 process.env.APP_URL = 'https://tienda.test';
 process.env.FIREBASE_CREDENTIALS = path.join(__dirname, '..', 'package.json');
 
-const state = { rows: [], queries: [], sendErrors: {}, subscribeErrorFor: null };
+const state = { rows: [], queries: [], sendErrors: {}, subscribeErrorFor: null, dryRuns: [] };
 
 stub('src/models', {
   sequelize: {
@@ -55,6 +55,12 @@ require.cache[require.resolve('firebase-admin')] = {
         const ok = responses.filter((x) => x.success).length;
         return { successCount: ok, failureCount: msgs.length - ok, responses };
       },
+      async send(msg, dryRun) {
+        state.dryRuns.push({ token: msg.token, dryRun });
+        const code = state.sendErrors[msg.token];
+        if (code) throw Object.assign(new Error('x'), { code });
+        return 'projects/p/messages/1';
+      },
       async subscribeToTopic(tokens) {
         if (tokens[0] === state.subscribeErrorFor) {
           return { successCount: 0, failureCount: 1, errors: [{ index: 0, error: { code: 'messaging/registration-token-not-registered' } }] };
@@ -72,6 +78,7 @@ function reset(rows) {
   state.queries = [];
   state.sendErrors = {};
   state.subscribeErrorFor = null;
+  state.dryRuns = [];
 }
 
 test('envío: token not-registered se borra por token exacto y los válidos quedan', async () => {
@@ -121,9 +128,28 @@ test('guardar el mismo token no duplica la fila', async () => {
 test('guardar un token que FCM da por no registrado lo rechaza y no deja la fila', async () => {
   reset([]);
   state.subscribeErrorFor = 'dead-web-aaa';
+  state.sendErrors['dead-web-aaa'] = 'messaging/registration-token-not-registered';
   const r = await impl.saveFCMToken(3, 'dead-web-aaa', 'web');
   assert.deepStrictEqual(r, { ok: false, reason: 'token_not_registered' });
   assert.strictEqual(state.rows.length, 0);
+  assert.deepStrictEqual(state.dryRuns, [{ token: 'dead-web-aaa', dryRun: true }]);
+});
+
+test('alta a tema dice not-registered pero el dry-run lo acepta: se guarda y no se borra', async () => {
+  reset([]);
+  state.subscribeErrorFor = 'fresh-web-aaa';
+  const r = await impl.saveFCMToken(3, 'fresh-web-aaa', 'web');
+  assert.deepStrictEqual(r, { ok: true });
+  assert.deepStrictEqual(state.rows.map((x) => x.token), ['fresh-web-aaa']);
+});
+
+test('dry-run con otro error (credencial de otro proyecto) no borra el token', async () => {
+  reset([]);
+  state.subscribeErrorFor = 'other-proj-aaa';
+  state.sendErrors['other-proj-aaa'] = 'messaging/mismatched-credential';
+  const r = await impl.saveFCMToken(3, 'other-proj-aaa', 'web');
+  assert.deepStrictEqual(r, { ok: true });
+  assert.strictEqual(state.rows.length, 1);
 });
 
 test('enable fuerza token nuevo (deleteToken) y manda el anterior como previous_token', async () => {
